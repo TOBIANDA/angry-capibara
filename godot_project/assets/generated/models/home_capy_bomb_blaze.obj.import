@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://h5u2fpuy7hbh"
+path="res://.godot/imported/home_capy_bomb_blaze.obj-a9c4c8e85da21bdbfd64f7c2fd9dc76d.mesh"
+
+[deps]
+
+files=["res://.godot/imported/home_capy_bomb_blaze.obj-a9c4c8e85da21bdbfd64f7c2fd9dc76d.mesh"]
+
+source_file="res://assets/generated/models/home_capy_bomb_blaze.obj"
+dest_files=["res://.godot/imported/home_capy_bomb_blaze.obj-a9c4c8e85da21bdbfd64f7c2fd9dc76d.mesh", "res://.godot/imported/home_capy_bomb_blaze.obj-a9c4c8e85da21bdbfd64f7c2fd9dc76d.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

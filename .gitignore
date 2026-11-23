@@ -1,0 +1,26 @@
+# Ignore everything at workspace root except Angry Capibara project folders
+/*
+!/.gitignore
+!/docs/
+!/vs_asset_forge/
+!/godot_project/
+
+# Visual Studio build artifacts inside vs_asset_forge
+vs_asset_forge/.vs/
+vs_asset_forge/bin/
+vs_asset_forge/obj/
+vs_asset_forge/x64/
+vs_asset_forge/Release/
+vs_asset_forge/Debug/
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.tlog
+*.log
+*.user
+*.suo
+
+# Godot cache & temporary runtime files
+godot_project/.godot/
+godot_project/.import/

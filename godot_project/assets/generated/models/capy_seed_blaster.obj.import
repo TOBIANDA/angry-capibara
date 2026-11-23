@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bp0011jvfl321"
+path="res://.godot/imported/capy_seed_blaster.obj-1a293ac1d6f691fb2eb39bff340e829c.mesh"
+
+[deps]
+
+files=["res://.godot/imported/capy_seed_blaster.obj-1a293ac1d6f691fb2eb39bff340e829c.mesh"]
+
+source_file="res://assets/generated/models/capy_seed_blaster.obj"
+dest_files=["res://.godot/imported/capy_seed_blaster.obj-1a293ac1d6f691fb2eb39bff340e829c.mesh", "res://.godot/imported/capy_seed_blaster.obj-1a293ac1d6f691fb2eb39bff340e829c.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
