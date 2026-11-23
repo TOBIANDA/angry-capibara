@@ -724,11 +724,11 @@ std::vector<ModelAsset> BuildAllHomeKeyArtAssets() {
 		out.push_back(std::move(rock));
 	}
 
-	// 4. KEY-ART CHILL CAPI ROAR (MC Merah mengaum gagah + syal berkibar panjang)
+	// 4. KEY-ART CHILL CAPI ROAR (Merah Pekat Crimson + Jambul Runcing + Syal Berkibar!)
 	{
 		ModelAsset chill;
 		chill.modelName = "home_capy_chill_roar";
-		BuildAnimeCapyCore(chill, "mat_fur_red", "tex_capy_red.bmp", "tex_anime_eye_chill.bmp",
+		BuildAnimeCapyCore(chill, "mat_fur_crimson", "tex_capy_crimson.bmp", "tex_anime_eye_chill.bmp",
 			glm::vec3(1.02f, 1.02f, 1.04f), 1.12f, 1.18f, AnimeBrow::AngryV, AnimeMouth::HeroRoar, true);
 
 		AddUniqueMaterial(chill, MakeMat("mat_scarf_red", "tex_anime_scarf_red.bmp"));
@@ -736,10 +736,17 @@ std::vector<ModelAsset> BuildAllHomeKeyArtAssets() {
 		scarf.objectName = "acc_hero_scarf";
 		scarf.materialName = "mat_scarf_red";
 		AppendTransformedMesh(scarf, BuildTorus(0.19f, 0.048f, 22, 10), TRS(glm::vec3(0.08f, 0.03f, 0.0f), glm::vec3(0, 0, -34)));
-		// Ekor syal berkibar lembut ke belakang bawah punggung (tidak menutupi wajah teman di samping!)
 		std::array<glm::vec3, 4> t1 = {{ {0.02f,0.04f,0.12f}, {-0.14f,0.04f,0.18f}, {-0.30f,-0.02f,0.20f}, {-0.44f,0.02f,0.15f} }};
 		AppendTransformedMesh(scarf, BuildBezierTube(t1, 0.048f, 0.016f), glm::mat4(1.0f));
 		chill.parts.push_back(std::move(scarf));
+
+		SubMesh tuft;
+		tuft.objectName = "acc_chill_roar_tuft";
+		tuft.materialName = "mat_fur_crimson";
+		AppendTransformedMesh(tuft, BuildCone(0.046f, 0.125f, 10), TRS(glm::vec3(0.19f, 0.37f, 0.0f), glm::vec3(0, 0, 20)));
+		AppendTransformedMesh(tuft, BuildCone(0.036f, 0.098f, 10), TRS(glm::vec3(0.15f, 0.36f, 0.038f), glm::vec3(12, 0, 34)));
+		AppendTransformedMesh(tuft, BuildCone(0.036f, 0.098f, 10), TRS(glm::vec3(0.15f, 0.36f,-0.038f), glm::vec3(-12, 0, 34)));
+		chill.parts.push_back(std::move(tuft));
 		out.push_back(std::move(chill));
 	}
 
@@ -951,6 +958,106 @@ std::vector<ModelAsset> BuildAllHomeKeyArtAssets() {
 		AppendTransformedMesh(cap, BuildCylinder(0.26f, 0.30f, 0.42f, 12), TRS(glm::vec3( 1.42f, 0.21f, 0.0f)));
 		torii.parts.push_back(std::move(cap));
 		out.push_back(std::move(torii));
+	}
+
+	// 11. RUMPUN BAMBU ORGANIK BERDAUN (prop_bamboo_grove.obj — kurva Bezier + daun runcing)
+	{
+		ModelAsset grove;
+		grove.modelName = "prop_bamboo_grove";
+		AddUniqueMaterial(grove, MakeMat("mat_bamboo", "tex_bamboo.bmp"));
+		AddUniqueMaterial(grove, MakeMat("mat_leaf", "tex_yuzu_leaf.bmp"));
+
+		SubMesh stalks;
+		stalks.objectName = "bamboo_curved_stalks";
+		stalks.materialName = "mat_bamboo";
+		std::array<glm::vec3, 4> s1 = {{ {0.0f,0.0f,0.0f}, {-0.08f,1.6f,0.02f}, {-0.22f,3.2f,-0.04f}, {-0.42f,5.0f,-0.08f} }};
+		std::array<glm::vec3, 4> s2 = {{ {0.38f,0.0f,-0.12f}, {0.46f,1.4f,-0.08f}, {0.58f,2.8f,-0.02f}, {0.72f,4.3f,0.06f} }};
+		std::array<glm::vec3, 4> s3 = {{ {-0.34f,0.0f,-0.25f}, {-0.40f,1.3f,-0.22f}, {-0.52f,2.6f,-0.16f}, {-0.68f,3.8f,-0.10f} }};
+		AppendTransformedMesh(stalks, BuildBezierTube(s1, 0.13f, 0.075f, 18, 12, true), glm::mat4(1.0f));
+		AppendTransformedMesh(stalks, BuildBezierTube(s2, 0.11f, 0.065f, 16, 10, true), glm::mat4(1.0f));
+		AppendTransformedMesh(stalks, BuildBezierTube(s3, 0.10f, 0.060f, 16, 10, true), glm::mat4(1.0f));
+		for (float ry : { 0.85f, 1.75f, 2.65f, 3.55f }) {
+			AppendTransformedMesh(stalks, BuildTorus(0.115f, 0.018f, 14, 6), TRS(glm::vec3(-ry * 0.07f, ry, 0.0f), glm::vec3(90, 0, 5)));
+		}
+		grove.parts.push_back(std::move(stalks));
+
+		SubMesh leaves;
+		leaves.objectName = "bamboo_leaf_fans";
+		leaves.materialName = "mat_leaf";
+		SubMesh singleLeaf = BuildEllipsoid(0.38f, 0.045f, 0.095f, 6, 10);
+		for (int i = 0; i < 12; ++i) {
+			float y = 1.9f + (i % 4) * 0.72f;
+			float side = (i % 2 == 0) ? 1.0f : -1.0f;
+			float x = (i < 6 ? -0.15f : 0.45f) + side * 0.28f;
+			float z = (i % 3 - 1) * 0.16f;
+			AppendTransformedMesh(leaves, singleLeaf, TRS(glm::vec3(x, y, z), glm::vec3(side * 12.0f, side * 22.0f, -side * (16.0f + (i % 3) * 14.0f))));
+		}
+		grove.parts.push_back(std::move(leaves));
+		out.push_back(std::move(grove));
+	}
+
+	// 12. RUMAH ONSEN KAYU JEPANG BERATAP GENTENG LENGKUNG (prop_onsen_house.obj)
+	{
+		ModelAsset house;
+		house.modelName = "prop_onsen_house";
+		AddUniqueMaterial(house, MakeMat("mat_wood", "tex_wood.bmp"));
+		AddUniqueMaterial(house, MakeMat("mat_roof", "tex_roof_tile.bmp"));
+		AddUniqueMaterial(house, MakeMat("mat_shoji", "tex_shoji_glow.bmp", glm::vec3(1.0f), glm::vec3(0.75f, 0.56f, 0.18f), 16.0f));
+		AddUniqueMaterial(house, MakeMat("mat_stone", "tex_stone.bmp"));
+
+		SubMesh base;
+		base.objectName = "onsen_foundation";
+		base.materialName = "mat_stone";
+		AppendTransformedMesh(base, BuildBox(3.9f, 0.45f, 2.9f), TRS(glm::vec3(0.0f, 0.22f, 0.0f)));
+		AppendTransformedMesh(base, BuildBox(1.2f, 0.22f, 0.65f), TRS(glm::vec3(0.0f, 0.11f, 1.65f)));
+		house.parts.push_back(std::move(base));
+
+		SubMesh timber;
+		timber.objectName = "onsen_timber_body";
+		timber.materialName = "mat_wood";
+		AppendTransformedMesh(timber, BuildBox(3.3f, 2.0f, 2.3f), TRS(glm::vec3(0.0f, 1.45f, 0.0f)));
+		// Pilar sudut & pagar beranda
+		for (float px : { -1.78f, 1.78f }) {
+			AppendTransformedMesh(timber, BuildCylinder(0.11f, 0.12f, 2.15f, 10), TRS(glm::vec3(px, 1.52f, 1.28f)));
+		}
+		AppendTransformedMesh(timber, BuildBox(3.75f, 0.14f, 0.12f), TRS(glm::vec3(0.0f, 0.96f, 1.28f)));
+		house.parts.push_back(std::move(timber));
+
+		SubMesh shoji;
+		shoji.objectName = "onsen_shoji_window";
+		shoji.materialName = "mat_shoji";
+		AppendTransformedMesh(shoji, BuildBox(1.55f, 1.15f, 0.08f), TRS(glm::vec3(0.0f, 1.38f, 1.17f)));
+		house.parts.push_back(std::move(shoji));
+
+		SubMesh roof;
+		roof.objectName = "onsen_tiled_roof";
+		roof.materialName = "mat_roof";
+		// Atap pelana genteng bertingkat dengan cucuran lebar khas onsen Jepang
+		AppendTransformedMesh(roof, BuildBox(4.7f, 0.18f, 3.4f), TRS(glm::vec3(0.0f, 2.52f, 0.08f)));
+		AppendTransformedMesh(roof, BuildBox(4.4f, 0.22f, 1.95f), TRS(glm::vec3(0.0f, 2.98f,  0.80f), glm::vec3( 28, 0, 0)));
+		AppendTransformedMesh(roof, BuildBox(4.4f, 0.22f, 1.95f), TRS(glm::vec3(0.0f, 2.98f, -0.80f), glm::vec3(-28, 0, 0)));
+		// Bubungan puncak melengkung tipis di atas atap
+		std::array<glm::vec3, 4> ridge = {{ {-2.35f,3.52f,0.0f}, {-0.8f,3.40f,0.0f}, {0.8f,3.40f,0.0f}, {2.35f,3.52f,0.0f} }};
+		AppendTransformedMesh(roof, BuildBezierTube(ridge, 0.14f, 0.14f, 16, 8, true), glm::mat4(1.0f));
+		house.parts.push_back(std::move(roof));
+		out.push_back(std::move(house));
+	}
+
+	// 13. AWAN HALUS BERGAYA ROVIO (prop_cloud_fluffy.obj)
+	{
+		ModelAsset cloud;
+		cloud.modelName = "prop_cloud_fluffy";
+		AddUniqueMaterial(cloud, MakeMat("mat_cloud", "tex_capy_belly.bmp", glm::vec3(1.0f, 0.96f, 0.90f), glm::vec3(0.18f, 0.14f, 0.10f), 8.0f));
+		SubMesh puffs;
+		puffs.objectName = "cloud_puffs";
+		puffs.materialName = "mat_cloud";
+		AppendTransformedMesh(puffs, BuildEllipsoid(1.15f, 0.42f, 0.36f, 12, 16), TRS(glm::vec3( 0.0f, -0.10f, 0.0f)));
+		AppendTransformedMesh(puffs, BuildEllipsoid(0.62f, 0.56f, 0.34f, 12, 16), TRS(glm::vec3(-0.32f,  0.22f, 0.02f)));
+		AppendTransformedMesh(puffs, BuildEllipsoid(0.52f, 0.46f, 0.32f, 12, 16), TRS(glm::vec3( 0.40f,  0.14f, 0.02f)));
+		AppendTransformedMesh(puffs, BuildEllipsoid(0.42f, 0.34f, 0.28f, 10, 14), TRS(glm::vec3(-0.88f, -0.02f, 0.02f)));
+		AppendTransformedMesh(puffs, BuildEllipsoid(0.40f, 0.32f, 0.28f, 10, 14), TRS(glm::vec3( 0.92f, -0.04f, 0.02f)));
+		cloud.parts.push_back(std::move(puffs));
+		out.push_back(std::move(cloud));
 	}
 
 	return out;

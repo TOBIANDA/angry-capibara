@@ -396,5 +396,28 @@ bool GenerateAnimeTexturesW12(const std::string& texDir) {
 		return col;
 	});
 
+	// 6. Tekstur Painterly Rovio (bebas noise kasar & bebas pucat!)
+	ok &= WriteStylizedFurTexture(texDir + "/tex_capy_crimson.bmp", { 132, 16, 22 }, { 196, 26, 30 }, { 230, 52, 44 }, 2001);
+	ok &= WriteBMP24(texDir + "/tex_moss_painterly.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
+		float broad = SmoothNoise(px * 0.032f, py * 0.032f, 2010);
+		float brush = SmoothNoise(px * 0.09f, py * 0.045f, 2011);
+		RGB col = LerpRGB({ 44, 94, 38 }, { 86, 148, 54 }, 0.65f * broad + 0.35f * brush);
+		if (broad > 0.68f) col = LerpRGB(col, { 118, 176, 68 }, (broad - 0.68f) * 2.2f);
+		return col;
+	});
+	ok &= WriteBMP24(texDir + "/tex_roof_tile.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
+		float wave = 0.5f + 0.5f * std::sin(u * 44.0f);
+		float row = std::fmod(v * 10.0f, 1.0f);
+		RGB col = LerpRGB({ 38, 44, 54 }, { 68, 78, 92 }, 0.65f * wave + 0.35f * row);
+		if (row < 0.12f) col = LerpRGB(col, { 22, 26, 34 }, 0.72f);
+		return col;
+	});
+	ok &= WriteBMP24(texDir + "/tex_shoji_glow.bmp", 128, 128, [](float u, float v, int, int) -> RGB {
+		float gu = std::fmod(u * 4.0f, 1.0f);
+		float gv = std::fmod(v * 3.0f, 1.0f);
+		if (gu < 0.09f || gu > 0.91f || gv < 0.09f || gv > 0.91f) return { 72, 44, 24 };
+		return LerpRGB({ 255, 214, 112 }, { 255, 244, 184 }, 1.0f - std::abs(v - 0.5f));
+	});
+
 	return ok;
 }
