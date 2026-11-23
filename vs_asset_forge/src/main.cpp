@@ -19,6 +19,7 @@
 #include "mesh_exporter.h"
 #include "models_capybara.h"
 #include "models_capybara_anime.h"
+#include "home2d_painter.h"
 
 namespace fs = std::filesystem;
 
@@ -122,6 +123,7 @@ bool RunExportW12(const std::string& outRoot) {
 	if (!exportList(BuildAllCapybarasW12())) return false;
 	if (!exportList(BuildAllCapybarasAnimeW12())) return false;
 	if (!exportList(BuildAllHomeKeyArtAssets())) return false;
+	if (!GenerateAllHome2DLayers(outRoot + "/home2d")) return false;
 	return true;
 }
 
@@ -431,11 +433,14 @@ void InitGL() {
 
 int main(int argc, char** argv) {
 	bool exportOnly = false;
+	bool exportHome2DOnly = false;
 	bool customOut = false;
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
 		if (arg == "--export-w12" || arg == "--export-all") {
 			exportOnly = true;
+		} else if (arg == "--export-home-2d") {
+			exportHome2DOnly = true;
 		} else if (arg == "--out" && i + 1 < argc) {
 			g_outputRoot = argv[++i];
 			customOut = true;
@@ -458,6 +463,9 @@ int main(int argc, char** argv) {
 		g_outputRoot = ResolveDefaultOutputRoot();
 	}
 
+	if (exportHome2DOnly) {
+		return GenerateAllHome2DLayers(g_outputRoot + "/home2d") ? 0 : 1;
+	}
 	if (exportOnly) {
 		return RunExportW12(g_outputRoot) ? 0 : 1;
 	}

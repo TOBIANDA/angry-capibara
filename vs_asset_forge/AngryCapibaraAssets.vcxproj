@@ -181,6 +181,7 @@ xcopy /Y /D "C:\OpenGLwrappers\glew-1.10.0-win32\bin\Release\x64\glew32.dll" "$(
     <ClCompile Include="src\mesh_exporter.cpp" />
     <ClCompile Include="src\models_capybara.cpp" />
     <ClCompile Include="src\models_capybara_anime.cpp" />
+    <ClCompile Include="src\home2d_painter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\getBMP.h" />
@@ -190,6 +191,8 @@ xcopy /Y /D "C:\OpenGLwrappers\glew-1.10.0-win32\bin\Release\x64\glew32.dll" "$(
     <ClInclude Include="src\mesh_exporter.h" />
     <ClInclude Include="src\models_capybara.h" />
     <ClInclude Include="src\models_capybara_anime.h" />
+    <ClInclude Include="src\canvas2d_sdf.h" />
+    <ClInclude Include="src\home2d_painter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
