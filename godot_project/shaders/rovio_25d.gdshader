@@ -35,28 +35,28 @@ void fragment() {
 
 	// Hemisphere AO: bagian bawah membulat ke bayangan netral-hangat (anti cast magenta di awan/putih)
 	float hemi = clamp(v_world_normal.y * 0.5 + 0.5, 0.0, 1.0);
-	vec3 ao_tint = mix(vec3(0.76, 0.74, 0.76), vec3(1.02, 1.00, 0.98), smoothstep(0.08, 0.88, hemi));
+	vec3 ao_tint = mix(vec3(0.74, 0.72, 0.76), vec3(1.04, 1.01, 0.96), smoothstep(0.08, 0.88, hemi));
 
 	// Rim light lembut mengikuti warna lokal (bukan putih kapur) & fokus di tepi atas/samping
 	float ndv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float rim_edge = smoothstep(0.62, 0.93, 1.0 - ndv);
+	float rim_edge = smoothstep(0.58, 0.92, 1.0 - ndv);
 	float rim_top_mask = smoothstep(-0.35, 0.45, v_world_normal.y) * (1.0 - smoothstep(0.85, 0.99, v_world_normal.y) * 0.45);
-	vec3 tinted_rim = mix(base_col * 1.10 + vec3(0.02), rim_color, 0.40);
+	vec3 tinted_rim = mix(base_col * 1.12 + vec3(0.02), rim_color, 0.44);
 	float rim = rim_edge * rim_top_mask * rim_strength;
 
 	ALBEDO = base_col * ao_tint;
 	ROUGHNESS = 0.86;
-	EMISSION = emission_color + (tinted_rim * rim * 0.32);
+	EMISSION = emission_color + (tinted_rim * rim * 0.36);
 }
 
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
 	float atten_ndl = ndl * ATTENUATION;
 
-	// Campuran wrap volumetrik lembut + terminator sapuan kuas painterly
-	float soft_wrap = smoothstep(-0.32, 0.68, atten_ndl);
-	float crisp_band = smoothstep(0.00, 0.24, atten_ndl);
-	float shade_factor = mix(soft_wrap, crisp_band, 0.46);
+	// Campuran wrap volumetrik lembut + terminator sapuan kuas painterly (golden-hour depth)
+	float soft_wrap = smoothstep(-0.30, 0.66, atten_ndl);
+	float crisp_band = smoothstep(0.02, 0.22, atten_ndl);
+	float shade_factor = mix(soft_wrap, crisp_band, 0.54);
 
 	vec3 shade = mix(shadow_tint, lit_tint, shade_factor);
 
@@ -65,5 +65,5 @@ void light() {
 	float spec = pow(max(dot(NORMAL, half_v), 0.0), 14.0) * smoothstep(0.05, 0.30, atten_ndl);
 	vec3 spec_col = mix(ALBEDO * 1.2, vec3(1.0, 0.95, 0.84), 0.45) * spec * sheen_strength;
 
-	DIFFUSE_LIGHT += (ALBEDO * shade + spec_col) * LIGHT_COLOR * 0.84;
+	DIFFUSE_LIGHT += (ALBEDO * shade + spec_col) * LIGHT_COLOR * 0.90;
 }

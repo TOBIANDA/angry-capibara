@@ -386,10 +386,10 @@ func _setup_arcade_ui() -> void:
 	# Tombol sekunder seragam Warm Lacquer Espresso (nol tombol warna-warni pelangi AI slop!)
 	corner_menu = HBoxContainer.new()
 	corner_menu.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	corner_menu.offset_left = -318
+	corner_menu.offset_left = -336
 	corner_menu.offset_right = -20
-	corner_menu.offset_top = -60
-	corner_menu.offset_bottom = -20
+	corner_menu.offset_top = -66
+	corner_menu.offset_bottom = -22
 	corner_menu.alignment = BoxContainer.ALIGNMENT_END
 	corner_menu.add_theme_constant_override("separation", 8)
 	corner_menu.visible = false
@@ -397,19 +397,19 @@ func _setup_arcade_ui() -> void:
 
 	var sec_bg := Color(0.17, 0.13, 0.11, 0.94)
 	var sec_fg := Color(0.96, 0.93, 0.86)
-	var btn_worlds := _make_glossy_button("4 WORLD", sec_bg, sec_fg, 13, Vector2(96, 38), 10, false)
+	var btn_worlds := _make_glossy_button("4 WORLD", sec_bg, sec_fg, 13, Vector2(104, 44), 10, false)
 	btn_worlds.pressed.connect(_go_to_tester)
 	corner_menu.add_child(btn_worlds)
 
-	var btn_credits := _make_glossy_button("CREDITS", sec_bg, sec_fg, 13, Vector2(92, 38), 10, false)
+	var btn_credits := _make_glossy_button("CREDITS", sec_bg, sec_fg, 13, Vector2(98, 44), 10, false)
 	btn_credits.pressed.connect(_show_credits_modal)
 	corner_menu.add_child(btn_credits)
 
-	var btn_exit := _make_glossy_button("EXIT", sec_bg, sec_fg, 13, Vector2(72, 38), 10, false)
+	var btn_exit := _make_glossy_button("EXIT", sec_bg, sec_fg, 13, Vector2(78, 44), 10, false)
 	btn_exit.pressed.connect(func(): get_tree().quit())
 	corner_menu.add_child(btn_exit)
 
-	# Balon dialog seragam Warm Lacquer Espresso + border kertas washi
+	# Balon dialog & modal memakai 9-slice lacquer plate (ui_panel_lacquer.png)
 	speech_bubble = PanelContainer.new()
 	speech_bubble.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	speech_bubble.offset_left = 22
@@ -417,11 +417,12 @@ func _setup_arcade_ui() -> void:
 	speech_bubble.offset_top = -94
 	speech_bubble.offset_bottom = -20
 	speech_bubble.visible = false
-	var sb_style := StyleBoxFlat.new()
-	sb_style.bg_color = Color(0.15, 0.11, 0.10, 0.94)
-	sb_style.border_color = Color(0.82, 0.74, 0.58)
-	sb_style.set_border_width_all(2)
-	sb_style.set_corner_radius_all(10)
+	var sb_style := StyleBoxTexture.new()
+	sb_style.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+	sb_style.texture_margin_left = 28
+	sb_style.texture_margin_right = 28
+	sb_style.texture_margin_top = 28
+	sb_style.texture_margin_bottom = 28
 	speech_bubble.add_theme_stylebox_override("panel", sb_style)
 	ui_root.add_child(speech_bubble)
 
@@ -490,31 +491,36 @@ func _setup_arcade_ui() -> void:
 	close_btn.pressed.connect(func(): modal_overlay.visible = false)
 	mvbox.add_child(close_btn)
 
-func _make_glossy_button(text_str: String, bg: Color, fg: Color, fsize: int, min_sz: Vector2, radius: int, is_primary: bool = false) -> Button:
+func _make_glossy_button(text_str: String, _bg: Color, fg: Color, fsize: int, min_sz: Vector2, _radius: int, is_primary: bool = false) -> Button:
 	var b := Button.new()
 	b.text = text_str
 	b.custom_minimum_size = min_sz
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_font_size_override("font_size", fsize)
 	b.add_theme_color_override("font_color", fg)
-	b.add_theme_color_override("font_hover_color", Color(1.0, 0.98, 0.93))
-	b.add_theme_color_override("font_outline_color", Color(0.14, 0.09, 0.08))
+	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
+	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
 	b.add_theme_constant_override("outline_size", 5 if is_primary and fsize >= 24 else 2)
 
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = bg
-	normal.border_color = Color(0.95, 0.86, 0.66) if is_primary else Color(0.76, 0.68, 0.54, 0.85)
-	normal.set_border_width_all(3 if is_primary else 2)
-	normal.set_corner_radius_all(radius)
-	normal.shadow_color = Color(0.12, 0.08, 0.06, 0.45)
-	normal.shadow_size = 6 if is_primary else 4
-	normal.shadow_offset = Vector2(0, 4 if is_primary else 2)
+	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
+	var normal := StyleBoxTexture.new()
+	normal.texture = load(tex_path)
+	normal.texture_margin_left = 22
+	normal.texture_margin_right = 22
+	normal.texture_margin_top = 14
+	normal.texture_margin_bottom = 16
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
+	normal.content_margin_top = 4
+	normal.content_margin_bottom = 6
 
-	var hover := normal.duplicate()
-	hover.bg_color = bg.lightened(0.16)
+	var hover: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
+	hover.modulate_color = Color(1.10, 1.07, 1.03)
 
-	var pressed := normal.duplicate()
-	pressed.bg_color = bg.darkened(0.16)
-	pressed.shadow_offset = Vector2(0, 1)
+	var pressed: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
+	pressed.modulate_color = Color(0.84, 0.80, 0.78)
+	pressed.content_margin_top = 6
+	pressed.content_margin_bottom = 4
 
 	b.add_theme_stylebox_override("normal", normal)
 	b.add_theme_stylebox_override("hover", hover)

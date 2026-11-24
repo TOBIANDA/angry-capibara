@@ -124,20 +124,18 @@ func _setup_ui() -> void:
 	lbl_sub.add_theme_color_override("font_color", Color(0.86, 0.80, 0.68))
 	title_vb.add_child(lbl_sub)
 
-	# Star counter plaque with live progress bar
+	# Star counter plaque (9-slice ui_panel_lacquer.png + ui_star_gold.png)
 	var star_panel := PanelContainer.new()
-	var sp_st := StyleBoxFlat.new()
-	sp_st.bg_color = Color(0.15, 0.11, 0.09, 0.96)
-	sp_st.border_color = Color(0.88, 0.76, 0.46)
-	sp_st.set_border_width_all(2)
-	sp_st.set_corner_radius_all(10)
-	sp_st.shadow_color = Color(0.03, 0.02, 0.02, 0.55)
-	sp_st.shadow_size = 5
-	sp_st.shadow_offset = Vector2(0, 3)
-	sp_st.content_margin_left = 14
-	sp_st.content_margin_right = 14
-	sp_st.content_margin_top = 5
-	sp_st.content_margin_bottom = 5
+	var sp_st := StyleBoxTexture.new()
+	sp_st.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+	sp_st.texture_margin_left = 20
+	sp_st.texture_margin_right = 20
+	sp_st.texture_margin_top = 20
+	sp_st.texture_margin_bottom = 20
+	sp_st.content_margin_left = 18
+	sp_st.content_margin_right = 18
+	sp_st.content_margin_top = 12
+	sp_st.content_margin_bottom = 12
 	star_panel.add_theme_stylebox_override("panel", sp_st)
 	hdr.add_child(star_panel)
 
@@ -145,11 +143,23 @@ func _setup_ui() -> void:
 	sp_vb.add_theme_constant_override("separation", 3)
 	star_panel.add_child(sp_vb)
 
+	var sp_top := HBoxContainer.new()
+	sp_top.alignment = BoxContainer.ALIGNMENT_CENTER
+	sp_top.add_theme_constant_override("separation", 5)
+	sp_vb.add_child(sp_top)
+
+	var hdr_star_ic := TextureRect.new()
+	hdr_star_ic.texture = load("res://assets/generated/home2d/ui_star_gold.png")
+	hdr_star_ic.custom_minimum_size = Vector2(16, 16)
+	hdr_star_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	hdr_star_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sp_top.add_child(hdr_star_ic)
+
 	lbl_stars_total = Label.new()
 	lbl_stars_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_stars_total.add_theme_font_size_override("font_size", 15)
 	lbl_stars_total.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42))
-	sp_vb.add_child(lbl_stars_total)
+	sp_top.add_child(lbl_stars_total)
 
 	total_star_bar = ProgressBar.new()
 	total_star_bar.custom_minimum_size = Vector2(104, 5)
@@ -186,7 +196,7 @@ func _rebuild_stage_grid() -> void:
 		c.queue_free()
 
 	var total_stars := SaveManager.get_world1_total_stars()
-	lbl_stars_total.text = "★ %d / 60" % total_stars
+	lbl_stars_total.text = "%d / 60" % total_stars
 	if total_star_bar:
 		total_star_bar.value = float(total_stars)
 	btn_unlock_toggle.text = "MODE PROGRES" if SaveManager.unlock_all_preview else "BUKA SEMUA"
@@ -212,13 +222,13 @@ func _rebuild_stage_grid() -> void:
 		for s in range(s_start, s_end + 1):
 			phase_stars += SaveManager.get_stage_stars("1-%d" % s)
 
-		# Woodblock phase banner plaque
+		# Sleek dark-lacquer phase ribbon with subtle gold underline
 		var ph_banner := PanelContainer.new()
 		var pb_st := StyleBoxFlat.new()
-		pb_st.bg_color = Color(0.14, 0.10, 0.09, 0.88)
-		pb_st.border_color = Color(0.76, 0.65, 0.45, 0.55)
+		pb_st.bg_color = Color(0.13, 0.09, 0.08, 0.88)
+		pb_st.border_color = Color(0.84, 0.72, 0.46, 0.60)
 		pb_st.border_width_bottom = 2
-		pb_st.set_corner_radius_all(8)
+		pb_st.set_corner_radius_all(6)
 		pb_st.content_margin_left = 10
 		pb_st.content_margin_right = 12
 		pb_st.content_margin_top = 4
@@ -289,79 +299,52 @@ func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool
 	btn.clip_contents = true
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if unlocked else Control.CURSOR_ARROW
 
-	var bg := Color(0.17, 0.13, 0.11, 0.95)
-	var border := Color(0.76, 0.67, 0.52, 0.82)
-	var bevel_col := Color(0.62, 0.50, 0.36, 0.45)
-	var border_w := 2
-	var shadow_sz := 5
+	var normal := StyleBoxTexture.new()
 	if not unlocked:
-		bg = Color(0.10, 0.09, 0.09, 0.70)
-		border = Color(0.32, 0.28, 0.25, 0.45)
-		bevel_col = Color(0.24, 0.20, 0.18, 0.22)
-		border_w = 1
-		shadow_sz = 0
+		normal.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+		normal.texture_margin_left = 28
+		normal.texture_margin_right = 28
+		normal.texture_margin_top = 28
+		normal.texture_margin_bottom = 28
+		normal.modulate_color = Color(0.62, 0.58, 0.56, 0.78)
 	elif is_frontier:
-		# 1 Aksen Fokus Tunggal Vermilion (DESIGN.md R-01)
-		bg = Color(0.78, 0.21, 0.16, 0.98)
-		border = Color(0.98, 0.88, 0.60)
-		bevel_col = Color(0.98, 0.78, 0.50, 0.85)
-		border_w = 3
-		shadow_sz = 7
-	elif is_boss:
-		bg = Color(0.24, 0.13, 0.12, 0.96)
-		border = Color(0.92, 0.78, 0.42, 0.95)
-		bevel_col = Color(0.95, 0.78, 0.38, 0.72)
-	elif stars == 3:
-		bg = Color(0.22, 0.16, 0.12, 0.96)
-		border = Color(0.90, 0.76, 0.42, 0.95)
-		bevel_col = Color(0.96, 0.82, 0.40, 0.78)
+		normal.texture = load("res://assets/generated/home2d/ui_btn_vermilion.png")
+		normal.texture_margin_left = 24
+		normal.texture_margin_right = 24
+		normal.texture_margin_top = 20
+		normal.texture_margin_bottom = 24
+	else:
+		normal.texture = load("res://assets/generated/home2d/ui_card_washi.png")
+		normal.texture_margin_left = 28
+		normal.texture_margin_right = 28
+		normal.texture_margin_top = 28
+		normal.texture_margin_bottom = 28
+		if is_boss:
+			normal.modulate_color = Color(1.0, 0.94, 0.84)
 
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = bg
-	normal.border_color = border
-	normal.set_border_width_all(border_w)
-	normal.border_width_bottom = border_w + (2 if unlocked else 0)
-	normal.set_corner_radius_all(10)
-	if shadow_sz > 0:
-		normal.shadow_color = Color(0.03, 0.02, 0.02, 0.56)
-		normal.shadow_size = shadow_sz
-		normal.shadow_offset = Vector2(0, 3)
-
-	var hover := normal.duplicate()
-	hover.bg_color = bg.lightened(0.12)
-	hover.border_color = Color(0.99, 0.91, 0.66)
-	var pressed := normal.duplicate()
-	pressed.bg_color = bg.darkened(0.14)
-	var disabled_sb := normal.duplicate()
+	var hover: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
+	hover.modulate_color = normal.modulate_color * Color(1.08, 1.06, 1.03)
+	var pressed: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
+	pressed.modulate_color = normal.modulate_color * Color(0.86, 0.84, 0.82)
+	var disabled_sb: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
 
 	btn.add_theme_stylebox_override("normal", normal)
 	btn.add_theme_stylebox_override("hover", hover)
 	btn.add_theme_stylebox_override("pressed", pressed)
 	btn.add_theme_stylebox_override("disabled", disabled_sb)
 
-	# Warm inner woodblock top-bevel highlight strip
-	var bevel := ColorRect.new()
-	bevel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	bevel.offset_left = 8
-	bevel.offset_right = -8
-	bevel.offset_top = border_w + 1
-	bevel.offset_bottom = border_w + 3
-	bevel.color = bevel_col
-	bevel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(bevel)
-
 	var mar := MarginContainer.new()
 	mar.set_anchors_preset(Control.PRESET_FULL_RECT)
 	mar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mar.add_theme_constant_override("margin_left", 10)
-	mar.add_theme_constant_override("margin_right", 10)
-	mar.add_theme_constant_override("margin_top", 8)
-	mar.add_theme_constant_override("margin_bottom", 7)
+	mar.add_theme_constant_override("margin_left", 16)
+	mar.add_theme_constant_override("margin_right", 16)
+	mar.add_theme_constant_override("margin_top", 11)
+	mar.add_theme_constant_override("margin_bottom", 11)
 	btn.add_child(mar)
 
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_theme_constant_override("separation", 3)
+	vb.add_theme_constant_override("separation", 2)
 	mar.add_child(vb)
 
 	# Top row: Stage ID + status badge
@@ -375,21 +358,20 @@ func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool
 	lbl_id.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_id.add_theme_font_size_override("font_size", 15)
 	if not unlocked:
-		lbl_id.add_theme_color_override("font_color", Color(0.50, 0.45, 0.40, 0.80))
+		lbl_id.add_theme_color_override("font_color", Color(0.55, 0.50, 0.45, 0.85))
 	elif is_frontier:
 		lbl_id.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84))
 	else:
-		lbl_id.add_theme_color_override("font_color", Color(0.96, 0.84, 0.44))
+		# Dark espresso-vermilion ink on warm washi parchment
+		lbl_id.add_theme_color_override("font_color", Color(0.58, 0.16, 0.12))
 	top_row.add_child(lbl_id)
 
 	if is_boss:
-		top_row.add_child(_make_micro_pill("BOSS", Color(0.14, 0.08, 0.07, 0.94), Color(0.98, 0.86, 0.46), Color(0.96, 0.82, 0.42, 0.92)))
+		top_row.add_child(_make_micro_pill("BOSS", Color(0.18, 0.10, 0.08, 0.94), Color(0.98, 0.86, 0.46), Color(0.96, 0.82, 0.42, 0.92)))
 	elif is_frontier:
 		top_row.add_child(_make_micro_pill("▶ MAIN", Color(0.42, 0.09, 0.07, 0.88), Color(1.0, 0.96, 0.84), Color(0.98, 0.88, 0.62, 0.85)))
 	elif not unlocked:
-		top_row.add_child(_make_micro_pill("TERKUNCI", Color(0.14, 0.12, 0.11, 0.72), Color(0.56, 0.51, 0.46, 0.82), Color(0.36, 0.32, 0.28, 0.50)))
-	elif stars == 3:
-		top_row.add_child(_make_micro_pill("SEMPURNA", Color(0.28, 0.20, 0.11, 0.92), Color(0.98, 0.86, 0.44), Color(0.88, 0.74, 0.40, 0.85)))
+		top_row.add_child(_make_micro_pill("TERKUNCI", Color(0.14, 0.12, 0.11, 0.72), Color(0.58, 0.53, 0.48, 0.85), Color(0.36, 0.32, 0.28, 0.50)))
 
 	# Middle: Full wrapped stage title (no ellipsis truncation)
 	var stage_title: String = str(stage_meta.get(sid, sid))
@@ -402,56 +384,39 @@ func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool
 	lbl_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_name.add_theme_font_size_override("font_size", 13)
 	if not unlocked:
-		lbl_name.add_theme_color_override("font_color", Color(0.54, 0.49, 0.44, 0.78))
+		lbl_name.add_theme_color_override("font_color", Color(0.58, 0.53, 0.48, 0.80))
+	elif is_frontier:
+		lbl_name.add_theme_color_override("font_color", Color(0.99, 0.96, 0.90))
 	else:
-		lbl_name.add_theme_color_override("font_color", Color(0.97, 0.94, 0.88))
+		# Crisp dark espresso ink (#2A1B14) on cream washi parchment
+		lbl_name.add_theme_color_override("font_color", Color(0.165, 0.106, 0.078))
 	vb.add_child(lbl_name)
 
-	# Bottom: Recessed lacquer star emblem tray
-	var tray_center := HBoxContainer.new()
-	tray_center.alignment = BoxContainer.ALIGNMENT_CENTER
-	tray_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(tray_center)
-
-	var tray := PanelContainer.new()
-	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tr_st := StyleBoxFlat.new()
-	tr_st.bg_color = Color(0.09, 0.06, 0.05, 0.62) if not is_frontier else Color(0.36, 0.08, 0.06, 0.65)
-	tr_st.set_corner_radius_all(8)
-	tr_st.content_margin_left = 10
-	tr_st.content_margin_right = 10
-	tr_st.content_margin_top = 1
-	tr_st.content_margin_bottom = 1
-	tray.add_theme_stylebox_override("panel", tr_st)
-	tray_center.add_child(tray)
-
+	# Bottom: Painted Star Icons (ui_star_gold.png / ui_star_empty.png)
 	var star_row := HBoxContainer.new()
 	star_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	star_row.add_theme_constant_override("separation", 5)
+	star_row.add_theme_constant_override("separation", 6)
 	star_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tray.add_child(star_row)
+	vb.add_child(star_row)
 
 	if not unlocked:
 		var l_dash := Label.new()
 		l_dash.text = "—  —  —"
 		l_dash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		l_dash.add_theme_font_size_override("font_size", 11)
-		l_dash.add_theme_color_override("font_color", Color(0.42, 0.37, 0.33, 0.70))
+		l_dash.add_theme_color_override("font_color", Color(0.45, 0.40, 0.36, 0.72))
 		star_row.add_child(l_dash)
 	else:
+		var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
+		var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 		for k in 3:
-			var sl := Label.new()
-			var earned: bool = k < stars
-			sl.text = "★" if earned else "☆"
-			sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			sl.add_theme_font_size_override("font_size", 15)
-			if earned:
-				sl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.34))
-			else:
-				sl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.74, 0.40) if is_frontier else Color(0.54, 0.48, 0.40, 0.72))
-			sl.add_theme_color_override("font_outline_color", Color(0.10, 0.06, 0.05, 0.90))
-			sl.add_theme_constant_override("outline_size", 2)
-			star_row.add_child(sl)
+			var star_ic := TextureRect.new()
+			star_ic.texture = tex_gold if k < stars else tex_empty
+			star_ic.custom_minimum_size = Vector2(20, 20)
+			star_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			star_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			star_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			star_row.add_child(star_ic)
 
 	var stage_id_cap := sid
 	btn.pressed.connect(func():
@@ -485,18 +450,27 @@ func _make_btn(txt: String, is_primary: bool, min_sz: Vector2, fsize: int) -> Bu
 	var b := Button.new()
 	b.text = txt
 	b.custom_minimum_size = min_sz
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_font_size_override("font_size", fsize)
-	b.add_theme_color_override("font_color", Color(0.97, 0.94, 0.88))
+	b.add_theme_color_override("font_color", Color(0.98, 0.95, 0.89))
 	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.80, 0.22, 0.16) if is_primary else Color(0.17, 0.13, 0.11, 0.94)
-	sb.border_color = Color(0.95, 0.86, 0.66) if is_primary else Color(0.76, 0.68, 0.54, 0.85)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	var hv := sb.duplicate()
-	hv.bg_color = sb.bg_color.lightened(0.14)
-	var pr := sb.duplicate()
-	pr.bg_color = sb.bg_color.darkened(0.14)
+	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
+	b.add_theme_constant_override("outline_size", 2)
+	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(tex_path)
+	sb.texture_margin_left = 20
+	sb.texture_margin_right = 20
+	sb.texture_margin_top = 14
+	sb.texture_margin_bottom = 16
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 5
+	var hv: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	hv.modulate_color = Color(1.10, 1.07, 1.03)
+	var pr: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	pr.modulate_color = Color(0.84, 0.80, 0.78)
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", hv)
 	b.add_theme_stylebox_override("pressed", pr)

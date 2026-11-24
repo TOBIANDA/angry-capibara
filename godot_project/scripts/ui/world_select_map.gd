@@ -179,44 +179,35 @@ func _setup_journey_and_islands() -> void:
 			tex_rect.modulate = Color(0.62, 0.60, 0.62, 0.84)
 		island_btn.add_child(tex_rect)
 
-		# Info Plaque below island
+		# Info Plaque below island (9-slice ui_panel_lacquer.png, crisp & compact)
 		var card := PanelContainer.new()
-		card.position = Vector2(12.0, 238.0)
-		card.size = Vector2(256.0, 146.0)
-		var card_sb := StyleBoxFlat.new()
-		if unlocked:
-			card_sb.bg_color = Color(0.16, 0.11, 0.09, 0.95)
-			card_sb.border_color = Color(0.95, 0.84, 0.50)
-			card_sb.set_border_width_all(2)
-			card_sb.border_width_bottom = 4
-		else:
-			card_sb.bg_color = Color(0.12, 0.10, 0.09, 0.84)
-			card_sb.border_color = Color(0.48, 0.42, 0.36, 0.65)
-			card_sb.set_border_width_all(2)
-		card_sb.set_corner_radius_all(12)
-		card_sb.shadow_color = Color(0.03, 0.02, 0.02, 0.55)
-		card_sb.shadow_size = 6
-		card_sb.shadow_offset = Vector2(0, 4)
+		card.position = Vector2(12.0, 236.0)
+		card.size = Vector2(256.0, 146.0 if unlocked else 124.0)
+		var card_sb := StyleBoxTexture.new()
+		card_sb.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+		card_sb.texture_margin_left = 20
+		card_sb.texture_margin_right = 20
+		card_sb.texture_margin_top = 20
+		card_sb.texture_margin_bottom = 20
+		card_sb.content_margin_left = 14
+		card_sb.content_margin_right = 14
+		card_sb.content_margin_top = 12
+		card_sb.content_margin_bottom = 12
+		card_sb.modulate_color = Color(1.0, 1.0, 1.0, 1.0) if unlocked else Color(0.72, 0.68, 0.66, 0.88)
 		card.add_theme_stylebox_override("panel", card_sb)
 		holder.add_child(card)
 
-		var mar := MarginContainer.new()
-		mar.add_theme_constant_override("margin_left", 12)
-		mar.add_theme_constant_override("margin_right", 12)
-		mar.add_theme_constant_override("margin_top", 8)
-		mar.add_theme_constant_override("margin_bottom", 9)
-		card.add_child(mar)
-
 		var vb := VBoxContainer.new()
 		vb.add_theme_constant_override("separation", 4)
-		mar.add_child(vb)
+		card.add_child(vb)
 
 		var top_r := HBoxContainer.new()
+		top_r.add_theme_constant_override("separation", 6)
 		vb.add_child(top_r)
 
 		var pill := PanelContainer.new()
 		var p_sb := StyleBoxFlat.new()
-		p_sb.bg_color = Color(0.78, 0.21, 0.16) if unlocked else Color(0.20, 0.17, 0.15)
+		p_sb.bg_color = Color(0.78, 0.21, 0.16) if unlocked else Color(0.22, 0.18, 0.16)
 		p_sb.border_color = Color(0.98, 0.88, 0.62) if unlocked else Color(0.52, 0.46, 0.40)
 		p_sb.set_border_width_all(1)
 		p_sb.set_corner_radius_all(5)
@@ -237,29 +228,36 @@ func _setup_journey_and_islands() -> void:
 		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top_r.add_child(spacer)
 
+		var star_icon := TextureRect.new()
+		star_icon.texture = load("res://assets/generated/home2d/ui_star_gold.png" if unlocked else "res://assets/generated/home2d/ui_star_empty.png")
+		star_icon.custom_minimum_size = Vector2(15, 15)
+		star_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		star_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		top_r.add_child(star_icon)
+
 		var star_lbl := Label.new()
 		var stars_earned: int = w1_stars if wid == 1 else 0
-		star_lbl.text = "★ %d / 60" % stars_earned
+		star_lbl.text = "%d / 60" % stars_earned
 		star_lbl.add_theme_font_size_override("font_size", 12)
-		star_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42) if unlocked else Color(0.58, 0.52, 0.46))
+		star_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42) if unlocked else Color(0.62, 0.56, 0.50))
 		top_r.add_child(star_lbl)
 
 		var title_lbl := Label.new()
 		title_lbl.text = str(w["title"])
 		title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		title_lbl.add_theme_font_size_override("font_size", 14)
-		title_lbl.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88) if unlocked else Color(0.70, 0.65, 0.58))
+		title_lbl.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88) if unlocked else Color(0.74, 0.68, 0.62))
 		vb.add_child(title_lbl)
 
 		var sub_lbl := Label.new()
 		sub_lbl.text = str(w["sub"])
 		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sub_lbl.add_theme_font_size_override("font_size", 11)
-		sub_lbl.add_theme_color_override("font_color", Color(0.84, 0.78, 0.66) if unlocked else Color(0.56, 0.51, 0.46))
+		sub_lbl.add_theme_color_override("font_color", Color(0.86, 0.79, 0.66) if unlocked else Color(0.58, 0.52, 0.46))
 		vb.add_child(sub_lbl)
 
 		if unlocked:
-			var cta := _make_btn("MASUK →", true, Vector2(0, 32), 13)
+			var cta := _make_btn("MASUK →", true, Vector2(0, 44), 13)
 			cta.pressed.connect(_enter_world1)
 			vb.add_child(cta)
 			island_btn.pressed.connect(_enter_world1)
@@ -270,23 +268,12 @@ func _setup_journey_and_islands() -> void:
 				island_btn.scale = Vector2.ONE
 			)
 		else:
-			var lock_panel := PanelContainer.new()
-			var lk_sb := StyleBoxFlat.new()
-			lk_sb.bg_color = Color(0.16, 0.13, 0.12, 0.85)
-			lk_sb.border_color = Color(0.42, 0.37, 0.32, 0.60)
-			lk_sb.set_border_width_all(1)
-			lk_sb.set_corner_radius_all(7)
-			lk_sb.content_margin_top = 4
-			lk_sb.content_margin_bottom = 4
-			lock_panel.add_theme_stylebox_override("panel", lk_sb)
-			vb.add_child(lock_panel)
-
 			var lk_lbl := Label.new()
-			lk_lbl.text = "SEGERA HADIR"
+			lk_lbl.text = "— SEGERA HADIR —"
 			lk_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			lk_lbl.add_theme_font_size_override("font_size", 11)
-			lk_lbl.add_theme_color_override("font_color", Color(0.66, 0.60, 0.52))
-			lock_panel.add_child(lk_lbl)
+			lk_lbl.add_theme_color_override("font_color", Color(0.64, 0.58, 0.50))
+			vb.add_child(lk_lbl)
 
 		island_nodes.append({
 			"node": holder,
@@ -332,22 +319,19 @@ func _setup_top_bar() -> void:
 	lbl_sub.add_theme_constant_override("outline_size", 3)
 	title_vb.add_child(lbl_sub)
 
-	# Total Star Counter (★ X / 240)
+	# Total Star Counter (9-slice ui_panel_lacquer.png + ui_star_gold.png)
 	var total_stars: int = SaveManager.get_world1_total_stars()
 	var star_panel := PanelContainer.new()
-	var sp_st := StyleBoxFlat.new()
-	sp_st.bg_color = Color(0.15, 0.11, 0.09, 0.96)
-	sp_st.border_color = Color(0.90, 0.78, 0.48)
-	sp_st.set_border_width_all(2)
-	sp_st.border_width_bottom = 3
-	sp_st.set_corner_radius_all(10)
-	sp_st.shadow_color = Color(0.03, 0.02, 0.02, 0.55)
-	sp_st.shadow_size = 5
-	sp_st.shadow_offset = Vector2(0, 3)
-	sp_st.content_margin_left = 16
-	sp_st.content_margin_right = 16
-	sp_st.content_margin_top = 6
-	sp_st.content_margin_bottom = 6
+	var sp_st := StyleBoxTexture.new()
+	sp_st.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+	sp_st.texture_margin_left = 20
+	sp_st.texture_margin_right = 20
+	sp_st.texture_margin_top = 20
+	sp_st.texture_margin_bottom = 20
+	sp_st.content_margin_left = 18
+	sp_st.content_margin_right = 18
+	sp_st.content_margin_top = 12
+	sp_st.content_margin_bottom = 12
 	star_panel.add_theme_stylebox_override("panel", sp_st)
 	hdr.add_child(star_panel)
 
@@ -355,12 +339,23 @@ func _setup_top_bar() -> void:
 	sp_vb.add_theme_constant_override("separation", 3)
 	star_panel.add_child(sp_vb)
 
+	var sp_top := HBoxContainer.new()
+	sp_top.alignment = BoxContainer.ALIGNMENT_CENTER
+	sp_top.add_theme_constant_override("separation", 5)
+	sp_vb.add_child(sp_top)
+
+	var st_ic := TextureRect.new()
+	st_ic.texture = load("res://assets/generated/home2d/ui_star_gold.png")
+	st_ic.custom_minimum_size = Vector2(18, 18)
+	st_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	st_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sp_top.add_child(st_ic)
+
 	var lbl_total := Label.new()
-	lbl_total.text = "★ %d / 240" % total_stars
-	lbl_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_total.text = "%d / 240" % total_stars
 	lbl_total.add_theme_font_size_override("font_size", 15)
 	lbl_total.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42))
-	sp_vb.add_child(lbl_total)
+	sp_top.add_child(lbl_total)
 
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(110, 5)
@@ -381,19 +376,27 @@ func _make_btn(txt: String, is_primary: bool, min_sz: Vector2, fsize: int) -> Bu
 	var b := Button.new()
 	b.text = txt
 	b.custom_minimum_size = min_sz
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_font_size_override("font_size", fsize)
 	b.add_theme_color_override("font_color", Color(0.98, 0.95, 0.89))
 	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.80, 0.22, 0.16) if is_primary else Color(0.17, 0.13, 0.11, 0.95)
-	sb.border_color = Color(0.98, 0.88, 0.64) if is_primary else Color(0.78, 0.69, 0.54, 0.85)
-	sb.set_border_width_all(2)
-	sb.border_width_bottom = 3
-	sb.set_corner_radius_all(9)
-	var hv: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
-	hv.bg_color = sb.bg_color.lightened(0.14)
-	var pr: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
-	pr.bg_color = sb.bg_color.darkened(0.14)
+	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
+	b.add_theme_constant_override("outline_size", 2)
+	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(tex_path)
+	sb.texture_margin_left = 20
+	sb.texture_margin_right = 20
+	sb.texture_margin_top = 14
+	sb.texture_margin_bottom = 16
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 5
+	var hv: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	hv.modulate_color = Color(1.10, 1.07, 1.03)
+	var pr: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	pr.modulate_color = Color(0.84, 0.80, 0.78)
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", hv)
 	b.add_theme_stylebox_override("pressed", pr)

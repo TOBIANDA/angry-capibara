@@ -131,7 +131,7 @@ var lbl_stage_title: Label
 var lbl_enemy_pill: Label
 var lbl_score: Label
 var score_star_bar: ProgressBar
-var hud_star_pips: Array[Label] = []
+var hud_star_pips: Array[TextureRect] = []
 var combo_panel: PanelContainer
 var lbl_combo: Label
 var hud_squad_row: HBoxContainer
@@ -142,7 +142,7 @@ var result_overlay: ColorRect
 var result_badge_lbl: Label
 var result_title: Label
 var result_stars: Label
-var result_star_labels: Array[Label] = []
+var result_star_labels: Array[TextureRect] = []
 var result_body: Label
 var btn_retry: Button
 var btn_next_stage: Button
@@ -505,28 +505,21 @@ func _setup_trajectory_dots() -> void:
 		add_child(mi)
 		traj_dots.append(mi)
 
-func _make_lacquer_sb(bg: Color = Color(0.14, 0.10, 0.09, 0.94), bdr: Color = Color(0.84, 0.74, 0.52, 0.88), radius: int = 11) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = bdr
-	sb.set_border_width_all(2)
-	sb.border_width_bottom = 3
-	sb.set_corner_radius_all(radius)
-	sb.shadow_color = Color(0.03, 0.02, 0.02, 0.52)
-	sb.shadow_size = 6
-	sb.shadow_offset = Vector2(0, 3)
+func _make_lacquer_sb() -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+	sb.texture_margin_left = 20
+	sb.texture_margin_right = 20
+	sb.texture_margin_top = 18
+	sb.texture_margin_bottom = 18
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 12
+	sb.content_margin_bottom = 12
 	return sb
 
-func _add_hud_bevel(panel: Control, col: Color = Color(0.86, 0.76, 0.54, 0.28)) -> void:
-	var bevel := ColorRect.new()
-	bevel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	bevel.offset_left = 10
-	bevel.offset_right = -10
-	bevel.offset_top = 3
-	bevel.offset_bottom = 5
-	bevel.color = col
-	bevel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(bevel)
+func _add_hud_bevel(_panel: Control, _col: Color = Color.WHITE) -> void:
+	pass
 
 func _setup_hud() -> void:
 	var canvas := CanvasLayer.new()
@@ -539,18 +532,10 @@ func _setup_hud() -> void:
 	top_l.position = Vector2(14, 12)
 	top_l.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(top_l)
-	_add_hud_bevel(top_l)
-
-	var tl_mar := MarginContainer.new()
-	tl_mar.add_theme_constant_override("margin_left", 10)
-	tl_mar.add_theme_constant_override("margin_right", 10)
-	tl_mar.add_theme_constant_override("margin_top", 7)
-	tl_mar.add_theme_constant_override("margin_bottom", 7)
-	top_l.add_child(tl_mar)
 
 	var tl_row := HBoxContainer.new()
 	tl_row.add_theme_constant_override("separation", 6)
-	tl_mar.add_child(tl_row)
+	top_l.add_child(tl_row)
 
 	var btn_map := _make_hud_btn("← PETA W1", false)
 	btn_map.pressed.connect(func(): get_tree().change_scene_to_file(WORLD1_SELECT_SCENE))
@@ -580,21 +565,13 @@ func _setup_hud() -> void:
 	top_r.offset_left = -410
 	top_r.offset_right = -14
 	top_r.offset_top = 12
-	top_r.offset_bottom = 86
+	top_r.offset_bottom = 98
 	top_r.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(top_r)
-	_add_hud_bevel(top_r)
-
-	var tr_mar := MarginContainer.new()
-	tr_mar.add_theme_constant_override("margin_left", 14)
-	tr_mar.add_theme_constant_override("margin_right", 14)
-	tr_mar.add_theme_constant_override("margin_top", 7)
-	tr_mar.add_theme_constant_override("margin_bottom", 7)
-	top_r.add_child(tr_mar)
 
 	var tr_vb := VBoxContainer.new()
 	tr_vb.add_theme_constant_override("separation", 4)
-	tr_mar.add_child(tr_vb)
+	top_r.add_child(tr_vb)
 
 	var tr_top := HBoxContainer.new()
 	tr_top.add_theme_constant_override("separation", 8)
@@ -651,11 +628,13 @@ func _setup_hud() -> void:
 	bar_row.add_child(score_star_bar)
 
 	hud_star_pips.clear()
+	var tex_empty_star: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 	for k in 3:
-		var sp := Label.new()
-		sp.text = "☆"
-		sp.add_theme_font_size_override("font_size", 13)
-		sp.add_theme_color_override("font_color", Color(0.50, 0.44, 0.36, 0.75))
+		var sp := TextureRect.new()
+		sp.texture = tex_empty_star
+		sp.custom_minimum_size = Vector2(18, 18)
+		sp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		bar_row.add_child(sp)
 		hud_star_pips.append(sp)
 
@@ -665,8 +644,13 @@ func _setup_hud() -> void:
 	combo_panel.offset_left = -220
 	combo_panel.offset_right = -14
 	combo_panel.offset_top = 92
-	combo_panel.offset_bottom = 126
-	var combo_sb := _make_lacquer_sb(Color(0.82, 0.22, 0.17, 0.96), Color(0.98, 0.88, 0.56), 8)
+	combo_panel.offset_bottom = 128
+	var combo_sb := StyleBoxTexture.new()
+	combo_sb.texture = load("res://assets/generated/home2d/ui_btn_vermilion.png")
+	combo_sb.texture_margin_left = 24
+	combo_sb.texture_margin_right = 24
+	combo_sb.texture_margin_top = 20
+	combo_sb.texture_margin_bottom = 24
 	combo_panel.add_theme_stylebox_override("panel", combo_sb)
 	combo_panel.visible = false
 	canvas.add_child(combo_panel)
@@ -688,23 +672,15 @@ func _setup_hud() -> void:
 	var bot := PanelContainer.new()
 	bot.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	bot.offset_left = 14
-	bot.offset_right = 910
-	bot.offset_top = -72
+	bot.offset_right = 900
+	bot.offset_top = -82
 	bot.offset_bottom = -12
 	bot.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(bot)
-	_add_hud_bevel(bot)
-
-	var b_mar := MarginContainer.new()
-	b_mar.add_theme_constant_override("margin_left", 12)
-	b_mar.add_theme_constant_override("margin_right", 12)
-	b_mar.add_theme_constant_override("margin_top", 7)
-	b_mar.add_theme_constant_override("margin_bottom", 6)
-	bot.add_child(b_mar)
 
 	var b_vb := VBoxContainer.new()
 	b_vb.add_theme_constant_override("separation", 4)
-	b_mar.add_child(b_vb)
+	bot.add_child(b_vb)
 
 	var b_top := HBoxContainer.new()
 	b_top.add_theme_constant_override("separation", 10)
@@ -736,14 +712,10 @@ func _setup_hud() -> void:
 	rpanel.set_anchors_preset(Control.PRESET_CENTER)
 	rpanel.offset_left = -270
 	rpanel.offset_right = 270
-	rpanel.offset_top = -195
-	rpanel.offset_bottom = 195
-	var rp_sb := _make_lacquer_sb(Color(0.15, 0.11, 0.09, 0.98), Color(0.92, 0.80, 0.50), 14)
-	rp_sb.set_border_width_all(3)
-	rp_sb.border_width_bottom = 5
-	rpanel.add_theme_stylebox_override("panel", rp_sb)
+	rpanel.offset_top = -200
+	rpanel.offset_bottom = 200
+	rpanel.add_theme_stylebox_override("panel", hud_sb)
 	result_overlay.add_child(rpanel)
-	_add_hud_bevel(rpanel, Color(0.96, 0.84, 0.52, 0.48))
 
 	var rmar := MarginContainer.new()
 	rmar.add_theme_constant_override("margin_left", 26)
@@ -803,13 +775,13 @@ func _setup_hud() -> void:
 	star_tray.add_child(star_hb)
 
 	result_star_labels.clear()
+	var tex_res_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 	for k in 3:
-		var rsl := Label.new()
-		rsl.text = "☆"
-		rsl.add_theme_font_size_override("font_size", 40)
-		rsl.add_theme_color_override("font_color", Color(0.46, 0.40, 0.34, 0.70))
-		rsl.add_theme_color_override("font_outline_color", Color(0.08, 0.05, 0.04, 0.90))
-		rsl.add_theme_constant_override("outline_size", 4)
+		var rsl := TextureRect.new()
+		rsl.texture = tex_res_empty
+		rsl.custom_minimum_size = Vector2(46, 46)
+		rsl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rsl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		star_hb.add_child(rsl)
 		result_star_labels.append(rsl)
 
@@ -818,20 +790,23 @@ func _setup_hud() -> void:
 	rvb.add_child(result_stars)
 
 	var body_card := PanelContainer.new()
-	var bc_sb := StyleBoxFlat.new()
-	bc_sb.bg_color = Color(0.11, 0.08, 0.07, 0.80)
-	bc_sb.set_corner_radius_all(8)
-	bc_sb.content_margin_left = 14
-	bc_sb.content_margin_right = 14
-	bc_sb.content_margin_top = 10
-	bc_sb.content_margin_bottom = 10
+	var bc_sb := StyleBoxTexture.new()
+	bc_sb.texture = load("res://assets/generated/home2d/ui_card_washi.png")
+	bc_sb.texture_margin_left = 28
+	bc_sb.texture_margin_right = 28
+	bc_sb.texture_margin_top = 28
+	bc_sb.texture_margin_bottom = 28
+	bc_sb.content_margin_left = 16
+	bc_sb.content_margin_right = 16
+	bc_sb.content_margin_top = 12
+	bc_sb.content_margin_bottom = 12
 	body_card.add_theme_stylebox_override("panel", bc_sb)
 	rvb.add_child(body_card)
 
 	result_body = Label.new()
 	result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_body.add_theme_font_size_override("font_size", 14)
-	result_body.add_theme_color_override("font_color", Color(0.92, 0.88, 0.78))
+	result_body.add_theme_color_override("font_color", Color(0.165, 0.106, 0.078))
 	result_body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body_card.add_child(result_body)
 
@@ -865,20 +840,25 @@ func _make_hud_btn(txt: String, is_primary: bool) -> Button:
 	return b
 
 func _style_hud_btn(b: Button, is_primary: bool) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.82, 0.22, 0.17) if is_primary else Color(0.21, 0.16, 0.14, 0.96)
-	sb.border_color = Color(0.98, 0.88, 0.62) if is_primary else Color(0.74, 0.65, 0.50, 0.82)
-	sb.set_border_width_all(2)
-	sb.border_width_bottom = 3
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	var hv: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
-	hv.bg_color = sb.bg_color.lightened(0.14)
-	var pr: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
-	pr.bg_color = Color(0.82, 0.22, 0.17)
+	b.custom_minimum_size.y = maxf(b.custom_minimum_size.y, 40.0)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
+	b.add_theme_constant_override("outline_size", 2)
+	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(tex_path)
+	sb.texture_margin_left = 18
+	sb.texture_margin_right = 18
+	sb.texture_margin_top = 12
+	sb.texture_margin_bottom = 14
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 8
+	var hv: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	hv.modulate_color = Color(1.10, 1.07, 1.03)
+	var pr: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
+	pr.modulate_color = Color(0.84, 0.80, 0.78)
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", hv)
 	b.add_theme_stylebox_override("pressed", pr)
@@ -1893,11 +1873,11 @@ func _finish_stage_victory() -> void:
 	if result_badge_lbl:
 		result_badge_lbl.text = "MENANG!" if stars >= 1 else "SELESAI"
 	result_title.text = "STAGE %s SELESAI!" % current_stage_id
+	var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
+	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 	for k in result_star_labels.size():
-		var rsl: Label = result_star_labels[k]
-		var earned: bool = k < stars
-		rsl.text = "★" if earned else "☆"
-		rsl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30) if earned else Color(0.46, 0.40, 0.34, 0.70))
+		var rsl: TextureRect = result_star_labels[k]
+		rsl.texture = tex_gold if k < stars else tex_empty
 	result_body.text = "Skor Akhir: %d\nBonus Sisa %d Kapibara: +%d  •  Target 3★: %d" % [score, unused_capys, bonus, s3]
 	var has_next: bool = (SaveManager.get_next_stage_id(current_stage_id) != "")
 	btn_next_stage.visible = has_next
@@ -1910,9 +1890,9 @@ func _finish_stage_defeat() -> void:
 	if result_badge_lbl:
 		result_badge_lbl.text = "COBA LAGI"
 	result_title.text = "BELUM BERHASIL"
+	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 	for rsl in result_star_labels:
-		rsl.text = "☆"
-		rsl.add_theme_color_override("font_color", Color(0.46, 0.40, 0.34, 0.70))
+		rsl.texture = tex_empty
 	result_body.text = "Masih ada %d Klan Buaya bertahan.\nCoba sudut bidikan atau aktifkan skill kapibara di udara!" % enemies.size()
 	btn_next_stage.visible = false
 	_style_hud_btn(btn_retry, true)
@@ -1938,11 +1918,11 @@ func _refresh_score_hud() -> void:
 		score_star_bar.max_value = float(s3)
 		score_star_bar.value = minf(float(score), float(s3))
 	var thresh: Array[int] = [s1, s2, s3]
+	var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
+	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
 	for k in mini(hud_star_pips.size(), 3):
-		var sp: Label = hud_star_pips[k]
-		var reached: bool = score >= thresh[k]
-		sp.text = "★" if reached else "☆"
-		sp.add_theme_color_override("font_color", Color(1.0, 0.85, 0.34) if reached else Color(0.52, 0.46, 0.38, 0.78))
+		var sp: TextureRect = hud_star_pips[k]
+		sp.texture = tex_gold if score >= thresh[k] else tex_empty
 	if is_instance_valid(combo_panel) and is_instance_valid(lbl_combo):
 		if combo_count >= 2:
 			var mult: float = 1.5

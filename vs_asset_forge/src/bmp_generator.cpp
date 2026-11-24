@@ -193,21 +193,169 @@ bool GenerateAllTexturesW12(const std::string& texDir) {
 		float core = std::exp(-std::abs(u - 0.5f) * 5.0f);
 		return LerpRGB({ 36, 236, 98 }, { 232, 255, 238 }, core * 0.8f);
 	});
-	ok &= WriteBMP24(texDir + "/tex_bamboo.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float grain = SmoothNoise(px * 0.35f, py * 0.05f, 707);
-		RGB col = LerpRGB({ 88, 164, 52 }, { 142, 208, 78 }, grain);
-		float ring = std::fmod(v * 3.0f, 1.0f);
-		if (ring < 0.06f) col = LerpRGB(col, { 54, 106, 30 }, 0.78f);
+	// Seamless periodic smooth noise helper (wraps cleanly at period px, py)
+	auto TileNoise = [](float u, float v, float freqX, float freqY, uint32_t seed) -> float {
+		int px = std::max(1, static_cast<int>(std::round(freqX)));
+		int py = std::max(1, static_cast<int>(std::round(freqY)));
+		float x = u * px;
+		float y = v * py;
+		int ix = static_cast<int>(std::floor(x));
+		int iy = static_cast<int>(std::floor(y));
+		float fx = x - ix;
+		float fy = y - iy;
+		fx = fx * fx * (3.0f - 2.0f * fx);
+		fy = fy * fy * (3.0f - 2.0f * fy);
+		int x0 = ((ix % px) + px) % px;
+		int x1 = (x0 + 1) % px;
+		int y0 = ((iy % py) + py) % py;
+		int y1 = (y0 + 1) % py;
+		float a = Hash2D(x0, y0, seed);
+		float b = Hash2D(x1, y0, seed);
+		float c = Hash2D(x0, y1, seed);
+		float d = Hash2D(x1, y1, seed);
+		return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
+	};
+
+	// Hand-painted segmented sage/matcha-gold bamboo culms (512x512 seamless)
+	ok &= WriteBMP24(texDir + "/tex_bamboo.bmp", 512, 512, [&](float u, float v, int, int) -> RGB {
+		const float culms = 3.0f;
+		float cu = std::fmod(u * culms, 1.0f);
+		int culmIdx = static_cast<int>(std::floor(u * culms));
+		// Cylindrical shading across each bamboo stalk
+		float cyl = std::sin(cu * 3.14159265f);
+		float fiber = TileNoise(u, v, 48.0f, 8.0f, 707);
+		float broad = TileNoise(u, v, 6.0f, 6.0f, 711);
+		float toneShift = (culmIdx == 1) ? 0.08f : ((culmIdx == 2) ? -0.06f : 0.0f);
+
+		RGB deepCol  = { 68, 96, 44 };
+		RGB midCol   = { 118, 148, 66 };
+		RGB lightCol = { 172, 192, 98 };
+		float shade = std::clamp(cyl * 0.72f + fiber * 0.20f + broad * 0.14f + toneShift, 0.0f, 1.0f);
+		RGB col = (shade < 0.55f)
+			? LerpRGB(deepCol, midCol, shade / 0.55f)
+			: LerpRGB(midCol, lightCol, (shade - 0.55f) / 0.45f);
+
+		// Subtle warm vertical sheen on sunlit side of culm
+		float sheen = std::exp(-std::pow((cu - 0.36f) / 0.14f, 2.0f));
+		col = LerpRGB(col, { 216, 226, 148 }, sheen * 0.28f);
+
+		// Dark crease between adjacent bamboo stalks
+		float seamDist = std::min(cu, 1.0f - cu);
+		if (seamDist < 0.045f) {
+			col = LerpRGB({ 42, 62, 28 }, col, seamDist / 0.045f);
+		}
+
+		// Staggered bamboo internode rings with raised highlight lip + dark groove
+		float vOff = std::fmod(v * 3.0f + culmIdx * 0.31f, 1.0f);
+		if (vOff < 0.045f) {
+			col = LerpRGB(col, { 44, 64, 28 }, 0.80f);
+		} else if (vOff < 0.095f) {
+			float hi = 1.0f - (vOff - 0.045f) / 0.050f;
+			col = LerpRGB(col, { 214, 224, 146 }, hi * 0.58f);
+		} else if (vOff > 0.945f) {
+			float sh = (vOff - 0.945f) / 0.055f;
+			col = LerpRGB(col, { 54, 78, 36 }, sh * 0.45f);
+		}
 		return col;
 	});
-	ok &= WriteBMP24(texDir + "/tex_wood.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float ring = 0.5f + 0.5f * std::sin(u * 26.0f + SmoothNoise(u * 4.0f, v * 8.0f, 808) * 3.5f);
-		return LerpRGB({ 136, 82, 38 }, { 194, 128, 68 }, ring);
+
+	// Hand-painted warm cedar planks with beveled seams, wood grain & knots (512x512 seamless)
+	ok &= WriteBMP24(texDir + "/tex_wood.bmp", 512, 512, [&](float u, float v, int, int) -> RGB {
+		const float planks = 4.0f;
+		float pv = std::fmod(v * planks, 1.0f);
+		int pIdx = static_cast<int>(std::floor(v * planks));
+		float plankVar = Hash2D(pIdx, 17, 801);
+
+		// Staggered vertical plank end-joint
+		float jointU = std::fmod(u + pIdx * 0.37f, 1.0f);
+		float grainWarp = TileNoise(u, v, 4.0f, 12.0f, 808) * 0.42f + TileNoise(u, v, 10.0f, 24.0f, 809) * 0.16f;
+		float grain = 0.5f + 0.5f * std::sin((pv * 9.5f + grainWarp * 6.0f + pIdx * 1.7f) * 3.14159f);
+		float fineFiber = TileNoise(u, v, 12.0f, 64.0f, 812);
+
+		// Subtle wood knot per plank
+		float ku = std::fmod(u + pIdx * 0.29f + 0.18f, 1.0f) - 0.5f;
+		float kv = pv - 0.52f;
+		float knotD = std::sqrt((ku * ku) * 6.0f + (kv * kv) * 28.0f);
+		float knotRing = (knotD < 0.55f) ? (0.5f + 0.5f * std::cos(knotD * 22.0f)) * (1.0f - knotD / 0.55f) : 0.0f;
+
+		RGB darkCedar  = { 112, 74, 46 };
+		RGB midCedar   = { 156, 108, 66 };
+		RGB lightCedar = { 196, 146, 96 };
+		float t = std::clamp(grain * 0.52f + fineFiber * 0.26f + plankVar * 0.22f - knotRing * 0.28f, 0.0f, 1.0f);
+		RGB col = (t < 0.5f)
+			? LerpRGB(darkCedar, midCedar, t * 2.0f)
+			: LerpRGB(midCedar, lightCedar, (t - 0.5f) * 2.0f);
+
+		// Crisp horizontal plank bevel & recessed dark espresso seam
+		if (pv < 0.045f || pv > 0.955f) {
+			col = LerpRGB(col, { 58, 36, 22 }, 0.82f);
+		} else if (pv > 0.86f) {
+			float bev = (pv - 0.86f) / 0.095f;
+			col = LerpRGB(col, { 222, 178, 124 }, bev * 0.42f);
+		} else if (pv < 0.13f) {
+			float sh = 1.0f - (pv - 0.045f) / 0.085f;
+			col = LerpRGB(col, { 76, 48, 30 }, sh * 0.35f);
+		}
+
+		// Subtle vertical end-joint seam + tiny wooden peg dots
+		float jDist = std::min(jointU, 1.0f - jointU);
+		if (jDist < 0.012f) {
+			col = LerpRGB(col, { 62, 38, 24 }, 0.72f);
+		} else if (jDist > 0.025f && jDist < 0.055f) {
+			float duPeg = jDist - 0.040f;
+			float dvPeg1 = pv - 0.30f;
+			float dvPeg2 = pv - 0.70f;
+			if (duPeg * duPeg * 900.0f + dvPeg1 * dvPeg1 * 40.0f < 0.12f ||
+				duPeg * duPeg * 900.0f + dvPeg2 * dvPeg2 * 40.0f < 0.12f) {
+				col = LerpRGB(col, { 72, 46, 28 }, 0.65f);
+			}
+		}
+		return col;
 	});
-	ok &= WriteBMP24(texDir + "/tex_stone.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float n1 = SmoothNoise(px * 0.12f, py * 0.12f, 909);
-		float n2 = SmoothNoise(px * 0.35f, py * 0.35f, 910);
-		return LerpRGB({ 110, 118, 128 }, { 168, 176, 186 }, 0.65f * n1 + 0.35f * n2);
+
+	// Hand-painted chiseled ashlar stone masonry with mortar & subtle moss (512x512 seamless)
+	ok &= WriteBMP24(texDir + "/tex_stone.bmp", 512, 512, [&](float u, float v, int, int) -> RGB {
+		const float rows = 4.0f;
+		const float cols = 3.0f;
+		float rv = std::fmod(v * rows, 1.0f);
+		int rIdx = static_cast<int>(std::floor(v * rows));
+		float uShift = u * cols + ((rIdx % 2) ? 0.5f : 0.0f);
+		float cu = std::fmod(uShift, 1.0f);
+		int cIdx = static_cast<int>(std::floor(uShift)) % static_cast<int>(cols);
+
+		float blockTone = Hash2D(cIdx, rIdx, 905);
+		float n1 = TileNoise(u, v, 12.0f, 12.0f, 909);
+		float n2 = TileNoise(u, v, 32.0f, 32.0f, 910);
+		float pit = TileNoise(u, v, 48.0f, 48.0f, 913);
+
+		RGB darkStone  = { 108, 110, 114 };
+		RGB midStone   = { 150, 150, 146 };
+		RGB lightStone = { 188, 185, 176 };
+		float t = std::clamp(0.45f * n1 + 0.25f * n2 + 0.30f * blockTone - (pit > 0.78f ? 0.16f : 0.0f), 0.0f, 1.0f);
+		RGB col = (t < 0.5f)
+			? LerpRGB(darkStone, midStone, t * 2.0f)
+			: LerpRGB(midStone, lightStone, (t - 0.5f) * 2.0f);
+
+		// Chisel bevel highlights (top & left edges) + shadow bevels (bottom & right)
+		float edgeX = std::min(cu, 1.0f - cu);
+		float edgeY = std::min(rv, 1.0f - rv);
+		float mortarW = 0.042f;
+		float mortarH = 0.058f;
+		if (edgeX < mortarW || edgeY < mortarH) {
+			col = LerpRGB({ 68, 70, 76 }, { 84, 86, 88 }, n2);
+			// Subtle matcha moss tucked into select mortar crevices
+			float mossN = TileNoise(u, v, 8.0f, 8.0f, 919);
+			if (mossN > 0.62f) {
+				col = LerpRGB(col, { 98, 126, 62 }, (mossN - 0.62f) * 2.1f);
+			}
+		} else {
+			if (rv > 0.84f || cu < 0.10f) {
+				col = LerpRGB(col, { 216, 212, 200 }, 0.38f);
+			} else if (rv < 0.14f || cu > 0.90f) {
+				col = LerpRGB(col, { 84, 86, 92 }, 0.36f);
+			}
+		}
+		return col;
 	});
 	ok &= WriteBMP24(texDir + "/tex_towel.bmp", 128, 128, [](float u, float v, int px, int py) -> RGB {
 		float weave = SmoothNoise(px * 0.5f, py * 0.5f, 950);
@@ -374,18 +522,51 @@ bool GenerateAnimeTexturesW12(const std::string& texDir) {
 		return LerpRGB({ 255, 146, 18 }, { 255, 248, 152 }, core * (0.60f + 0.40f * v));
 	});
 
-	// 5. Tekstur Arena 2.5D Bamboo-Onsen & Musuh Crocodile Raider (Painterly Halus Anti-Slop, serasi dengan Kapibara!)
-	ok &= WriteBMP24(texDir + "/tex_croco_green.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		// Kulit reptil painterly halus hijau-giok/zaitun (bebas pola polkadot/kotak kasar & bebas neon!)
-		float broad = SmoothNoise(px * 0.032f, py * 0.032f, 1901);
-		float blotch = SmoothNoise(px * 0.085f, py * 0.065f, 1902);
-		float scaleHint = 0.5f + 0.5f * std::sin(u * 38.0f + std::sin(v * 20.0f) * 1.4f) * std::sin(v * 34.0f);
-		float t = std::clamp(0.58f * broad + 0.30f * blotch + 0.12f * scaleHint, 0.0f, 1.0f);
+	// 5. Tekstur Arena 2.5D Bamboo-Onsen & Musuh Crocodile Raider (Hand-Painted Studio Quality, Seamless)
+	auto TileNoise2 = [](float u, float v, float freqX, float freqY, uint32_t seed) -> float {
+		int px = std::max(1, static_cast<int>(std::round(freqX)));
+		int py = std::max(1, static_cast<int>(std::round(freqY)));
+		float x = u * px;
+		float y = v * py;
+		int ix = static_cast<int>(std::floor(x));
+		int iy = static_cast<int>(std::floor(y));
+		float fx = x - ix;
+		float fy = y - iy;
+		fx = fx * fx * (3.0f - 2.0f * fx);
+		fy = fy * fy * (3.0f - 2.0f * fy);
+		int x0 = ((ix % px) + px) % px;
+		int x1 = (x0 + 1) % px;
+		int y0 = ((iy % py) + py) % py;
+		int y1 = (y0 + 1) % py;
+		float a = Hash2D(x0, y0, seed);
+		float b = Hash2D(x1, y0, seed);
+		float c = Hash2D(x0, y1, seed);
+		float d = Hash2D(x1, y1, seed);
+		return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
+	};
+
+	ok &= WriteBMP24(texDir + "/tex_croco_green.bmp", 256, 256, [&](float u, float v, int, int) -> RGB {
+		// Painted jade-olive reptile scales/scutes (pops cleanly against warm matcha bamboo/moss)
+		const float sCols = 10.0f;
+		const float sRows = 12.0f;
+		float rv = std::fmod(v * sRows, 1.0f);
+		int rIdx = static_cast<int>(std::floor(v * sRows));
+		float cu = std::fmod(u * sCols + ((rIdx % 2) ? 0.5f : 0.0f), 1.0f);
+		float dx = (cu - 0.5f) * 2.0f;
+		float dy = (rv - 0.5f) * 2.0f;
+		float scDist = std::sqrt(dx * dx * 0.85f + dy * dy);
+		float scaleDome = std::clamp(1.0f - scDist * 0.88f, 0.0f, 1.0f);
+
+		float broad = TileNoise2(u, v, 5.0f, 5.0f, 1901);
+		float blotch = TileNoise2(u, v, 14.0f, 12.0f, 1902);
+		float t = std::clamp(0.46f * broad + 0.24f * blotch + 0.30f * scaleDome, 0.0f, 1.0f);
 		RGB col = (t < 0.5f)
-			? LerpRGB({ 52, 102, 54 }, { 84, 140, 68 }, t * 2.0f)
-			: LerpRGB({ 84, 140, 68 }, { 126, 174, 92 }, (t - 0.5f) * 2.0f);
-		// Gradasi cahaya halus bagian atas tubuh
-		return LerpRGB(col, { 142, 186, 102 }, 0.14f * std::sin(v * 3.14159f));
+			? LerpRGB({ 44, 92, 54 }, { 76, 134, 72 }, t * 2.0f)
+			: LerpRGB({ 76, 134, 72 }, { 124, 174, 96 }, (t - 0.5f) * 2.0f);
+		// Subtle warm top rim on each scale facet + deep scale seam
+		if (scDist > 0.88f) col = LerpRGB(col, { 32, 66, 42 }, 0.42f);
+		else if (dy > 0.15f && scDist < 0.72f) col = LerpRGB(col, { 154, 196, 114 }, 0.20f);
+		return LerpRGB(col, { 138, 182, 102 }, 0.12f * std::sin(v * 3.14159f));
 	});
 	ok &= WriteBMP24(texDir + "/tex_croco_scale_dark.bmp", 128, 128, [](float u, float v, int px, int py) -> RGB {
 		float n = SmoothNoise(px * 0.08f, py * 0.08f, 1904);
@@ -428,39 +609,125 @@ bool GenerateAnimeTexturesW12(const std::string& texDir) {
 		if (c2 < 0.008f) return { 255, 248, 224 };
 		return iris;
 	});
-	ok &= WriteBMP24(texDir + "/tex_torii_red.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float grain = SmoothNoise(px * 0.25f, py * 0.05f, 1910);
-		return LerpRGB({ 146, 32, 24 }, { 206, 56, 36 }, 0.65f * grain + 0.35f * v);
-	});
-	ok &= WriteBMP24(texDir + "/tex_moss_top.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float n1 = SmoothNoise(px * 0.10f, py * 0.10f, 1920);
-		float n2 = SmoothNoise(px * 0.30f, py * 0.30f, 1921);
-		RGB col = LerpRGB({ 44, 108, 36 }, { 108, 174, 52 }, 0.65f * n1 + 0.35f * n2);
-		if (n2 > 0.78f) col = LerpRGB(col, { 156, 206, 74 }, 0.55f);
+	ok &= WriteBMP24(texDir + "/tex_torii_red.bmp", 256, 256, [&](float u, float v, int, int) -> RGB {
+		// Deep atmospheric Vermilion lacquer wood grain (calm #B6382C, no noisy flat streaks)
+		float grain = TileNoise2(u, v, 24.0f, 4.0f, 1910);
+		float broad = TileNoise2(u, v, 5.0f, 5.0f, 1912);
+		RGB col = LerpRGB({ 124, 34, 28 }, { 188, 56, 42 }, 0.55f * grain + 0.25f * broad + 0.20f * v);
+		float seam = std::fmod(u * 4.0f, 1.0f);
+		if (seam < 0.04f) col = LerpRGB(col, { 78, 20, 18 }, 0.45f);
 		return col;
 	});
-	ok &= WriteBMP24(texDir + "/tex_cliff_rock.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float strata = 0.5f + 0.5f * std::sin(v * 20.0f + SmoothNoise(px * 0.08f, py * 0.08f, 1930) * 3.0f);
-		float grain = SmoothNoise(px * 0.24f, py * 0.24f, 1931);
-		RGB col = LerpRGB({ 48, 38, 34 }, { 92, 74, 62 }, 0.55f * strata + 0.45f * grain);
-		if (v > 0.80f) col = LerpRGB(col, { 54, 114, 42 }, (v - 0.80f) * 3.2f);
+	ok &= WriteBMP24(texDir + "/tex_moss_top.bmp", 256, 256, [&](float u, float v, int, int) -> RGB {
+		float broad = TileNoise2(u, v, 6.0f, 6.0f, 1920);
+		float tuft = TileNoise2(u, v, 22.0f, 18.0f, 1921);
+		RGB col = LerpRGB({ 68, 102, 46 }, { 116, 148, 66 }, 0.60f * broad + 0.40f * tuft);
+		if (tuft > 0.72f) col = LerpRGB(col, { 164, 188, 92 }, (tuft - 0.72f) * 2.0f);
+		return col;
+	});
+	// Warm stratified earthy cliff rock with chiseled strata ledges & organic moss lip (512x512 seamless)
+	ok &= WriteBMP24(texDir + "/tex_cliff_rock.bmp", 512, 512, [&](float u, float v, int, int) -> RGB {
+		float warp = TileNoise2(u, v, 4.0f, 6.0f, 1930) * 0.22f;
+		float sv = std::fmod((v + warp) * 5.0f, 1.0f);
+		int bandIdx = static_cast<int>(std::floor((v + warp) * 5.0f));
+		float bandTone = Hash2D(bandIdx, 3, 1933);
+		float facet = TileNoise2(u, v, 10.0f, 8.0f, 1931);
+		float grain = TileNoise2(u, v, 28.0f, 24.0f, 1932);
+
+		// Lifted warm earthy terracotta-umber & sandstone-slate (ZERO dark muddy void!)
+		RGB crevice  = { 72, 56, 46 };
+		RGB midRock  = { 118, 94, 76 };
+		RGB litLedge = { 164, 136, 108 };
+		float t = std::clamp(0.44f * facet + 0.24f * grain + 0.32f * bandTone, 0.0f, 1.0f);
+		RGB col = (t < 0.5f)
+			? LerpRGB(crevice, midRock, t * 2.0f)
+			: LerpRGB(midRock, litLedge, (t - 0.5f) * 2.0f);
+
+		// Crisp sedimentary ledge highlight & underside shadow seam
+		if (sv < 0.08f) {
+			col = LerpRGB(col, { 54, 40, 34 }, 0.62f);
+		} else if (sv > 0.86f) {
+			col = LerpRGB(col, { 190, 162, 128 }, 0.42f);
+		}
+
+		// Vertical chiseled rock fracture cracks
+		float crackU = std::fmod(u * 4.0f + bandIdx * 0.37f + warp * 1.6f, 1.0f);
+		if (crackU < 0.032f) {
+			col = LerpRGB(col, { 52, 38, 32 }, 0.58f);
+		}
+
+		// Gentle organic scalloped moss lip along top edge
+		float lip = 0.86f + (TileNoise2(u, v, 12.0f, 4.0f, 1939) - 0.5f) * 0.09f;
+		if (v > lip) {
+			float mt = std::clamp((v - lip) / 0.08f, 0.0f, 1.0f);
+			col = LerpRGB(col, { 92, 124, 56 }, mt * 0.85f);
+		}
 		return col;
 	});
 
 	// 6. Tekstur Painterly Rovio (bebas noise kasar & bebas pucat!)
 	ok &= WriteStylizedFurTexture(texDir + "/tex_capy_crimson.bmp", { 132, 16, 22 }, { 196, 26, 30 }, { 230, 52, 44 }, 2001);
-	ok &= WriteBMP24(texDir + "/tex_moss_painterly.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float broad = SmoothNoise(px * 0.032f, py * 0.032f, 2010);
-		float brush = SmoothNoise(px * 0.09f, py * 0.045f, 2011);
-		RGB col = LerpRGB({ 44, 94, 38 }, { 86, 148, 54 }, 0.65f * broad + 0.35f * brush);
-		if (broad > 0.68f) col = LerpRGB(col, { 118, 176, 68 }, (broad - 0.68f) * 2.2f);
+
+	// Calm Ghibli matcha-olive meadow with layered grass & clover tufts (512x512 seamless, zero neon stretch!)
+	ok &= WriteBMP24(texDir + "/tex_moss_painterly.bmp", 512, 512, [&](float u, float v, int, int) -> RGB {
+		float broad = TileNoise2(u, v, 5.0f, 5.0f, 2010);
+		float patch = TileNoise2(u, v, 12.0f, 12.0f, 2011);
+
+		// Calm desaturated matcha-olive palette matching Home Screen hills
+		RGB deepMoss  = { 66, 98, 48 };
+		RGB midMoss   = { 104, 138, 62 };
+		RGB warmOlive = { 148, 174, 84 };
+		float baseT = std::clamp(0.62f * broad + 0.38f * patch, 0.0f, 1.0f);
+		RGB col = (baseT < 0.55f)
+			? LerpRGB(deepMoss, midMoss, baseT / 0.55f)
+			: LerpRGB(midMoss, warmOlive, (baseT - 0.55f) / 0.45f);
+
+		// Layered hand-painted grass tuft arcs on a staggered grid (breaks up any flat wash!)
+		const float gCols = 12.0f;
+		const float gRows = 12.0f;
+		float gv = std::fmod(v * gRows, 1.0f);
+		int rIdx = static_cast<int>(std::floor(v * gRows));
+		float gu = std::fmod(u * gCols + ((rIdx % 2) ? 0.5f : 0.0f), 1.0f);
+		int cIdx = static_cast<int>(std::floor(u * gCols + ((rIdx % 2) ? 0.5f : 0.0f))) % static_cast<int>(gCols);
+		float cellRnd = Hash2D(cIdx, rIdx, 2022);
+		float dx = gu - 0.5f;
+		float dy = gv - 0.45f;
+		// 3 curved grass blade strokes per tuft
+		float blade1 = std::abs(dx - dy * 0.25f) + std::max(0.0f, std::abs(dy) - 0.26f) * 2.0f;
+		float blade2 = std::abs((dx + 0.16f) + dy * 0.35f) + std::max(0.0f, std::abs(dy) - 0.22f) * 2.0f;
+		float blade3 = std::abs((dx - 0.16f) - dy * 0.38f) + std::max(0.0f, std::abs(dy) - 0.22f) * 2.0f;
+		float bladeD = std::min({ blade1, blade2, blade3 });
+		if (cellRnd > 0.28f && bladeD < 0.075f) {
+			float tip = std::clamp((gv - 0.20f) / 0.55f, 0.0f, 1.0f);
+			RGB bladeCol = LerpRGB({ 58, 88, 42 }, { 174, 196, 102 }, tip);
+			col = LerpRGB(col, bladeCol, (1.0f - bladeD / 0.075f) * 0.65f);
+		}
+		// Occasional tiny sunlit clover/wildflower fleck
+		if (cellRnd > 0.88f && (dx * dx + dy * dy) < 0.022f) {
+			col = LerpRGB(col, { 228, 218, 152 }, 0.55f);
+		}
 		return col;
 	});
-	ok &= WriteBMP24(texDir + "/tex_roof_tile.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
-		float wave = 0.5f + 0.5f * std::sin(u * 44.0f);
-		float row = std::fmod(v * 10.0f, 1.0f);
-		RGB col = LerpRGB({ 38, 44, 54 }, { 68, 78, 92 }, 0.65f * wave + 0.35f * row);
-		if (row < 0.12f) col = LerpRGB(col, { 22, 26, 34 }, 0.72f);
+
+	// Crisp Japanese kawara curved slate roof tiles (256x256 seamless)
+	ok &= WriteBMP24(texDir + "/tex_roof_tile.bmp", 256, 256, [&](float u, float v, int, int) -> RGB {
+		const float cols = 8.0f;
+		const float rows = 8.0f;
+		float rv = std::fmod(v * rows, 1.0f);
+		int rIdx = static_cast<int>(std::floor(v * rows));
+		float cu = std::fmod(u * cols + ((rIdx % 2) ? 0.5f : 0.0f), 1.0f);
+		float curve = std::sin(cu * 3.14159265f);
+		float grain = TileNoise2(u, v, 16.0f, 16.0f, 2031);
+		RGB col = LerpRGB({ 40, 48, 60 }, { 78, 90, 108 }, 0.58f * curve + 0.24f * rv + 0.18f * grain);
+		// Curved bottom overlap shadow + sunlit upper-edge lip
+		float archEdge = 0.14f + 0.08f * (1.0f - curve);
+		if (rv < archEdge) {
+			col = LerpRGB(col, { 22, 26, 36 }, 0.78f);
+		} else if (rv < archEdge + 0.10f) {
+			col = LerpRGB(col, { 114, 128, 148 }, 0.35f);
+		}
+		float seamX = std::min(cu, 1.0f - cu);
+		if (seamX < 0.055f) col = LerpRGB(col, { 26, 30, 40 }, 0.65f);
 		return col;
 	});
 	ok &= WriteBMP24(texDir + "/tex_shoji_glow.bmp", 128, 128, [](float u, float v, int, int) -> RGB {

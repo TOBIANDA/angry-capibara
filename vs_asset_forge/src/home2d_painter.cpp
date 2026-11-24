@@ -2171,6 +2171,230 @@ void BuildAll4WorldIslands(const std::string& dir) {
 	BuildWorldIsland04_CrocCitadel(dir);
 }
 
+// =========================================================================
+// STUDIO 9-SLICE UI TEXTURE PLATES & STAR ICONS (home2d/ui_*.png)
+// =========================================================================
+
+void BuildUI9SlicePlate(
+	const std::string& outPath,
+	int w, int h,
+	float cornerR,
+	const Color4& rimOuter,
+	const Color4& rimGold,
+	const Color4& fillTop,
+	const Color4& fillMid,
+	const Color4& fillBot,
+	float fillAlpha,
+	float woodGrainStrength,
+	bool hasCornerStuds,
+	bool hasDoubleInnerFrame,
+	int seed) {
+
+	Canvas2D cv(w, h);
+	const Vec2 ctr(w * 0.5f, h * 0.5f);
+	const float pad = 6.0f;
+	const float hx = w * 0.5f - pad;
+	const float hy = h * 0.5f - pad;
+	BBox full{ 0, 0, static_cast<float>(w), static_cast<float>(h) };
+
+	// 1. Soft grounding shadow under bottom edge
+	cv.PaintDropShadow(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr, hx, hy, cornerR); },
+		Vec2(0.0f, 3.0f), 4.0f, Color4(0.08f, 0.04f, 0.03f, 0.45f));
+
+	// 2. Outer dark lacquer/espresso crisp border
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr, hx, hy, cornerR); },
+		[&](const Vec2& p, float) -> Color4 {
+			float ny = clampf((p.y - pad) / std::max(h - pad * 2.0f, 1.0f), 0.0f, 1.0f);
+			Color4 c = lerpColor(mulColor(rimOuter, 1.15f), mulColor(rimOuter, 0.72f), ny);
+			c.a = 0.98f;
+			return c;
+		}, 1.2f);
+
+	// 3. Sculpted gold/brass bezel ring
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr, hx - 2.6f, hy - 2.6f, std::max(cornerR - 2.2f, 4.0f)); },
+		[&](const Vec2& p, float) -> Color4 {
+			float ny = clampf((p.y - pad) / std::max(h - pad * 2.0f, 1.0f), 0.0f, 1.0f);
+			Color4 c = lerpColor(mulColor(rimGold, 1.18f), mulColor(rimGold, 0.66f), ny);
+			c.a = 0.98f;
+			return c;
+		}, 1.1f);
+
+	// 4. Main tactile interior fill with painterly wood/washi grain & top lacquer bevel sheen
+	const float inHx = hx - 6.2f;
+	const float inHy = hy - 6.2f;
+	const float inR = std::max(cornerR - 5.0f, 3.0f);
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr, inHx, inHy, inR); },
+		[&](const Vec2& p, float d) -> Color4 {
+			float ny = clampf((p.y - (ctr.y - inHy)) / std::max(inHy * 2.0f, 1.0f), 0.0f, 1.0f);
+			Color4 c = (ny < 0.52f)
+				? lerpColor(fillTop, fillMid, ny / 0.52f)
+				: lerpColor(fillMid, fillBot, (ny - 0.52f) / 0.48f);
+
+			// Subtle horizontal painterly wood or washi fiber texture
+			if (woodGrainStrength > 0.001f) {
+				float g1 = brushNoise(p.x, p.y, 0.03f, 48.0f, 7.0f, seed);
+				float g2 = brushNoise(p.x, p.y, -0.02f, 22.0f, 4.0f, seed + 13);
+				c = mulColor(c, 1.0f + (g1 * 0.65f + g2 * 0.35f) * woodGrainStrength);
+			}
+
+			// Glossy upper-bevel highlight band
+			float topSheen = (1.0f - smoothstep(0.0f, 0.24f, ny)) * smoothstep(0.0f, 6.0f, -d);
+			c = lerpColor(c, Color4(1.0f, 0.97f, 0.88f, 1.0f), topSheen * 0.22f);
+
+			// Warm bottom inner-edge bevel depth
+			float botRim = smoothstep(0.84f, 1.0f, ny);
+			c = lerpColor(c, mulColor(fillBot, 0.64f), botRim * 0.48f);
+
+			// Soft inner edge AO
+			float edgeAo = 1.0f - smoothstep(0.0f, 8.0f, -d);
+			c = lerpColor(c, mulColor(rimOuter, 0.85f), edgeAo * 0.20f);
+
+			c.a = fillAlpha;
+			return c;
+		}, 1.1f);
+
+	// 5. Optional recessed double gold inner hairline frame (for lacquer & washi panels)
+	if (hasDoubleInnerFrame) {
+		const float fHx = inHx - 6.5f;
+		const float fHy = inHy - 6.5f;
+		const float fR = std::max(inR - 4.0f, 2.0f);
+		cv.FillSDF(full,
+			[&](const Vec2& p) {
+				float d = sdRoundBox(p, ctr, fHx, fHy, fR);
+				return std::fabs(d) - 0.95f;
+			},
+			[&](const Vec2&, float) -> Color4 {
+				Color4 c = mulColor(rimGold, 0.92f);
+				c.a = 0.48f;
+				return c;
+			}, 1.0f);
+	}
+
+	// 6. Optional brass/gold corner rivets (kept strictly inside 9-slice corners!)
+	if (hasCornerStuds) {
+		const float sx = inHx - 7.5f;
+		const float sy = inHy - 7.5f;
+		const Vec2 studs[4] = {
+			ctr + Vec2(-sx, -sy), ctr + Vec2(sx, -sy),
+			ctr + Vec2(-sx,  sy), ctr + Vec2(sx,  sy)
+		};
+		for (int i = 0; i < 4; ++i) {
+			Vec2 sp = studs[i];
+			BBox sb{ sp.x - 6, sp.y - 6, sp.x + 6, sp.y + 6 };
+			cv.FillSDF(sb, [&](const Vec2& p) { return sdCircle(p, sp, 3.1f); },
+				[&](const Vec2& p, float) -> Color4 {
+					float hi = clampf(1.0f - length(p - (sp + Vec2(-1.0f, -1.0f))) / 3.8f, 0.0f, 1.0f);
+					return lerpColor(mulColor(rimGold, 0.72f), rgbHex(0xFFF6C8), hi * 0.85f);
+				}, 0.9f);
+		}
+	}
+
+	cv.ApplyAntiSlopMasterGrade(0.94f, 0.04f, 0.012f, 0.008f, seed + 99);
+	cv.SavePNG(outPath);
+}
+
+void BuildUIStarIcon(const std::string& outPath, bool filled, int seed) {
+	Canvas2D cv(128, 128);
+	const Vec2 ctr(64.0f, 66.0f);
+	const float rOuter = 50.0f;
+	const float rInner = 23.5f;
+	std::vector<Vec2> pts;
+	pts.reserve(10);
+	for (int i = 0; i < 10; ++i) {
+		float ang = -PI_F * 0.5f + static_cast<float>(i) * (PI_F / 5.0f);
+		float r = (i % 2 == 0) ? rOuter : rInner;
+		pts.push_back(ctr + Vec2(std::cos(ang) * r, std::sin(ang) * r));
+	}
+	BBox box{ 4, 4, 124, 124 };
+	auto starSdf = [&](const Vec2& p) { return sdPolygon(p, pts, 4.2f); };
+
+	if (filled) {
+		// Drop shadow + warm bronze-espresso outline
+		cv.PaintDropShadow(box, starSdf, Vec2(0.0f, 4.0f), 5.0f, Color4(0.14f, 0.06f, 0.03f, 0.45f));
+		cv.FillSDF(box, [&](const Vec2& p) { return starSdf(p) - 3.6f; },
+			[](const Vec2&, float) { return rgbHex(0x6E3B10); }, 1.2f);
+
+		VolumetricStyle st;
+		st.topCol = rgbHex(0xFFF598);
+		st.midCol = rgbHex(0xF5B824);
+		st.botCol = rgbHex(0xBC7210);
+		st.rimCol = rgbHex(0xFFFFDE);
+		st.lightDir = normalize(Vec2(-0.42f, -0.90f));
+		st.rimWidth = 6.5f;
+		st.rimStrength = 0.72f;
+		st.specStrength = 0.42f;
+		st.aoDepth = 16.0f;
+		st.aoStrength = 0.22f;
+		st.brushAmp = 0.04f;
+		st.seed = seed;
+		cv.PaintVolumetricSDF(box, starSdf, st, 1.2f);
+
+		// Crisp upper-left glossy catchlight glint
+		cv.FillSDF(BBox{ 38, 28, 76, 66 },
+			[&](const Vec2& p) { return sdEllipse(p, Vec2(56.0f, 48.0f), 11.0f, 5.5f, -0.55f); },
+			[](const Vec2&, float) { return Color4(1.0f, 0.99f, 0.92f, 0.78f); }, 1.6f);
+	} else {
+		// Recessed bronze-rimmed empty star socket (readable on both light washi & dark lacquer!)
+		cv.FillSDF(box, [&](const Vec2& p) { return starSdf(p) - 3.2f; },
+			[](const Vec2&, float) { return Color4(0.64f, 0.54f, 0.40f, 0.85f); }, 1.2f);
+		cv.FillSDF(box, starSdf, [&](const Vec2& p, float d) -> Color4 {
+			float ny = clampf((p.y - 16.0f) / 96.0f, 0.0f, 1.0f);
+			Color4 c = lerpColor(rgbHex(0x2D221C), rgbHex(0x4A3A30), ny);
+			float innerSh = 1.0f - smoothstep(0.0f, 9.0f, -d);
+			c = lerpColor(c, rgbHex(0x1E1612), innerSh * 0.55f);
+			c.a = 0.92f;
+			return c;
+		}, 1.2f);
+	}
+
+	cv.ApplyAntiSlopMasterGrade(0.94f, 0.04f, 0.010f, 0.008f, seed + 50);
+	cv.SavePNG(outPath);
+}
+
+void BuildAllUIPlates(const std::string& dir) {
+	// 1. Vermilion Lacquer Primary CTA Button (256x96, 9-slice L24 R24 T20 B24)
+	BuildUI9SlicePlate(
+		dir + "/ui_btn_vermilion.png", 256, 96, 16.0f,
+		rgbHex(0x4C130E), rgbHex(0xF4D586),
+		rgbHex(0xE04634), rgbHex(0xBC2D20), rgbHex(0x881C15),
+		1.0f, 0.055f, true, false, 5101);
+	std::cout << "  -> Exported home2d/ui_btn_vermilion.png (256x96)\n";
+
+	// 2. Warm Carved Cedar Wood Secondary Button (256x96, 9-slice L24 R24 T20 B24)
+	BuildUI9SlicePlate(
+		dir + "/ui_btn_wood.png", 256, 96, 16.0f,
+		rgbHex(0x2B1911), rgbHex(0xC8A464),
+		rgbHex(0x7E5234), rgbHex(0x5B3823), rgbHex(0x3E2417),
+		1.0f, 0.11f, true, false, 5102);
+	std::cout << "  -> Exported home2d/ui_btn_wood.png (256x96)\n";
+
+	// 3. Warm Dark-Espresso Lacquer HUD & Header Plaque (256x160, 9-slice L28 R28 T28 B28)
+	BuildUI9SlicePlate(
+		dir + "/ui_panel_lacquer.png", 256, 160, 18.0f,
+		rgbHex(0x1A110E), rgbHex(0xD8B46C),
+		rgbHex(0x362620), rgbHex(0x251A16), rgbHex(0x1B1310),
+		0.95f, 0.045f, true, true, 5103);
+	std::cout << "  -> Exported home2d/ui_panel_lacquer.png (256x160)\n";
+
+	// 4. Warm Handmade Washi Parchment Card (256x192, 9-slice L28 R28 T28 B28)
+	BuildUI9SlicePlate(
+		dir + "/ui_card_washi.png", 256, 192, 18.0f,
+		rgbHex(0x4B3120), rgbHex(0xCFA864),
+		rgbHex(0xF9F0DF), rgbHex(0xEFE0C6), rgbHex(0xDEC9A6),
+		0.98f, 0.045f, false, true, 5104);
+	std::cout << "  -> Exported home2d/ui_card_washi.png (256x192)\n";
+
+	// 5. Painted Studio Gold Star & Empty Star Socket (128x128)
+	BuildUIStarIcon(dir + "/ui_star_gold.png", true, 5201);
+	std::cout << "  -> Exported home2d/ui_star_gold.png (128x128)\n";
+	BuildUIStarIcon(dir + "/ui_star_empty.png", false, 5202);
+	std::cout << "  -> Exported home2d/ui_star_empty.png (128x128)\n";
+}
+
 } // namespace
 
 bool GenerateAllHome2DLayers(const std::string& outDir) {
@@ -2193,6 +2417,7 @@ bool GenerateAllHome2DLayers(const std::string& outDir) {
 	BuildLayer08_BambooFrame(outDir);
 	BuildAll7CapybaraSprites(outDir);
 	BuildAll4WorldIslands(outDir);
+	BuildAllUIPlates(outDir);
 	HarmonizeExternal2DCapybaras(outDir);
 	std::cout << "[AssetForge 2D] All transparent 2D PNG layers & Anti-Slop LUT harmonized sprites exported cleanly!\n";
 	return true;
