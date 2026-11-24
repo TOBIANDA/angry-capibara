@@ -1,0 +1,152 @@
+{
+  "id": "1-8",
+  "world": 1,
+  "sub": 8,
+  "phase": 2,
+  "name": "Gerbang Ganda",
+  "tip": "Buka gerbang bambu depan dulu, lalu hantam menara kayu dengan Dash!",
+  "stars": [
+    24000,
+    36000,
+    46000
+  ],
+  "queue": [
+    "chill",
+    "dash",
+    "dash",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "bamboo",
+      "pos": [
+        3.75,
+        0.9
+      ],
+      "size": [
+        0.32,
+        1.8,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.05,
+        0.9
+      ],
+      "size": [
+        0.32,
+        1.8,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        4.4,
+        1.94
+      ],
+      "size": [
+        1.78,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.6,
+        0.85
+      ],
+      "size": [
+        0.32,
+        1.7,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        8.2,
+        0.85
+      ],
+      "size": [
+        0.32,
+        1.7,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        7.4,
+        1.84
+      ],
+      "size": [
+        2.08,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.75,
+        2.655
+      ],
+      "size": [
+        0.32,
+        1.35,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        8.05,
+        2.655
+      ],
+      "size": [
+        0.32,
+        1.35,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        7.4,
+        3.47
+      ],
+      "size": [
+        1.78,
+        0.28,
+        1.05
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        4.4,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        7.4,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        7.4,
+        2.36
+      ]
+    }
+  ]
+}

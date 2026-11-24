@@ -1,0 +1,84 @@
+{
+  "id": "1-6",
+  "world": 1,
+  "sub": 6,
+  "phase": 2,
+  "name": "Pagar Kayu Baru",
+  "tip": "BARU! Dash Capi: Klik/Spasi di udara untuk Turbo Dash menembus blok KAYU!",
+  "stars": [
+    18000,
+    28000,
+    35000
+  ],
+  "queue": [
+    "dash",
+    "dash",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "wood",
+      "pos": [
+        4.2,
+        1.1
+      ],
+      "size": [
+        0.36,
+        2.2,
+        1.0
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        5.425,
+        0.825
+      ],
+      "size": [
+        0.32,
+        1.65,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.975,
+        0.825
+      ],
+      "size": [
+        0.32,
+        1.65,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.2,
+        1.79
+      ],
+      "size": [
+        2.03,
+        0.28,
+        1.05
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        6.2,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        6.2,
+        2.31
+      ]
+    }
+  ]
+}

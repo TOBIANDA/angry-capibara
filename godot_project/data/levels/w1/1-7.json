@@ -1,0 +1,152 @@
+{
+  "id": "1-7",
+  "world": 1,
+  "sub": 7,
+  "phase": 2,
+  "name": "Gudang Yuzu",
+  "tip": "Gunakan Dash Capi melesat rendah menghantam peti kayu depan!",
+  "stars": [
+    24000,
+    36000,
+    44000
+  ],
+  "queue": [
+    "dash",
+    "chill",
+    "dash",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "wood",
+      "pos": [
+        4.3,
+        0.39
+      ],
+      "size": [
+        0.78,
+        0.78,
+        0.78
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        4.3,
+        1.17
+      ],
+      "size": [
+        0.78,
+        0.78,
+        0.78
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        5.55,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        7.05,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.3,
+        1.74
+      ],
+      "size": [
+        1.98,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        7.85,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        9.35,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        8.6,
+        1.74
+      ],
+      "size": [
+        1.98,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        8.6,
+        2.205
+      ],
+      "size": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        6.3,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        8.6,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        7.45,
+        0.38
+      ]
+    }
+  ]
+}

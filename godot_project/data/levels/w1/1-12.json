@@ -1,0 +1,164 @@
+{
+  "id": "1-12",
+  "world": 1,
+  "sub": 12,
+  "phase": 3,
+  "name": "Atap Kristal",
+  "tip": "Pecahkan Trio Mini tepat di depan atap kaca atas agar 3 kapibara menyapu atap!",
+  "stars": [
+    24000,
+    38000,
+    46000
+  ],
+  "queue": [
+    "mini",
+    "dash",
+    "mini",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "bamboo",
+      "pos": [
+        4.25,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.75,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "ice",
+      "pos": [
+        5.0,
+        1.74
+      ],
+      "size": [
+        1.98,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.85,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        8.35,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "ice",
+      "pos": [
+        7.6,
+        1.74
+      ],
+      "size": [
+        1.98,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.3,
+        2.02
+      ],
+      "size": [
+        2.5,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "ice",
+      "pos": [
+        5.525,
+        2.835
+      ],
+      "size": [
+        0.32,
+        1.35,
+        0.95
+      ]
+    },
+    {
+      "type": "ice",
+      "pos": [
+        7.075,
+        2.835
+      ],
+      "size": [
+        0.32,
+        1.35,
+        0.95
+      ]
+    },
+    {
+      "type": "ice",
+      "pos": [
+        6.3,
+        3.65
+      ],
+      "size": [
+        2.03,
+        0.28,
+        1.05
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        5.0,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        7.6,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        6.3,
+        2.54
+      ]
+    }
+  ]
+}

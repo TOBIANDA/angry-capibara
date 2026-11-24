@@ -7,7 +7,7 @@ extends Control
 #   yang dipotong transparan per grup (Dash terbang, Trio Mini bertumpuk, & 5 Hero Squad)
 #   lengkap dengan animasi bernafas, hover, klik dialog per karakter, & Logo Opsi 2.
 
-const TESTER_SCENE_PATH := "res://scenes/sandbox/mode_tester.tscn"
+const WORLD1_SELECT_PATH := "res://scenes/ui/world1_select.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
 # Data dialog 7 karakter kapibara (bisa diklik langsung di layar atau tekan tombol 1-7)
@@ -665,7 +665,7 @@ func _trigger_dialog_and_hop(dialog_idx: int, group_idx: int) -> void:
 	speech_timer = 3.8
 
 func _go_to_tester() -> void:
-	get_tree().change_scene_to_file(TESTER_SCENE_PATH)
+	get_tree().change_scene_to_file(WORLD1_SELECT_PATH)
 
 func _show_worlds_modal() -> void:
 	modal_title.text = "4 WORLD ANGRY CAPIBARA (80 STAGE)"

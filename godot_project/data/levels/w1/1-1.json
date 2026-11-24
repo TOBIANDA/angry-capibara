@@ -1,0 +1,77 @@
+{
+  "id": "1-1",
+  "world": 1,
+  "sub": 1,
+  "phase": 1,
+  "name": "Pos Jaga Pertama",
+  "tip": "Tarik ketapel bambu ke kiri-bawah lalu lepas! Klik/Spasi di udara untuk Zen Bump.",
+  "stars": [
+    14000,
+    22000,
+    26000
+  ],
+  "queue": [
+    "chill",
+    "chill",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "bamboo",
+      "pos": [
+        5.05,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.55,
+        0.8
+      ],
+      "size": [
+        0.32,
+        1.6,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.8,
+        1.74
+      ],
+      "size": [
+        1.98,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.8,
+        2.18
+      ],
+      "size": [
+        0.6,
+        0.6,
+        0.6
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        5.8,
+        0.38
+      ]
+    }
+  ]
+}

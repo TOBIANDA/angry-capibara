@@ -1,0 +1,132 @@
+{
+  "id": "1-2",
+  "world": 1,
+  "sub": 2,
+  "phase": 1,
+  "name": "Menara Kembar Bambu",
+  "tip": "Robohkan menara depan agar jatuh menimpa menara belakang!",
+  "stars": [
+    18000,
+    28000,
+    34000
+  ],
+  "queue": [
+    "chill",
+    "chill",
+    "chill"
+  ],
+  "blocks": [
+    {
+      "type": "bamboo",
+      "pos": [
+        3.9,
+        0.75
+      ],
+      "size": [
+        0.32,
+        1.5,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.3,
+        0.75
+      ],
+      "size": [
+        0.32,
+        1.5,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        4.6,
+        1.64
+      ],
+      "size": [
+        1.88,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.7,
+        0.75
+      ],
+      "size": [
+        0.32,
+        1.5,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        8.1,
+        0.75
+      ],
+      "size": [
+        0.32,
+        1.5,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        7.4,
+        1.64
+      ],
+      "size": [
+        1.88,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        4.6,
+        2.07
+      ],
+      "size": [
+        0.58,
+        0.58,
+        0.58
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        7.4,
+        2.07
+      ],
+      "size": [
+        0.58,
+        0.58,
+        0.58
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        4.6,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        7.4,
+        0.38
+      ]
+    }
+  ]
+}

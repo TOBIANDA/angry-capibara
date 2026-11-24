@@ -1,0 +1,171 @@
+{
+  "id": "1-9",
+  "world": 1,
+  "sub": 9,
+  "phase": 2,
+  "name": "Pagoda Kayu Bertingkat",
+  "tip": "Potong pilar kayu lantai 1 dengan Turbo Dash agar seluruh pagoda miring!",
+  "stars": [
+    28000,
+    42000,
+    52000
+  ],
+  "queue": [
+    "dash",
+    "dash",
+    "chill",
+    "dash"
+  ],
+  "blocks": [
+    {
+      "type": "wood",
+      "pos": [
+        5.45,
+        0.775
+      ],
+      "size": [
+        0.32,
+        1.55,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        7.35,
+        0.775
+      ],
+      "size": [
+        0.32,
+        1.55,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.4,
+        1.69
+      ],
+      "size": [
+        2.38,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        5.625,
+        2.555
+      ],
+      "size": [
+        0.32,
+        1.45,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        7.175,
+        2.555
+      ],
+      "size": [
+        0.32,
+        1.45,
+        0.95
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        6.4,
+        3.42
+      ],
+      "size": [
+        2.03,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        5.8,
+        4.185
+      ],
+      "size": [
+        0.32,
+        1.25,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        7.0,
+        4.185
+      ],
+      "size": [
+        0.32,
+        1.25,
+        0.95
+      ]
+    },
+    {
+      "type": "bamboo",
+      "pos": [
+        6.4,
+        4.95
+      ],
+      "size": [
+        1.68,
+        0.28,
+        1.05
+      ]
+    },
+    {
+      "type": "wood",
+      "pos": [
+        8.4,
+        0.85
+      ],
+      "size": [
+        0.34,
+        1.7,
+        1.0
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "type": "minion",
+      "pos": [
+        6.4,
+        0.38
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        6.4,
+        2.21
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        6.4,
+        3.94
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        9.2,
+        0.38
+      ]
+    }
+  ]
+}

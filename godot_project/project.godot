@@ -8,6 +8,10 @@ config/name="Angry Capibara"
 run/main_scene="res://scenes/ui/home_screen.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+SaveManager="*res://scripts/autoload/save_manager.gd"
+
 [display]
 
 window/size/viewport_width=1280
