@@ -1,14 +1,12 @@
 {
   "id": "1-17",
   "world": 1,
-  "sub": 17,
   "phase": 4,
-  "name": "Reaksi Berantai",
-  "tip": "Ledakkan tong TNT kiri untuk memicu tong TNT tengah secara berantai!",
-  "stars": [
-    30000,
-    44000,
-    56000
+  "name": "Reaksi TNT & Boulder",
+  "tip": "Ledakkan TNT di tebing kiri agar Boulder Batu meluncur kencang memicu TNT kedua di benteng kanan!",
+  "slingshot_pos": [
+    -11.4,
+    2.0
   ],
   "queue": [
     "mini",
@@ -16,168 +14,349 @@
     "chill",
     "dash"
   ],
+  "terrain": [
+    {
+      "pos": [
+        -12.2,
+        0.86
+      ],
+      "size": [
+        5.6,
+        1.72,
+        2.3
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        -12.0,
+        1.86
+      ],
+      "size": [
+        4.4,
+        0.28,
+        1.7
+      ],
+      "rot": 0.0,
+      "style": "wood_deck"
+    },
+    {
+      "pos": [
+        2.2,
+        1.5
+      ],
+      "size": [
+        3.4,
+        3.0,
+        2.1
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        5.5,
+        1.62
+      ],
+      "size": [
+        3.8,
+        0.44,
+        1.8
+      ],
+      "rot": -22.0,
+      "style": "cliff"
+    }
+  ],
+  "bounce_pads": [],
   "blocks": [
     {
-      "type": "ice",
+      "type": "tnt",
+      "shape": "box",
       "pos": [
-        3.95,
-        0.8
+        1.4,
+        3.37
       ],
       "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
+        0.74,
+        0.74,
+        0.84
+      ],
+      "rot": 0.0
     },
     {
-      "type": "ice",
+      "type": "boulder",
+      "shape": "boulder",
       "pos": [
-        5.45,
-        0.8
+        2.65,
+        3.46
       ],
       "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "wood",
-      "pos": [
-        4.7,
-        1.74
+        0.92,
+        0.92,
+        0.92
       ],
-      "size": [
-        1.98,
-        0.28,
-        1.05
-      ]
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        6.65,
-        0.8
+        7.6,
+        0.75
       ],
       "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
+        0.34,
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
-      "pos": [
-        8.15,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "wood",
-      "pos": [
-        7.4,
-        1.74
-      ],
-      "size": [
-        1.98,
-        0.28,
-        1.05
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        9.1,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        10.5,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "ice",
+      "shape": "box",
       "pos": [
         9.8,
-        1.74
+        0.75
       ],
       "size": [
-        1.88,
-        0.28,
-        1.05
-      ]
+        0.34,
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        12.0,
+        0.75
+      ],
+      "size": [
+        0.34,
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        8.7,
+        1.63
+      ],
+      "size": [
+        2.16,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        10.9,
+        1.63
+      ],
+      "size": [
+        2.16,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        8.1,
+        2.45
+      ],
+      "size": [
+        0.34,
+        1.38,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        9.8,
+        2.45
+      ],
+      "size": [
+        0.34,
+        1.38,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        11.5,
+        2.45
+      ],
+      "size": [
+        0.34,
+        1.38,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        8.95,
+        3.27
+      ],
+      "size": [
+        1.66,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        10.65,
+        3.27
+      ],
+      "size": [
+        1.66,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        8.95,
+        4.025
+      ],
+      "size": [
+        0.34,
+        1.25,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        10.65,
+        4.025
+      ],
+      "size": [
+        0.34,
+        1.25,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        9.8,
+        4.78
+      ],
+      "size": [
+        2.15,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "wedge",
+      "pos": [
+        9.8,
+        5.335
+      ],
+      "size": [
+        2.3,
+        0.85,
+        0.92
+      ],
+      "skew": 0.5,
+      "rot": 0.0
     },
     {
       "type": "tnt",
+      "shape": "box",
       "pos": [
-        4.7,
+        8.7,
         0.38
       ],
       "size": [
         0.76,
         0.76,
-        0.76
-      ]
+        0.84
+      ],
+      "rot": 0.0
     },
     {
-      "type": "tnt",
+      "type": "yuzu_basket",
+      "shape": "box",
       "pos": [
-        7.4,
-        2.26
+        9.8,
+        3.61
       ],
       "size": [
-        0.76,
-        0.76,
-        0.76
-      ]
+        0.62,
+        0.42,
+        0.62
+      ],
+      "rot": 0.0
     }
   ],
   "enemies": [
     {
       "type": "minion",
       "pos": [
-        4.7,
-        2.26
+        10.9,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        7.4,
-        0.38
+        8.95,
+        2.12
       ]
     },
     {
       "type": "minion",
       "pos": [
-        9.8,
-        0.38
+        10.65,
+        2.12
       ]
     },
     {
       "type": "minion",
       "pos": [
-        9.8,
-        2.26
+        12.75,
+        0.36
       ]
     }
+  ],
+  "stars": [
+    36000,
+    54000,
+    70000
   ]
 }

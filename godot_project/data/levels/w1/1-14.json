@@ -1,172 +1,348 @@
 {
   "id": "1-14",
   "world": 1,
-  "sub": 14,
   "phase": 3,
-  "name": "Kubah Kayu & Es",
-  "tip": "Tembus perisai kayu depan pakai Dash, lalu sapu kaca belakang pakai Trio Mini.",
-  "stars": [
-    32000,
-    46000,
-    58000
+  "name": "Labirin Pantul Taiko",
+  "tip": "Tembok batu depan terlalu tinggi! Pantulkan kapibara di Drum Taiko atau melambung tinggi lalu Split.",
+  "slingshot_pos": [
+    -11.0,
+    1.2
   ],
   "queue": [
+    "mini",
     "dash",
     "mini",
-    "mini",
-    "chill",
-    "dash"
+    "chill"
+  ],
+  "terrain": [
+    {
+      "pos": [
+        -11.8,
+        0.46
+      ],
+      "size": [
+        5.6,
+        0.92,
+        2.3
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        -11.6,
+        1.06
+      ],
+      "size": [
+        4.4,
+        0.28,
+        1.7
+      ],
+      "rot": 0.0,
+      "style": "wood_deck"
+    },
+    {
+      "pos": [
+        2.4,
+        2.2
+      ],
+      "size": [
+        1.6,
+        4.4,
+        2.0
+      ],
+      "rot": 0.0,
+      "style": "stone_wall"
+    }
+  ],
+  "bounce_pads": [
+    {
+      "pos": [
+        -1.8,
+        0.22
+      ],
+      "size": [
+        1.8,
+        0.34,
+        1.05
+      ],
+      "rot": -18.0,
+      "power": 21.0
+    },
+    {
+      "pos": [
+        5.8,
+        0.22
+      ],
+      "size": [
+        1.6,
+        0.34,
+        1.05
+      ],
+      "rot": 18.0,
+      "power": 17.0
+    }
   ],
   "blocks": [
     {
-      "type": "wood",
+      "type": "ice",
+      "shape": "box",
       "pos": [
-        4.1,
-        1.05
+        7.4,
+        0.75
       ],
       "size": [
         0.34,
-        2.1,
-        1.0
-      ]
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        9.6,
+        0.75
+      ],
+      "size": [
+        0.34,
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        11.8,
+        0.75
+      ],
+      "size": [
+        0.34,
+        1.5,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        5.225,
-        0.8
+        8.5,
+        1.63
       ],
       "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
+        2.16,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        6.775,
-        0.8
+        10.7,
+        1.63
       ],
       "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
+        2.16,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "ice",
+      "shape": "box",
       "pos": [
-        6.0,
-        1.74
+        7.9,
+        2.435
       ],
       "size": [
-        2.03,
-        0.28,
-        1.05
-      ]
-    },
-    {
-      "type": "ice",
-      "pos": [
-        7.525,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "ice",
-      "pos": [
-        9.075,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "ice",
-      "pos": [
-        8.3,
-        1.74
-      ],
-      "size": [
-        2.03,
-        0.28,
-        1.05
-      ]
-    },
-    {
-      "type": "ice",
-      "pos": [
-        6.35,
-        2.555
-      ],
-      "size": [
-        0.32,
+        0.34,
         1.35,
-        0.95
-      ]
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "ice",
+      "shape": "box",
       "pos": [
-        7.95,
-        2.555
+        9.6,
+        2.435
       ],
       "size": [
-        0.32,
+        0.34,
         1.35,
-        0.95
-      ]
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        11.3,
+        2.435
+      ],
+      "size": [
+        0.34,
+        1.35,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        8.75,
+        3.24
+      ],
+      "size": [
+        1.66,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        10.45,
+        3.24
+      ],
+      "size": [
+        1.66,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        8.7,
+        4.01
+      ],
+      "size": [
+        0.34,
+        1.28,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "ice",
+      "shape": "box",
+      "pos": [
+        10.5,
+        4.01
+      ],
+      "size": [
+        0.34,
+        1.28,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        7.15,
-        3.37
+        9.6,
+        4.78
       ],
       "size": [
-        2.08,
-        0.28,
-        1.05
-      ]
+        2.25,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "wedge",
+      "pos": [
+        9.6,
+        5.335
+      ],
+      "size": [
+        2.4,
+        0.85,
+        0.92
+      ],
+      "skew": 0.5,
+      "rot": 0.0
+    },
+    {
+      "type": "yuzu_basket",
+      "shape": "box",
+      "pos": [
+        10.45,
+        1.97
+      ],
+      "size": [
+        0.62,
+        0.42,
+        0.62
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "yuzu_basket",
+      "shape": "box",
+      "pos": [
+        9.6,
+        3.58
+      ],
+      "size": [
+        0.62,
+        0.42,
+        0.62
+      ],
+      "rot": 0.0
     }
   ],
   "enemies": [
     {
       "type": "minion",
       "pos": [
-        6.0,
-        0.38
+        4.15,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        8.3,
-        0.38
+        8.5,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        7.15,
-        2.26
+        10.7,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        7.15,
-        3.89
+        8.75,
+        2.12
       ]
     }
+  ],
+  "stars": [
+    30000,
+    46000,
+    60000
   ]
 }

@@ -1,152 +1,349 @@
 {
   "id": "1-8",
   "world": 1,
-  "sub": 8,
   "phase": 2,
-  "name": "Gerbang Ganda",
-  "tip": "Buka gerbang bambu depan dulu, lalu hantam menara kayu dengan Dash!",
-  "stars": [
-    24000,
-    36000,
-    46000
+  "name": "Gua Tebing & Drum Taiko",
+  "tip": "Pantulkan kapibara lewat Drum Taiko merah di tanah untuk menyapu buaya di dalam gua tebing!",
+  "slingshot_pos": [
+    -10.5,
+    1.0
   ],
   "queue": [
+    "dash",
     "chill",
     "dash",
-    "dash",
     "chill"
+  ],
+  "terrain": [
+    {
+      "pos": [
+        -11.3,
+        0.36
+      ],
+      "size": [
+        5.6,
+        0.72,
+        2.3
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        -11.1,
+        0.86
+      ],
+      "size": [
+        4.4,
+        0.28,
+        1.7
+      ],
+      "rot": 0.0,
+      "style": "wood_deck"
+    },
+    {
+      "pos": [
+        10.6,
+        1.8
+      ],
+      "size": [
+        2.6,
+        3.6,
+        2.1
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        7.4,
+        3.36
+      ],
+      "size": [
+        8.2,
+        0.72,
+        2.2
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    }
+  ],
+  "bounce_pads": [
+    {
+      "pos": [
+        1.2,
+        0.22
+      ],
+      "size": [
+        1.7,
+        0.34,
+        1.05
+      ],
+      "rot": -22.0,
+      "power": 18.5
+    }
   ],
   "blocks": [
     {
       "type": "bamboo",
+      "shape": "box",
       "pos": [
-        3.75,
-        0.9
+        5.7,
+        0.725
       ],
       "size": [
-        0.32,
-        1.8,
-        0.95
-      ]
+        0.34,
+        1.45,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "bamboo",
+      "shape": "box",
       "pos": [
-        5.05,
-        0.9
+        7.9,
+        0.725
       ],
       "size": [
-        0.32,
-        1.8,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        4.4,
-        1.94
+        0.34,
+        1.45,
+        0.92
       ],
-      "size": [
-        1.78,
-        0.28,
-        1.05
-      ]
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        6.6,
-        0.85
+        6.8,
+        1.58
       ],
       "size": [
-        0.32,
-        1.7,
-        0.95
-      ]
+        2.65,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
+      "pos": [
+        4.8,
+        0.375
+      ],
+      "size": [
+        0.75,
+        0.75,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "yuzu_basket",
+      "shape": "box",
+      "pos": [
+        6.8,
+        1.92
+      ],
+      "size": [
+        0.62,
+        0.42,
+        0.62
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "wedge",
+      "pos": [
+        4.55,
+        4.145
+      ],
+      "size": [
+        0.85,
+        0.85,
+        0.92
+      ],
+      "skew": 1.0,
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        5.2,
+        4.43
+      ],
+      "size": [
+        0.34,
+        1.42,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        7.3,
+        4.43
+      ],
+      "size": [
+        0.34,
+        1.42,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        9.4,
+        4.43
+      ],
+      "size": [
+        0.34,
+        1.42,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        6.25,
+        5.27
+      ],
+      "size": [
+        2.06,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        8.35,
+        5.27
+      ],
+      "size": [
+        2.06,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
+      "pos": [
+        6.4,
+        6.06
+      ],
+      "size": [
+        0.34,
+        1.32,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "wood",
+      "shape": "box",
       "pos": [
         8.2,
-        0.85
+        6.06
       ],
       "size": [
-        0.32,
-        1.7,
-        0.95
-      ]
+        0.34,
+        1.32,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "box",
       "pos": [
-        7.4,
-        1.84
+        7.3,
+        6.85
       ],
       "size": [
-        2.08,
-        0.28,
-        1.05
-      ]
+        2.25,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
     },
     {
       "type": "wood",
+      "shape": "wedge",
       "pos": [
-        6.75,
-        2.655
+        7.3,
+        7.405
       ],
       "size": [
-        0.32,
-        1.35,
-        0.95
-      ]
+        2.3,
+        0.85,
+        0.92
+      ],
+      "skew": 0.5,
+      "rot": 0.0
     },
     {
-      "type": "wood",
+      "type": "yuzu_basket",
+      "shape": "box",
       "pos": [
-        8.05,
-        2.655
+        7.3,
+        5.61
       ],
       "size": [
-        0.32,
-        1.35,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        7.4,
-        3.47
+        0.62,
+        0.42,
+        0.62
       ],
-      "size": [
-        1.78,
-        0.28,
-        1.05
-      ]
+      "rot": 0.0
     }
   ],
   "enemies": [
     {
       "type": "minion",
       "pos": [
-        4.4,
-        0.38
+        6.8,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        7.4,
-        0.38
+        8.5,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        7.4,
-        2.36
+        6.25,
+        4.08
+      ]
+    },
+    {
+      "type": "minion",
+      "pos": [
+        8.35,
+        4.08
       ]
     }
+  ],
+  "stars": [
+    28000,
+    44000,
+    58000
   ]
 }

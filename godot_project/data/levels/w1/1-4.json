@@ -1,122 +1,285 @@
 {
   "id": "1-4",
   "world": 1,
-  "sub": 4,
   "phase": 1,
-  "name": "Domino Bambu",
-  "tip": "Hantam tiang paling kiri agar efek domino merobohkan pos belakang!",
-  "stars": [
-    24000,
-    36000,
-    44000
+  "name": "Lereng Batu Gelinding",
+  "tip": "Tembak tiang bambu penahan Boulder Batu di tebing kanan agar bola batu melindas markas buaya!",
+  "slingshot_pos": [
+    -10.5,
+    0.8
   ],
   "queue": [
     "chill",
     "chill",
     "chill"
   ],
+  "terrain": [
+    {
+      "pos": [
+        -11.3,
+        0.26
+      ],
+      "size": [
+        5.6,
+        0.52,
+        2.3
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        -11.1,
+        0.66
+      ],
+      "size": [
+        4.4,
+        0.28,
+        1.7
+      ],
+      "rot": 0.0,
+      "style": "wood_deck"
+    },
+    {
+      "pos": [
+        10.8,
+        1.7
+      ],
+      "size": [
+        3.2,
+        3.4,
+        2.1
+      ],
+      "rot": 0.0,
+      "style": "cliff"
+    },
+    {
+      "pos": [
+        7.4,
+        1.575
+      ],
+      "size": [
+        4.4,
+        0.45,
+        1.8
+      ],
+      "rot": 22.0,
+      "style": "cliff"
+    }
+  ],
+  "bounce_pads": [],
   "blocks": [
     {
       "type": "bamboo",
+      "shape": "box",
       "pos": [
-        3.8,
-        1.2
+        9.55,
+        3.875
       ],
       "size": [
-        0.34,
-        2.4,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        5.4,
-        1.2
-      ],
-      "size": [
-        0.34,
-        2.4,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        7.0,
-        1.2
-      ],
-      "size": [
-        0.34,
-        2.4,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        8.275,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        9.725,
-        0.8
-      ],
-      "size": [
-        0.32,
-        1.6,
-        0.95
-      ]
-    },
-    {
-      "type": "bamboo",
-      "pos": [
-        9.0,
-        1.74
-      ],
-      "size": [
-        1.93,
         0.28,
-        1.05
-      ]
+        0.95,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "boulder",
+      "shape": "boulder",
+      "pos": [
+        10.45,
+        3.875
+      ],
+      "size": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "yuzu_basket",
+      "shape": "box",
+      "pos": [
+        11.65,
+        3.61
+      ],
+      "size": [
+        0.62,
+        0.42,
+        0.62
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        1.4,
+        0.7
+      ],
+      "size": [
+        0.34,
+        1.4,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        3.3,
+        0.7
+      ],
+      "size": [
+        0.34,
+        1.4,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        5.2,
+        0.7
+      ],
+      "size": [
+        0.34,
+        1.4,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        2.35,
+        1.53
+      ],
+      "size": [
+        1.86,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        4.25,
+        1.53
+      ],
+      "size": [
+        1.86,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        2.45,
+        2.285
+      ],
+      "size": [
+        0.34,
+        1.25,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        4.15,
+        2.285
+      ],
+      "size": [
+        0.34,
+        1.25,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "box",
+      "pos": [
+        3.3,
+        3.04
+      ],
+      "size": [
+        2.15,
+        0.26,
+        0.92
+      ],
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "wedge",
+      "pos": [
+        3.3,
+        3.545
+      ],
+      "size": [
+        2.0,
+        0.75,
+        0.92
+      ],
+      "skew": 0.5,
+      "rot": 0.0
+    },
+    {
+      "type": "bamboo",
+      "shape": "wedge",
+      "pos": [
+        0.75,
+        0.4
+      ],
+      "size": [
+        0.8,
+        0.8,
+        0.92
+      ],
+      "skew": 1.0,
+      "rot": 0.0
     }
   ],
   "enemies": [
     {
       "type": "minion",
       "pos": [
-        4.6,
-        0.38
+        2.35,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        6.2,
-        0.38
+        4.25,
+        0.36
       ]
     },
     {
       "type": "minion",
       "pos": [
-        9.0,
-        0.38
-      ]
-    },
-    {
-      "type": "minion",
-      "pos": [
-        9.0,
-        2.26
+        3.3,
+        2.02
       ]
     }
+  ],
+  "stars": [
+    20000,
+    32000,
+    43000
   ]
 }

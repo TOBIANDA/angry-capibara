@@ -11,11 +11,9 @@ enum CameraView { SIDE_25D = 0, ANGLED_25D = 1, BEHIND_3D = 2 }
 const WORLD1_SELECT_SCENE := "res://scenes/ui/world1_select.tscn"
 const HOME_SCENE := "res://scenes/ui/home_screen.tscn"
 
-const LAUNCH_X := -6.5
-const LAUNCH_Y := 1.75
 const GRAVITY := 18.0
-const MAX_PULL_DIST := 2.95
-const LAUNCH_POWER := 8.9
+const MAX_PULL_DIST := 3.20
+const LAUNCH_POWER := 10.6
 
 const CAPY_SPECS := {
 	"chill": {
@@ -42,15 +40,27 @@ const CAPY_SPECS := {
 }
 
 const MAT_SPECS := {
-	"bamboo": { "hp": 30.0, "mass": 0.85, "thresh": 2.4, "score": 300 },
-	"ice":    { "hp": 40.0, "mass": 1.00, "thresh": 2.0, "score": 500 },
-	"wood":   { "hp": 75.0, "mass": 1.50, "thresh": 3.8, "score": 600 },
-	"tnt":    { "hp": 20.0, "mass": 1.20, "thresh": 2.6, "score": 1500 }
+	"bamboo":      { "hp": 30.0,  "mass": 0.85, "thresh": 2.4, "score": 300 },
+	"ice":         { "hp": 38.0,  "mass": 1.00, "thresh": 1.9, "score": 500 },
+	"wood":        { "hp": 72.0,  "mass": 1.50, "thresh": 3.6, "score": 600 },
+	"stone":       { "hp": 135.0, "mass": 2.65, "thresh": 4.4, "score": 900 },
+	"tnt":         { "hp": 20.0,  "mass": 1.20, "thresh": 2.5, "score": 1500 },
+	"boulder":     { "hp": 220.0, "mass": 3.40, "thresh": 6.5, "score": 1200 },
+	"yuzu_basket": { "hp": 12.0,  "mass": 0.45, "thresh": 0.9, "score": 1500 }
 }
 
 var current_stage_id: String = "1-1"
 var stage_data: Dictionary = {}
-var current_view: int = CameraView.ANGLED_25D
+var current_view: int = CameraView.SIDE_25D
+
+# Dynamic per-stage slingshot & panorama camera bounds
+var sling_x: float = -10.0
+var sling_base_y: float = 0.0
+var launch_x: float = -10.0
+var launch_y: float = 1.75
+var stage_min_x: float = -11.5
+var stage_max_x: float = 13.0
+var stage_max_y: float = 6.5
 
 # Cached resources
 var shader_rovio: Shader
@@ -84,6 +94,7 @@ var active_capy_visual: Node3D = null
 var flying_projectiles: Array[RigidBody3D] = []
 var blocks: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
+var bounce_pads: Array[Dictionary] = []
 var vfx_nodes: Array[Dictionary] = []
 
 var is_aiming: bool = false
@@ -105,16 +116,21 @@ var end_delay_timer: float = 0.0
 var pending_victory: bool = false
 var pending_defeat: bool = false
 
-# Camera orbit state
+# Camera orbit & pan state
 var orbit_active: bool = false
 var custom_orbit_active: bool = false
 var orbit_yaw: float = 0.35
 var orbit_pitch: float = 0.22
 var cam_zoom_offset: float = 0.0
+var cam_pan_x: float = 0.0
+var cam_pan_target_x: float = 0.0
+var snap_camera: bool = true
 
 # HUD & Overlays
 var lbl_stage_title: Label
 var lbl_score: Label
+var combo_panel: PanelContainer
+var lbl_combo: Label
 var lbl_queue_info: Label
 var lbl_tip: Label
 var btn_views: Array[Button] = []
@@ -122,6 +138,7 @@ var result_overlay: ColorRect
 var result_title: Label
 var result_stars: Label
 var result_body: Label
+var btn_retry: Button
 var btn_next_stage: Button
 
 # CLI flags for capture & automated 20-stage stability validation
@@ -170,7 +187,7 @@ func _ready() -> void:
 	add_child(queue_visual_root)
 
 	_load_stage(current_stage_id)
-	_set_camera_view(CameraView.ANGLED_25D)
+	_set_camera_view(CameraView.SIDE_25D)
 
 func _setup_environment() -> void:
 	var env := Environment.new()
@@ -266,38 +283,38 @@ func _setup_ground() -> void:
 	ground.set_meta("kind", "ground")
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(48.0, 2.0, 14.0)
+	shape.size = Vector3(68.0, 2.0, 16.0)
 	col.shape = shape
-	ground.position = Vector3(1.0, -1.0, 0.0)
+	ground.position = Vector3(1.5, -1.0, 0.0)
 	ground.add_child(col)
 
 	var moss_top := MeshInstance3D.new()
 	var mt := BoxMesh.new()
-	mt.size = Vector3(40.0, 0.42, 11.0)
+	mt.size = Vector3(60.0, 0.42, 12.0)
 	moss_top.mesh = mt
 	moss_top.position = Vector3(0.0, 0.79, 0.0)
-	var moss_mat := _make_rovio_mat(tex_moss, Color(0.68, 0.80, 0.56), Vector2(5.5, 1.8), 0.10, 0.05)
+	var moss_mat := _make_rovio_mat(tex_moss, Color(0.68, 0.80, 0.56), Vector2(8.0, 1.8), 0.10, 0.05)
 	moss_mat.set_shader_parameter("shadow_tint", Vector3(0.36, 0.46, 0.38))
 	moss_top.material_override = moss_mat
 	ground.add_child(moss_top)
 
 	var cliff := MeshInstance3D.new()
 	var cm := BoxMesh.new()
-	cm.size = Vector3(39.4, 3.6, 10.4)
+	cm.size = Vector3(59.4, 3.8, 11.4)
 	cliff.mesh = cm
-	cliff.position = Vector3(0.0, -1.20, 0.0)
-	cliff.material_override = _make_rovio_mat(tex_cliff, Color(0.68, 0.62, 0.56), Vector2(6.5, 1.2), 0.06, 0.04)
+	cliff.position = Vector3(0.0, -1.30, 0.0)
+	cliff.material_override = _make_rovio_mat(tex_cliff, Color(0.68, 0.62, 0.56), Vector2(9.5, 1.2), 0.06, 0.04)
 	ground.add_child(cliff)
 	add_child(ground)
 
-	# Jalan setapak pasir hangat di Z=0
+	# Jalan setapak pasir hangat sepanjang arena luas di Z=0
 	var lane := MeshInstance3D.new()
 	var lm := BoxMesh.new()
-	lm.size = Vector3(24.0, 0.025, 0.44)
+	lm.size = Vector3(42.0, 0.025, 0.46)
 	lane.mesh = lm
 	lane.position = Vector3(1.5, 0.015, 0.0)
-	var lane_mat := _make_rovio_mat(null, Color(0.76, 0.68, 0.52), Vector2.ONE, 0.0, 0.02)
-	lane_mat.set_shader_parameter("shadow_tint", Vector3(0.56, 0.48, 0.38))
+	var lane_mat := _make_rovio_mat(null, Color(0.56, 0.50, 0.38), Vector2.ONE, 0.0, 0.02)
+	lane_mat.set_shader_parameter("shadow_tint", Vector3(0.42, 0.38, 0.30))
 	lane.material_override = lane_mat
 	add_child(lane)
 
@@ -361,7 +378,7 @@ func _setup_world1_scenery() -> void:
 	# 3. Rumah Onsen Kayu Jepang + Gerbang Torii + Kolam Onsen + Rumpun Bambu (VS C++)
 	var onsen := MeshInstance3D.new()
 	onsen.mesh = load("res://assets/generated/models/prop_onsen_house.obj")
-	onsen.position = Vector3(-5.8, 0.85, -10.8)
+	onsen.position = Vector3(-5.8, -0.35, -8.6)
 	onsen.rotation_degrees = Vector3(0.0, 16.0, 0.0)
 	onsen.scale = Vector3.ONE * 1.18
 	_apply_rovio_model_materials(onsen)
@@ -369,10 +386,10 @@ func _setup_world1_scenery() -> void:
 
 	var torii := MeshInstance3D.new()
 	torii.mesh = load("res://assets/generated/models/prop_torii_gate.obj")
-	torii.position = Vector3(11.6, 0.55, -8.8)
+	torii.position = Vector3(11.6, -0.25, -8.4)
 	torii.rotation_degrees = Vector3(0.0, -18.0, 0.0)
 	torii.scale = Vector3.ONE * 1.12
-	_apply_rovio_model_materials(torii)
+	_apply_rovio_model_materials(torii, Color(0.84, 0.44, 0.36))
 	scenery.add_child(torii)
 
 	var pond := MeshInstance3D.new()
@@ -412,7 +429,7 @@ func _setup_world1_scenery() -> void:
 		grove.position = bg_cfg[0]
 		grove.rotation_degrees = bg_cfg[1]
 		grove.scale = Vector3.ONE * float(bg_cfg[2])
-		_apply_rovio_model_materials(grove)
+		_apply_rovio_model_materials(grove, Color(0.78, 0.84, 0.64))
 		scenery.add_child(grove)
 
 	for cp in [Vector3(-11.0, 7.6, -15.5), Vector3(11.5, 7.8, -16.0), Vector3(-2.5, 9.2, -18.5)]:
@@ -442,7 +459,7 @@ func _setup_world1_scenery() -> void:
 
 func _setup_slingshot() -> void:
 	slingshot_visual = Node3D.new()
-	slingshot_visual.position = Vector3(LAUNCH_X, 0.0, 0.0)
+	slingshot_visual.position = Vector3(sling_x, sling_base_y, 0.0)
 	add_child(slingshot_visual)
 
 	var sling_mi := MeshInstance3D.new()
@@ -471,10 +488,10 @@ func _setup_trajectory_dots() -> void:
 	var dot_mat := StandardMaterial3D.new()
 	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dot_mat.albedo_color = Color(0.98, 0.94, 0.78)
-	for i in 18:
+	for i in 26:
 		var mi := MeshInstance3D.new()
 		var sm := SphereMesh.new()
-		sm.radius = lerp(0.105, 0.042, float(i) / 17.0)
+		sm.radius = lerp(0.11, 0.045, float(i) / 25.0)
 		sm.height = sm.radius * 2.0
 		mi.mesh = sm
 		mi.material_override = dot_mat
@@ -559,6 +576,35 @@ func _setup_hud() -> void:
 	lbl_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	tr_vb.add_child(lbl_score)
 
+	# COMBO BADGE (visible when combo_count >= 2)
+	combo_panel = PanelContainer.new()
+	combo_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	combo_panel.offset_left = -210
+	combo_panel.offset_right = -14
+	combo_panel.offset_top = 70
+	combo_panel.offset_bottom = 104
+	var combo_sb := StyleBoxFlat.new()
+	combo_sb.bg_color = Color(0.82, 0.22, 0.17, 0.95)
+	combo_sb.border_color = Color(0.98, 0.88, 0.56)
+	combo_sb.set_border_width_all(2)
+	combo_sb.set_corner_radius_all(8)
+	combo_panel.add_theme_stylebox_override("panel", combo_sb)
+	combo_panel.visible = false
+	canvas.add_child(combo_panel)
+
+	var cm_mar := MarginContainer.new()
+	cm_mar.add_theme_constant_override("margin_left", 10)
+	cm_mar.add_theme_constant_override("margin_right", 10)
+	cm_mar.add_theme_constant_override("margin_top", 4)
+	cm_mar.add_theme_constant_override("margin_bottom", 4)
+	combo_panel.add_child(cm_mar)
+
+	lbl_combo = Label.new()
+	lbl_combo.add_theme_font_size_override("font_size", 14)
+	lbl_combo.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84))
+	lbl_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cm_mar.add_child(lbl_combo)
+
 	# BOTTOM BAR: Active Capybara Skill & Stage Tip
 	var bot := PanelContainer.new()
 	bot.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -641,12 +687,12 @@ func _setup_hud() -> void:
 	btn_row.add_theme_constant_override("separation", 10)
 	rvb.add_child(btn_row)
 
-	var btn_retry := _make_hud_btn("ULANGI", false)
+	btn_retry = _make_hud_btn("ULANGI", false)
 	btn_retry.custom_minimum_size = Vector2(115, 42)
 	btn_retry.pressed.connect(func(): _load_stage(current_stage_id))
 	btn_row.add_child(btn_retry)
 
-	btn_next_stage = _make_hud_btn("STAGE BERIKUTNYA →", true)
+	btn_next_stage = _make_hud_btn("LANJUT →", true)
 	btn_next_stage.custom_minimum_size = Vector2(185, 42)
 	btn_next_stage.pressed.connect(_go_next_stage)
 	btn_row.add_child(btn_next_stage)
@@ -662,23 +708,26 @@ func _make_hud_btn(txt: String, is_primary: bool) -> Button:
 	b.add_theme_font_size_override("font_size", 13)
 	b.add_theme_color_override("font_color", Color(0.97, 0.94, 0.88))
 	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
+	_style_hud_btn(b, is_primary)
+	return b
+
+func _style_hud_btn(b: Button, is_primary: bool) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.80, 0.22, 0.16) if is_primary else Color(0.22, 0.17, 0.15, 0.96)
-	sb.border_color = Color(0.95, 0.86, 0.66) if is_primary else Color(0.72, 0.64, 0.50, 0.80)
+	sb.bg_color = Color(0.82, 0.22, 0.17) if is_primary else Color(0.22, 0.17, 0.15, 0.96)
+	sb.border_color = Color(0.96, 0.86, 0.66) if is_primary else Color(0.72, 0.64, 0.50, 0.80)
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(8)
 	sb.content_margin_left = 10
 	sb.content_margin_right = 10
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
-	var hv := sb.duplicate()
+	var hv: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
 	hv.bg_color = sb.bg_color.lightened(0.14)
-	var pr := sb.duplicate()
-	pr.bg_color = Color(0.80, 0.22, 0.16)
+	var pr: StyleBoxFlat = sb.duplicate() as StyleBoxFlat
+	pr.bg_color = Color(0.82, 0.22, 0.17)
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", hv)
 	b.add_theme_stylebox_override("pressed", pr)
-	return b
 
 # =========================================================================
 # JSON STAGE LOADER & SPAWNER
@@ -695,6 +744,7 @@ func _load_stage(stage_id: String) -> void:
 
 	blocks.clear()
 	enemies.clear()
+	bounce_pads.clear()
 	flying_projectiles.clear()
 	vfx_nodes.clear()
 	active_capy = null
@@ -713,6 +763,9 @@ func _load_stage(stage_id: String) -> void:
 	pending_victory = false
 	pending_defeat = false
 	end_delay_timer = 0.0
+	cam_pan_x = 0.0
+	cam_pan_target_x = 0.0
+	snap_camera = true
 	result_overlay.visible = false
 	_hide_trajectory()
 
@@ -721,17 +774,38 @@ func _load_stage(stage_id: String) -> void:
 		push_error("Stage JSON not found: " + path)
 		return
 	var f := FileAccess.open(path, FileAccess.READ)
-	var parsed = JSON.parse_string(f.get_as_text())
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	f.close()
 	if not (parsed is Dictionary):
 		push_error("Invalid stage JSON: " + path)
 		return
 	stage_data = parsed
 
+	# Posisi ketapel dinamis per stage (bisa di atas tebing tinggi atau lembah rendah!)
+	var sp_raw: Array = stage_data.get("slingshot_pos", [-9.5, 0.0])
+	sling_x = float(sp_raw[0])
+	sling_base_y = float(sp_raw[1])
+	launch_x = sling_x
+	launch_y = sling_base_y + 1.75
+	if is_instance_valid(slingshot_visual):
+		slingshot_visual.position = Vector3(sling_x, sling_base_y, 0.0)
+
+	stage_min_x = sling_x - 2.6
+	stage_max_x = sling_x + 14.0
+	stage_max_y = maxf(sling_base_y + 3.5, 4.5)
+
 	capy_queue.clear()
 	var q_raw: Array = stage_data.get("queue", ["chill"])
 	for item in q_raw:
 		capy_queue.append(str(item))
+
+	var t_raw: Array = stage_data.get("terrain", [])
+	for t_def in t_raw:
+		_spawn_terrain_from_def(t_def)
+
+	var bp_raw: Array = stage_data.get("bounce_pads", [])
+	for bp_def in bp_raw:
+		_spawn_bounce_pad_from_def(bp_def)
 
 	var b_raw: Array = stage_data.get("blocks", [])
 	for b_def in b_raw:
@@ -746,40 +820,193 @@ func _load_stage(stage_id: String) -> void:
 	_load_next_capy_onto_slingshot()
 	_refresh_score_hud()
 
-func _spawn_block_from_def(def: Dictionary) -> void:
-	var btype: String = str(def.get("type", "bamboo"))
-	var pos_arr: Array = def.get("pos", [5.0, 0.8])
-	var sz_arr: Array = def.get("size", [0.4, 1.5, 0.9])
+func _spawn_terrain_from_def(def: Dictionary) -> void:
+	var pos_arr: Array = def.get("pos", [0.0, 0.5])
+	var sz_arr: Array = def.get("size", [3.0, 1.5, 2.2])
+	var rot_deg: float = float(def.get("rot", 0.0))
+	var style: String = str(def.get("style", "cliff"))
 	var pos := Vector3(float(pos_arr[0]), float(pos_arr[1]), 0.0)
 	var sz := Vector3(float(sz_arr[0]), float(sz_arr[1]), float(sz_arr[2]))
+
+	var rad: float = deg_to_rad(rot_deg)
+	var half_x: float = absf(sz.x * 0.5 * cos(rad)) + absf(sz.y * 0.5 * sin(rad))
+	var half_y: float = absf(sz.x * 0.5 * sin(rad)) + absf(sz.y * 0.5 * cos(rad))
+	stage_min_x = minf(stage_min_x, pos.x - half_x - 0.3)
+	stage_max_x = maxf(stage_max_x, pos.x + half_x + 0.3)
+	stage_max_y = maxf(stage_max_y, pos.y + half_y + 0.3)
+
+	var sb := StaticBody3D.new()
+	sb.position = pos
+	sb.rotation_degrees = Vector3(0.0, 0.0, rot_deg)
+	sb.set_meta("kind", "ground")
+
+	var pm := PhysicsMaterial.new()
+	pm.friction = 0.65 if absf(rot_deg) < 5.0 else 0.14
+	pm.bounce = 0.04
+	sb.physics_material_override = pm
+
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = sz
+	col.shape = shape
+	sb.add_child(col)
+
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = sz
+	mi.mesh = bm
+	if style == "wood_deck":
+		mi.material_override = _make_rovio_mat(tex_wood, Color(0.68, 0.54, 0.40), Vector2(maxf(1.0, sz.x * 0.45), 1.0), 0.10, 0.06)
+	elif style == "stone_wall":
+		mi.material_override = _make_rovio_mat(tex_stone, Color(0.76, 0.78, 0.80), Vector2(maxf(1.0, sz.x * 0.4), maxf(1.0, sz.y * 0.4)), 0.12, 0.08)
+	else:
+		mi.material_override = _make_rovio_mat(tex_cliff, Color(0.72, 0.60, 0.50), Vector2(maxf(1.0, sz.x * 0.45), maxf(1.0, sz.y * 0.45)), 0.08, 0.04)
+		# Lapisan rumput lumut hijau di puncak tebing batu (ala tebing Angry Birds!)
+		if absf(rot_deg) <= 36.0:
+			var cap := MeshInstance3D.new()
+			var cbm := BoxMesh.new()
+			cbm.size = Vector3(sz.x + 0.08, minf(0.24, sz.y * 0.35), sz.z + 0.06)
+			cap.mesh = cbm
+			cap.position = Vector3(0.0, sz.y * 0.5 - cbm.size.y * 0.35, 0.0)
+			var cap_mat := _make_rovio_mat(tex_moss, Color(0.68, 0.82, 0.52), Vector2(maxf(1.0, sz.x * 0.5), 1.0), 0.14, 0.06)
+			cap_mat.set_shader_parameter("shadow_tint", Vector3(0.34, 0.46, 0.34))
+			cap.material_override = cap_mat
+			sb.add_child(cap)
+	sb.add_child(mi)
+	arena_root.add_child(sb)
+
+func _spawn_bounce_pad_from_def(def: Dictionary) -> void:
+	var pos_arr: Array = def.get("pos", [0.0, 0.25])
+	var sz_arr: Array = def.get("size", [1.5, 0.34, 1.0])
+	var rot_deg: float = float(def.get("rot", 0.0))
+	var power: float = float(def.get("power", 16.5))
+	var pos := Vector3(float(pos_arr[0]), float(pos_arr[1]), 0.0)
+	var sz := Vector3(float(sz_arr[0]), float(sz_arr[1]), float(sz_arr[2]))
+
+	stage_min_x = minf(stage_min_x, pos.x - sz.x * 0.6)
+	stage_max_x = maxf(stage_max_x, pos.x + sz.x * 0.6)
+	stage_max_y = maxf(stage_max_y, pos.y + sz.y * 0.6 + 0.4)
+
+	var sb := StaticBody3D.new()
+	sb.position = pos
+	sb.rotation_degrees = Vector3(0.0, 0.0, rot_deg)
+	sb.set_meta("kind", "bounce_pad")
+	sb.set_meta("bounce_power", power)
+
+	var pm := PhysicsMaterial.new()
+	pm.friction = 0.08
+	pm.bounce = 0.92
+	sb.physics_material_override = pm
+
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = sz
+	col.shape = shape
+	sb.add_child(col)
+
+	# Visual Drum Taiko Onsen (bantalan pegas merah-krem + pinggiran emas!)
+	var vis := Node3D.new()
+	sb.add_child(vis)
+
+	var base := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = sz
+	base.mesh = bm
+	base.material_override = _make_rovio_mat(null, Color(0.84, 0.22, 0.28), Vector2.ONE, 0.26, 0.22)
+	vis.add_child(base)
+
+	var top := MeshInstance3D.new()
+	var tm := BoxMesh.new()
+	tm.size = Vector3(sz.x * 0.88, sz.y * 0.42, sz.z * 0.88)
+	top.mesh = tm
+	top.position = Vector3(0.0, sz.y * 0.36, 0.0)
+	top.material_override = _make_rovio_mat(null, Color(0.98, 0.88, 0.56), Vector2.ONE, 0.22, 0.28)
+	vis.add_child(top)
+
+	var pad_rec := { "sb": sb, "vis": vis, "pulse_t": 0.0 }
+	sb.set_meta("pad_rec", pad_rec)
+	bounce_pads.append(pad_rec)
+
+	arena_root.add_child(sb)
+
+func _spawn_block_from_def(def: Dictionary) -> void:
+	var btype: String = str(def.get("type", "bamboo"))
+	var bshape: String = str(def.get("shape", "boulder" if btype == "boulder" else "box"))
+	var pos_arr: Array = def.get("pos", [5.0, 0.8])
+	var sz_arr: Array = def.get("size", [0.4, 1.5, 0.9])
+	var rot_deg: float = float(def.get("rot", 0.0))
+	var pos := Vector3(float(pos_arr[0]), float(pos_arr[1]), 0.0)
+	var sz := Vector3(float(sz_arr[0]), float(sz_arr[1]), float(sz_arr[2]))
+
+	var rot_rad: float = deg_to_rad(rot_deg)
+	var half_x: float = absf(sz.x * 0.5 * cos(rot_rad)) + absf(sz.y * 0.5 * sin(rot_rad))
+	var half_y: float = absf(sz.x * 0.5 * sin(rot_rad)) + absf(sz.y * 0.5 * cos(rot_rad))
+	stage_min_x = minf(stage_min_x, pos.x - half_x - 0.3)
+	stage_max_x = maxf(stage_max_x, pos.x + half_x + 0.3)
+	stage_max_y = maxf(stage_max_y, pos.y + half_y + 0.6)
 
 	var spec: Dictionary = MAT_SPECS.get(btype, MAT_SPECS["bamboo"])
 	var rb := RigidBody3D.new()
 	rb.position = pos
+	rb.rotation_degrees = Vector3(0.0, 0.0, rot_deg)
 	rb.mass = float(spec["mass"])
 	rb.axis_lock_linear_z = true
 	rb.axis_lock_angular_x = true
 	rb.axis_lock_angular_y = true
 	rb.contact_monitor = true
 	rb.max_contacts_reported = 6
-	rb.linear_damp = 0.25
-	rb.angular_damp = 0.35
+	rb.linear_damp = 0.06 if bshape == "boulder" else 0.25
+	rb.angular_damp = 0.08 if bshape == "boulder" else 0.35
 
 	var pm := PhysicsMaterial.new()
-	pm.friction = 0.22 if btype == "ice" else 0.72
-	pm.bounce = 0.04
+	if bshape == "boulder":
+		pm.friction = 0.32
+		pm.bounce = 0.14
+	elif btype == "ice":
+		pm.friction = 0.22
+		pm.bounce = 0.04
+	else:
+		pm.friction = 0.74
+		pm.bounce = 0.03
 	rb.physics_material_override = pm
 
 	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = sz
-	col.shape = shape
-	rb.add_child(col)
-
 	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = sz
-	mi.mesh = bm
+
+	if bshape == "boulder":
+		var rad: float = maxf(sz.x * 0.5, 0.35)
+		var sp := SphereShape3D.new()
+		sp.radius = rad
+		col.shape = sp
+		var sm := SphereMesh.new()
+		sm.radius = rad
+		sm.height = rad * 2.0
+		mi.mesh = sm
+	elif bshape == "wedge" or bshape == "roof":
+		var skew: float = float(def.get("skew", 0.5))
+		var pmsh := PrismMesh.new()
+		pmsh.size = sz
+		pmsh.left_to_right = skew
+		mi.mesh = pmsh
+		var hx: float = sz.x * 0.5
+		var hy: float = sz.y * 0.5
+		var hz: float = sz.z * 0.5
+		var top_x: float = lerpf(-hx, hx, skew)
+		var cvx := ConvexPolygonShape3D.new()
+		cvx.points = PackedVector3Array([
+			Vector3(-hx, -hy, -hz), Vector3(hx, -hy, -hz), Vector3(top_x, hy, -hz),
+			Vector3(-hx, -hy,  hz), Vector3(hx, -hy,  hz), Vector3(top_x, hy,  hz)
+		])
+		col.shape = cvx
+	else:
+		var shape := BoxShape3D.new()
+		shape.size = sz
+		col.shape = shape
+		var bm := BoxMesh.new()
+		bm.size = sz
+		mi.mesh = bm
+
+	rb.add_child(col)
 
 	var mat: Material
 	if btype == "ice":
@@ -794,13 +1021,27 @@ func _spawn_block_from_def(def: Dictionary) -> void:
 		mat = imat
 	elif btype == "tnt":
 		mat = _make_rovio_mat(tex_wood, Color(0.86, 0.24, 0.18), Vector2.ONE, 0.24, 0.20)
-		# Pita emas Yuzu TNT di sekeliling tong agar langsung dikenali!
 		var band := MeshInstance3D.new()
 		var bbm := BoxMesh.new()
 		bbm.size = Vector3(sz.x * 1.04, sz.y * 0.24, sz.z * 1.04)
 		band.mesh = bbm
 		band.material_override = _make_rovio_mat(null, Color(0.96, 0.78, 0.24), Vector2.ONE, 0.20, 0.25)
 		rb.add_child(band)
+	elif btype == "stone" or btype == "boulder":
+		mat = _make_rovio_mat(tex_stone, Color(0.76, 0.78, 0.80), Vector2.ONE, 0.16, 0.12)
+	elif btype == "yuzu_basket":
+		mat = _make_rovio_mat(tex_wood, Color(0.74, 0.56, 0.36), Vector2.ONE, 0.18, 0.12)
+		# 3 buah Jeruk Yuzu emas bertumpuk di atas keranjang bonus!
+		var ymat := _make_rovio_mat(null, Color(0.98, 0.80, 0.20), Vector2.ONE, 0.28, 0.30)
+		for yp in [Vector3(-0.14, sz.y * 0.45, 0.0), Vector3(0.14, sz.y * 0.45, 0.0), Vector3(0.0, sz.y * 0.68, 0.0)]:
+			var orb := MeshInstance3D.new()
+			var osm := SphereMesh.new()
+			osm.radius = 0.14
+			osm.height = 0.28
+			orb.mesh = osm
+			orb.position = yp
+			orb.material_override = ymat
+			rb.add_child(orb)
 	elif btype == "wood":
 		mat = _make_rovio_mat(tex_wood, Color(0.88, 0.76, 0.64), Vector2.ONE, 0.16, 0.10)
 	else:
@@ -836,6 +1077,9 @@ func _spawn_enemy_from_def(def: Dictionary) -> void:
 
 	var rb := RigidBody3D.new()
 	rb.position = Vector3(float(pos_arr[0]), float(pos_arr[1]), 0.0)
+	stage_min_x = minf(stage_min_x, rb.position.x - rad - 0.5)
+	stage_max_x = maxf(stage_max_x, rb.position.x + rad + 0.6)
+	stage_max_y = maxf(stage_max_y, rb.position.y + rad + (1.0 if is_boss else 0.7))
 	rb.mass = 1.85 if is_boss else 0.80
 	rb.axis_lock_linear_z = true
 	rb.axis_lock_angular_x = true
@@ -906,10 +1150,12 @@ func _load_next_capy_onto_slingshot() -> void:
 	var spec: Dictionary = CAPY_SPECS.get(active_capy_type, CAPY_SPECS["chill"])
 
 	var rb := RigidBody3D.new()
-	rb.position = Vector3(LAUNCH_X, LAUNCH_Y, 0.0)
+	rb.position = Vector3(launch_x, launch_y, 0.0)
 	rb.mass = float(spec["mass"])
 	rb.freeze = true
 	rb.continuous_cd = true
+	rb.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	rb.linear_damp = 0.0
 	rb.axis_lock_linear_z = true
 	rb.axis_lock_angular_x = true
 	rb.axis_lock_angular_y = true
@@ -946,13 +1192,17 @@ func _load_next_capy_onto_slingshot() -> void:
 func _rebuild_queue_visuals() -> void:
 	for c in queue_visual_root.get_children():
 		c.queue_free()
+	var compact_spacing: float = 0.46 if capy_queue.size() > 3 else 0.68
 	for i in capy_queue.size():
 		var cid: String = capy_queue[i]
 		var mi := MeshInstance3D.new()
 		mi.mesh = capy_meshes.get(cid, capy_meshes["chill"])
 		_apply_rovio_model_materials(mi)
-		mi.position = Vector3(LAUNCH_X - 1.75 - float(i) * 1.05, 0.36, 0.0)
-		mi.set_meta("base_y", 0.36)
+		var z_off: float = 0.0
+		if capy_queue.size() > 3:
+			z_off = -0.24 if (i % 2 == 1) else 0.18
+		mi.position = Vector3(sling_x - 1.05 - float(i) * compact_spacing, sling_base_y + 0.36, z_off)
+		mi.set_meta("base_y", sling_base_y + 0.36)
 		mi.set_meta("phase", float(i) * 1.1)
 		queue_visual_root.add_child(mi)
 
@@ -1047,8 +1297,11 @@ func _apply_damage(rec: Dictionary, dmg: float, is_enemy: bool) -> void:
 			_tint_enemy_mesh(rec, Color(1.0, 0.56, 0.46))
 		elif ratio < 0.55:
 			var mi: MeshInstance3D = rec["mi"]
-			if is_instance_valid(mi) and mi.material_override is ShaderMaterial:
-				(mi.material_override as ShaderMaterial).set_shader_parameter("tint_color", Color(0.62, 0.54, 0.48))
+			if is_instance_valid(mi):
+				if mi.material_override is ShaderMaterial:
+					(mi.material_override as ShaderMaterial).set_shader_parameter("tint_color", Color(0.62, 0.54, 0.48))
+				elif mi.material_override is StandardMaterial3D:
+					(mi.material_override as StandardMaterial3D).albedo_color = Color(0.56, 0.78, 0.88, 0.88)
 
 func _tint_enemy_mesh(rec: Dictionary, tint: Color) -> void:
 	var mi: MeshInstance3D = rec["mi"]
@@ -1095,6 +1348,8 @@ func _destroy_entity(rec: Dictionary, is_enemy: bool) -> void:
 			_trigger_tnt_explosion(pos)
 		elif btype == "ice":
 			_spawn_vfx_sphere(pos, 1.2, Color(0.72, 0.94, 1.0))
+		elif btype == "yuzu_basket":
+			_spawn_vfx_sphere(pos, 1.65, Color(0.98, 0.82, 0.22))
 		else:
 			_spawn_vfx_sphere(pos, 1.0, Color(0.88, 0.78, 0.56))
 
@@ -1180,6 +1435,8 @@ func _spawn_mini_clone(pos: Vector3, vel: Vector3) -> void:
 	rb.position = pos
 	rb.mass = 1.0
 	rb.continuous_cd = true
+	rb.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	rb.linear_damp = 0.0
 	rb.axis_lock_linear_z = true
 	rb.axis_lock_angular_x = true
 	rb.axis_lock_angular_y = true
@@ -1261,7 +1518,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				v2 = v2.normalized() * MAX_PULL_DIST
 			pull_vector = Vector3(-v2.x, -v2.y, 0.0)
 			if is_instance_valid(active_capy):
-				active_capy.position = Vector3(LAUNCH_X, LAUNCH_Y, 0.0) + pull_vector * 0.65
+				var aim_pos := Vector3(launch_x, launch_y, 0.0) + pull_vector * 0.65
+				aim_pos.y = maxf(sling_base_y + 0.38, aim_pos.y)
+				active_capy.position = aim_pos
 			_update_trajectory_preview()
 
 func _release_slingshot() -> void:
@@ -1271,7 +1530,7 @@ func _release_slingshot() -> void:
 		return
 	var launch_vel := -pull_vector * LAUNCH_POWER
 	if launch_vel.length() < 3.0:
-		active_capy.position = Vector3(LAUNCH_X, LAUNCH_Y, 0.0)
+		active_capy.position = Vector3(launch_x, launch_y, 0.0)
 		pull_vector = Vector3.ZERO
 		return
 	active_capy.freeze = false
@@ -1289,7 +1548,7 @@ func _physics_process(delta: float) -> void:
 		spawn_grace = maxf(spawn_grace - delta, 0.0)
 
 	# Simpan kecepatan frame sebelumnya untuk perhitungan impak fisik yang akurat
-	for b in blocks:
+	for b in blocks.duplicate():
 		var rb: RigidBody3D = b["rb"]
 		if is_instance_valid(rb):
 			b["last_vel"] = rb.linear_velocity
@@ -1325,7 +1584,27 @@ func _physics_process(delta: float) -> void:
 								break
 	for p in flying_projectiles:
 		if is_instance_valid(p):
+			var prev_vel: Vector3 = p.get_meta("last_vel", p.linear_velocity)
 			p.set_meta("last_vel", p.linear_velocity)
+			# Cek pantulan Drum Taiko Onsen (bounce_pad)
+			var cd: float = float(p.get_meta("bounce_cd", 0.0))
+			if cd > 0.0:
+				p.set_meta("bounce_cd", maxf(cd - delta, 0.0))
+			else:
+				for col_body in p.get_colliding_bodies():
+					if str(col_body.get_meta("kind", "")) == "bounce_pad":
+						var pwr: float = float(col_body.get_meta("bounce_power", 16.5))
+						var pad_up: Vector3 = (col_body as Node3D).global_transform.basis.y.normalized()
+						var boost_vel: Vector3 = pad_up * pwr + Vector3(prev_vel.x * 0.45, 0.0, 0.0)
+						boost_vel.z = 0.0
+						p.linear_velocity = boost_vel
+						p.set_meta("last_vel", boost_vel)
+						p.set_meta("bounce_cd", 0.25)
+						if col_body.has_meta("pad_rec"):
+							var pad_rec: Dictionary = col_body.get_meta("pad_rec")
+							pad_rec["pulse_t"] = 0.28
+						_spawn_vfx_sphere(p.global_position, 1.45, Color(0.98, 0.42, 0.36))
+						break
 
 func _process(delta: float) -> void:
 	anim_time += delta
@@ -1338,10 +1617,12 @@ func _process(delta: float) -> void:
 		combo_timer -= delta
 		if combo_timer <= 0.0:
 			combo_count = 0
+			_refresh_score_hud()
 
 	_update_slingshot_bands()
 	_update_capy_anim(delta)
 	_update_enemy_anim(delta)
+	_update_bounce_pad_anim(delta)
 	_update_camera(delta)
 	_update_vfx(delta)
 
@@ -1372,13 +1653,19 @@ func _process(delta: float) -> void:
 			_finish_stage_victory()
 	elif is_flying and not stage_ended:
 		flight_timer += delta
-		var speed_now: float = active_capy.linear_velocity.length() if is_instance_valid(active_capy) else 0.0
-		var out_of_bounds: bool = is_instance_valid(active_capy) and (active_capy.global_position.y < -4.0 or active_capy.global_position.x > 20.0)
-		if speed_now < 0.75 or out_of_bounds:
+		var speed_now: float = 0.0
+		var any_in_bounds: bool = false
+		for p in flying_projectiles:
+			if is_instance_valid(p):
+				var p_oob: bool = (p.global_position.y < -4.0 or p.global_position.x > stage_max_x + 9.0 or p.global_position.x < stage_min_x - 8.0)
+				if not p_oob:
+					any_in_bounds = true
+					speed_now = maxf(speed_now, p.linear_velocity.length())
+		if speed_now < 0.75 or not any_in_bounds:
 			settle_timer += delta
 		else:
 			settle_timer = 0.0
-		if flight_timer > 5.0 or settle_timer > 1.35:
+		if flight_timer > 6.2 or settle_timer > 1.45:
 			is_flying = false
 			if not capy_queue.is_empty():
 				_load_next_capy_onto_slingshot()
@@ -1455,7 +1742,10 @@ func _finish_stage_victory() -> void:
 		st_txt += "★ " if k < stars else "☆ "
 	result_stars.text = st_txt.strip_edges()
 	result_body.text = "Skor Akhir: %d\n(Termasuk Bonus Sisa %d Kapibara: +%d)\nTarget 3 Bintang: %d" % [score, unused_capys, bonus, s3]
-	btn_next_stage.visible = (SaveManager.get_next_stage_id(current_stage_id) != "")
+	var has_next: bool = (SaveManager.get_next_stage_id(current_stage_id) != "")
+	btn_next_stage.visible = has_next
+	_style_hud_btn(btn_next_stage, true)
+	_style_hud_btn(btn_retry, not has_next)
 	result_overlay.visible = true
 
 func _finish_stage_defeat() -> void:
@@ -1464,6 +1754,7 @@ func _finish_stage_defeat() -> void:
 	result_stars.text = "☆ ☆ ☆"
 	result_body.text = "Masih ada %d Klan Buaya bertahan.\nCoba sudut bidikan atau aktifkan skill kapibara di udara!" % enemies.size()
 	btn_next_stage.visible = false
+	_style_hud_btn(btn_retry, true)
 	result_overlay.visible = true
 
 func _go_next_stage() -> void:
@@ -1476,11 +1767,22 @@ func _go_next_stage() -> void:
 func _refresh_score_hud() -> void:
 	var best: int = SaveManager.get_stage_best_score(current_stage_id)
 	lbl_score.text = "Skor: %d  |  Buaya: %d  |  Rekor: %d" % [score, enemies.size(), best]
+	if is_instance_valid(combo_panel) and is_instance_valid(lbl_combo):
+		if combo_count >= 2:
+			var mult: float = 1.5
+			if combo_count >= 5:
+				mult = 3.0
+			elif combo_count >= 3:
+				mult = 2.0
+			lbl_combo.text = "KOMBO x%d! (%.1fx)" % [combo_count, mult]
+			combo_panel.visible = true
+		else:
+			combo_panel.visible = false
 
 func _refresh_queue_hud() -> void:
 	if is_instance_valid(active_capy):
 		var spec: Dictionary = CAPY_SPECS.get(active_capy_type, CAPY_SPECS["chill"])
-		lbl_queue_info.text = "Aktif: %s  •  Skill (Klik/Spasi): %s  •  Sisa Antrean: %d" % [
+		lbl_queue_info.text = "Aktif: %s  •  Skill (Klik/Spasi): %s  •  Sisa: %d  •  [A/D] Geser" % [
 			str(spec["name"]), str(spec["skill_desc"]), capy_queue.size()
 		]
 	else:
@@ -1490,6 +1792,8 @@ func _set_camera_view(view_idx: int) -> void:
 	current_view = view_idx
 	custom_orbit_active = false
 	cam_zoom_offset = 0.0
+	cam_pan_x = 0.0
+	cam_pan_target_x = 0.0
 	for i in btn_views.size():
 		btn_views[i].set_pressed_no_signal(i == view_idx)
 
@@ -1512,11 +1816,11 @@ func _update_capy_anim(delta: float) -> void:
 		active_capy_visual.rotation = active_capy_visual.rotation.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 
 func _update_slingshot_bands() -> void:
-	var target := Vector3(LAUNCH_X, LAUNCH_Y, 0.0)
+	var target := Vector3(launch_x, launch_y, 0.0)
 	if is_aiming and is_instance_valid(active_capy):
 		target = active_capy.position
-	_stretch_band(band_mesh_a, Vector3(LAUNCH_X, 1.82,  0.42), target)
-	_stretch_band(band_mesh_b, Vector3(LAUNCH_X, 1.82, -0.42), target)
+	_stretch_band(band_mesh_a, Vector3(sling_x, sling_base_y + 1.82,  0.42), target)
+	_stretch_band(band_mesh_b, Vector3(sling_x, sling_base_y + 1.82, -0.42), target)
 
 func _stretch_band(mi: MeshInstance3D, p0: Vector3, p1: Vector3) -> void:
 	var diff := p1 - p0
@@ -1540,7 +1844,7 @@ func _update_trajectory_preview() -> void:
 	if vel.length() < 3.0:
 		_hide_trajectory()
 		return
-	var start_p := active_capy.position if is_instance_valid(active_capy) else Vector3(LAUNCH_X, LAUNCH_Y, 0.0)
+	var start_p := active_capy.position if is_instance_valid(active_capy) else Vector3(launch_x, launch_y, 0.0)
 	for i in traj_dots.size():
 		var t := float(i + 1) * 0.075
 		var p := start_p + vel * t + Vector3(0.0, -0.5 * GRAVITY * t * t, 0.0)
@@ -1608,6 +1912,23 @@ func _update_enemy_anim(delta: float) -> void:
 			var br: float = sin(anim_time * 3.0 + ph)
 			mi.scale = Vector3(base_sc * (1.0 - 0.03 * br), base_sc * (1.0 + 0.045 * br), base_sc * (1.0 - 0.02 * br))
 
+func _update_bounce_pad_anim(delta: float) -> void:
+	for pad_rec in bounce_pads:
+		var pt: float = float(pad_rec["pulse_t"])
+		if pt <= 0.0:
+			continue
+		pt = maxf(pt - delta, 0.0)
+		pad_rec["pulse_t"] = pt
+		var vis: Node3D = pad_rec["vis"]
+		if not is_instance_valid(vis):
+			continue
+		if pt <= 0.0:
+			vis.scale = Vector3.ONE
+		else:
+			var p: float = pt / 0.28
+			var wave: float = sin(p * PI * 2.0) * p * 0.24
+			vis.scale = Vector3(1.0 - wave * 0.65, 1.0 + wave * 1.15, 1.0 - wave * 0.45)
+
 func _update_camera(delta: float) -> void:
 	if capture_croco_path != "" and not enemies.is_empty():
 		# Ambil musuh tertinggi/terbuka agar tidak terhalang pilar saat potret close-up
@@ -1622,33 +1943,63 @@ func _update_camera(delta: float) -> void:
 			cam.position = target + Vector3(-0.95, 0.45, 2.25)
 			cam.look_at(target, Vector3.UP)
 			return
+	var span_x: float = maxf(stage_max_x - stage_min_x, 20.0)
+	var mid_x: float = (stage_min_x + stage_max_x) * 0.5
+	var mid_y: float = clampf(stage_max_y * 0.44, 2.3, 4.6)
+
+	# Smooth horizontal camera pan (A/D or Left/Right arrow keys, clamped to stage bounds)
+	var pan_dir: float = 0.0
+	if not stage_ended and capture_stage_path == "" and capture_croco_path == "":
+		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+			pan_dir -= 1.0
+		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+			pan_dir += 1.0
+	var max_pan_left: float = minf((stage_min_x + 3.0) - mid_x, -4.0)
+	var max_pan_right: float = maxf((stage_max_x - 3.0) - mid_x, 4.0)
+	if pan_dir != 0.0:
+		cam_pan_target_x = clampf(cam_pan_target_x + pan_dir * 16.0 * delta, max_pan_left, max_pan_right)
+	elif is_aiming or is_flying:
+		cam_pan_target_x = lerpf(cam_pan_target_x, 0.0, clampf(delta * 4.5, 0.0, 1.0))
+	cam_pan_x = lerpf(cam_pan_x, cam_pan_target_x, clampf(delta * 10.0, 0.0, 1.0))
+
 	var desired_pos := Vector3.ZERO
-	var look_target := Vector3(1.8, 2.0, 0.0)
+	var desired_fov: float = 34.0
+	var look_target := Vector3(mid_x + cam_pan_x, mid_y, 0.0)
 	if custom_orbit_active:
-		cam.fov = lerpf(cam.fov, 45.0, delta * 6.0)
-		var center := Vector3(2.2, 2.0, 0.0)
-		var dist := 16.5 + cam_zoom_offset
+		desired_fov = 45.0
+		var center := Vector3(mid_x + 1.0 + cam_pan_x, mid_y, 0.0)
+		var dist: float = maxf(span_x * 0.78, 18.0) + cam_zoom_offset
 		desired_pos = center + Vector3(-sin(orbit_yaw) * cos(orbit_pitch) * dist, sin(orbit_pitch) * dist + 1.2, cos(orbit_yaw) * cos(orbit_pitch) * dist)
 		look_target = center
 	else:
 		match current_view:
 			CameraView.SIDE_25D:
-				cam.fov = lerpf(cam.fov, 34.0, delta * 6.0)
-				var fx := 1.2
+				desired_fov = 34.0
+				var z_fit_x: float = (span_x * 0.56) / (tan(deg_to_rad(17.0)) * 1.72)
+				var z_fit_y: float = ((stage_max_y + 1.8) * 0.62) / tan(deg_to_rad(17.0))
+				var cam_z: float = maxf(maxf(z_fit_x, z_fit_y), 23.0) + cam_zoom_offset
+				var fx: float = mid_x + cam_pan_x
 				if is_flying and is_instance_valid(active_capy):
-					fx = clampf(active_capy.position.x * 0.45, -1.0, 5.5)
-				desired_pos = Vector3(fx, 2.6, 22.0 + cam_zoom_offset)
-				look_target = Vector3(fx, 2.0, 0.0)
+					fx = lerpf(mid_x, clampf(active_capy.position.x, mid_x - 2.0, stage_max_x - 3.0), 0.35) + cam_pan_x
+				desired_pos = Vector3(fx, mid_y + 0.55, cam_z)
+				look_target = Vector3(fx, mid_y, 0.0)
 			CameraView.ANGLED_25D:
-				cam.fov = lerpf(cam.fov, 44.0, delta * 6.0)
-				var fx := 1.4
+				desired_fov = 42.0
+				var cam_z: float = maxf(span_x * 0.74, 18.5) + cam_zoom_offset
+				var fx: float = mid_x + cam_pan_x
 				if is_flying and is_instance_valid(active_capy):
-					fx = clampf(active_capy.position.x * 0.45, -1.0, 5.5)
-				desired_pos = Vector3(fx - 5.2, 4.8, 15.8 + cam_zoom_offset)
-				look_target = Vector3(fx + 1.4, 1.8, 0.0)
+					fx = lerpf(mid_x, clampf(active_capy.position.x, mid_x - 2.0, stage_max_x - 3.0), 0.40) + cam_pan_x
+				desired_pos = Vector3(fx - 5.2, mid_y + 2.8, cam_z)
+				look_target = Vector3(fx + 1.2, mid_y - 0.1, 0.0)
 			CameraView.BEHIND_3D:
-				cam.fov = lerpf(cam.fov, 54.0, delta * 6.0)
-				desired_pos = Vector3(LAUNCH_X - 4.4 - cam_zoom_offset * 0.4, 4.1, 0.6)
-				look_target = Vector3(5.8, 1.8, 0.0)
-	cam.position = cam.position.lerp(desired_pos, clampf(delta * 7.5, 0.0, 1.0))
+				desired_fov = 54.0
+				desired_pos = Vector3(sling_x - 4.4 - cam_zoom_offset * 0.4, sling_base_y + 4.1, 0.6)
+				look_target = Vector3(stage_max_x * 0.6, mid_y, 0.0)
+	if snap_camera:
+		cam.fov = desired_fov
+		cam.position = desired_pos
+		snap_camera = false
+	else:
+		cam.fov = lerpf(cam.fov, desired_fov, clampf(delta * 6.0, 0.0, 1.0))
+		cam.position = cam.position.lerp(desired_pos, clampf(delta * 7.5, 0.0, 1.0))
 	cam.look_at(look_target, Vector3.UP)

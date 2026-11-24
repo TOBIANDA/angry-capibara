@@ -26,20 +26,27 @@ void fragment() {
 	vec4 tex = texture(albedo_tex, UV * uv_scale);
 	vec3 base_col = tex.rgb * tint_color.rgb;
 
-	// Hemisphere AO: bagian bawah membulat ke bayangan lembut, bagian atas bersih
+	// Harmoni gamut woodblock/washi: redam saturasi neon digital berlebih agar selaras palet DESIGN.md
+	float lum = dot(base_col, vec3(0.299, 0.587, 0.114));
+	float max_c = max(base_col.r, max(base_col.g, base_col.b));
+	float min_c = min(base_col.r, min(base_col.g, base_col.b));
+	float sat = (max_c > 0.001) ? (max_c - min_c) / max_c : 0.0;
+	base_col = mix(base_col, vec3(lum) * vec3(1.02, 0.98, 0.92), smoothstep(0.54, 0.96, sat) * 0.28);
+
+	// Hemisphere AO: bagian bawah membulat ke bayangan netral-hangat (anti cast magenta di awan/putih)
 	float hemi = clamp(v_world_normal.y * 0.5 + 0.5, 0.0, 1.0);
-	vec3 ao_tint = mix(vec3(0.68, 0.62, 0.74), vec3(1.03, 1.01, 0.99), smoothstep(0.08, 0.88, hemi));
+	vec3 ao_tint = mix(vec3(0.76, 0.74, 0.76), vec3(1.02, 1.00, 0.98), smoothstep(0.08, 0.88, hemi));
 
 	// Rim light lembut mengikuti warna lokal (bukan putih kapur) & fokus di tepi atas/samping
 	float ndv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float rim_edge = smoothstep(0.56, 0.90, 1.0 - ndv);
-	float rim_top_mask = smoothstep(-0.35, 0.45, v_world_normal.y);
-	vec3 tinted_rim = mix(base_col * 1.45 + vec3(0.06), rim_color, 0.45);
+	float rim_edge = smoothstep(0.62, 0.93, 1.0 - ndv);
+	float rim_top_mask = smoothstep(-0.35, 0.45, v_world_normal.y) * (1.0 - smoothstep(0.85, 0.99, v_world_normal.y) * 0.45);
+	vec3 tinted_rim = mix(base_col * 1.10 + vec3(0.02), rim_color, 0.40);
 	float rim = rim_edge * rim_top_mask * rim_strength;
 
 	ALBEDO = base_col * ao_tint;
 	ROUGHNESS = 0.86;
-	EMISSION = emission_color + (tinted_rim * rim * 0.46);
+	EMISSION = emission_color + (tinted_rim * rim * 0.32);
 }
 
 void light() {

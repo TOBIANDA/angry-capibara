@@ -10,10 +10,10 @@ const SANDBOX_SCENE := "res://scenes/sandbox/mode_tester.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
 const PHASES := [
-	{ "title": "FASE 1 (1-1 s/d 1-5) — Intro Bambu & Chill Capi", "start": 1, "end": 5 },
-	{ "title": "FASE 2 (1-6 s/d 1-10) — + Kayu & Dash Capi", "start": 6, "end": 10 },
-	{ "title": "FASE 3 (1-11 s/d 1-15) — + Es/Kaca & Trio Mini-Capi", "start": 11, "end": 15 },
-	{ "title": "FASE 4 (1-16 s/d 1-20) — + Tong Yuzu TNT & Boss 1-20", "start": 16, "end": 20 }
+	{ "badge": "FASE 1", "title": "1-1 s/d 1-5  •  Intro Bambu & Chill Capi", "start": 1, "end": 5 },
+	{ "badge": "FASE 2", "title": "1-6 s/d 1-10  •  Kayu & Dash Capi", "start": 6, "end": 10 },
+	{ "badge": "FASE 3", "title": "1-11 s/d 1-15  •  Es/Kaca & Trio Mini-Capi", "start": 11, "end": 15 },
+	{ "badge": "FASE 4", "title": "1-16 s/d 1-20  •  Tong Yuzu TNT & Boss 1-20", "start": 16, "end": 20 }
 ]
 
 var stage_meta: Dictionary = {}
@@ -179,56 +179,102 @@ func _rebuild_stage_grid() -> void:
 		phase_vb.add_theme_constant_override("separation", 5)
 		grid_container.add_child(phase_vb)
 
+		var s_start: int = int(ph["start"])
+		var s_end: int = int(ph["end"])
+		var phase_stars := 0
+		for s in range(s_start, s_end + 1):
+			phase_stars += SaveManager.get_stage_stars("1-%d" % s)
+
+		var ph_hdr := HBoxContainer.new()
+		ph_hdr.add_theme_constant_override("separation", 10)
+		ph_hdr.alignment = BoxContainer.ALIGNMENT_CENTER
+		phase_vb.add_child(ph_hdr)
+
+		var badge_panel := PanelContainer.new()
+		var bp_st := StyleBoxFlat.new()
+		bp_st.bg_color = Color(0.18, 0.13, 0.11, 0.95)
+		bp_st.border_color = Color(0.83, 0.72, 0.50, 0.90)
+		bp_st.set_border_width_all(1)
+		bp_st.set_corner_radius_all(6)
+		bp_st.content_margin_left = 9
+		bp_st.content_margin_right = 9
+		bp_st.content_margin_top = 2
+		bp_st.content_margin_bottom = 2
+		badge_panel.add_theme_stylebox_override("panel", bp_st)
+		ph_hdr.add_child(badge_panel)
+
+		var badge_lbl := Label.new()
+		badge_lbl.text = str(ph["badge"])
+		badge_lbl.add_theme_font_size_override("font_size", 11)
+		badge_lbl.add_theme_color_override("font_color", Color(0.96, 0.84, 0.44))
+		badge_panel.add_child(badge_lbl)
+
 		var plbl := Label.new()
 		plbl.text = str(ph["title"])
+		plbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		plbl.add_theme_font_size_override("font_size", 13)
-		plbl.add_theme_color_override("font_color", Color(0.92, 0.85, 0.70))
-		phase_vb.add_child(plbl)
+		plbl.add_theme_color_override("font_color", Color(0.96, 0.92, 0.84))
+		plbl.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.07, 0.90))
+		plbl.add_theme_constant_override("outline_size", 3)
+		ph_hdr.add_child(plbl)
+
+		var pstars := Label.new()
+		pstars.text = "★ %d / 15" % phase_stars
+		pstars.add_theme_font_size_override("font_size", 12)
+		pstars.add_theme_color_override("font_color", Color(0.94, 0.82, 0.48) if phase_stars == 15 else Color(0.82, 0.75, 0.62))
+		pstars.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.07, 0.85))
+		pstars.add_theme_constant_override("outline_size", 2)
+		ph_hdr.add_child(pstars)
 
 		var row := HBoxContainer.new()
 		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		row.add_theme_constant_override("separation", 10)
 		phase_vb.add_child(row)
 
-		var s_start: int = int(ph["start"])
-		var s_end: int = int(ph["end"])
 		for s in range(s_start, s_end + 1):
 			var sid := "1-%d" % s
 			var unlocked: bool = SaveManager.is_stage_unlocked(sid)
 			var stars: int = SaveManager.get_stage_stars(sid)
 			var is_boss: bool = (s == 20)
-			var is_highlight: bool = unlocked and (sid == frontier_id or is_boss)
-			row.add_child(_make_stage_card(sid, unlocked, stars, is_highlight, is_boss))
+			var is_frontier: bool = unlocked and (sid == frontier_id)
+			row.add_child(_make_stage_card(sid, unlocked, stars, is_frontier, is_boss))
 
-func _make_stage_card(sid: String, unlocked: bool, stars: int, is_highlight: bool, is_boss: bool) -> Button:
+func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool, is_boss: bool) -> Button:
 	var btn := Button.new()
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	btn.disabled = not unlocked
+	btn.clip_contents = true
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if unlocked else Control.CURSOR_ARROW
 
-	var bg := Color(0.16, 0.12, 0.11, 0.92)
-	var border := Color(0.76, 0.68, 0.54, 0.85)
+	var bg := Color(0.17, 0.13, 0.11, 0.93)
+	var border := Color(0.78, 0.69, 0.54, 0.82)
+	var border_w := 2
 	if not unlocked:
-		bg = Color(0.12, 0.10, 0.09, 0.72)
-		border = Color(0.42, 0.37, 0.32, 0.55)
-	elif is_highlight:
+		bg = Color(0.11, 0.09, 0.08, 0.74)
+		border = Color(0.38, 0.33, 0.29, 0.50)
+	elif is_frontier:
 		# 1 Aksen Fokus Tunggal Vermilion (DESIGN.md R-01)
-		bg = Color(0.74, 0.21, 0.16, 0.95)
-		border = Color(0.96, 0.88, 0.68)
+		bg = Color(0.78, 0.21, 0.16, 0.96)
+		border = Color(0.98, 0.88, 0.62)
+		border_w = 3
+	elif is_boss:
+		bg = Color(0.21, 0.15, 0.12, 0.95)
+		border = Color(0.92, 0.78, 0.42, 0.95)
+		border_w = 2
+	elif stars == 3:
+		bg = Color(0.19, 0.14, 0.12, 0.94)
+		border = Color(0.88, 0.77, 0.48, 0.92)
 
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = bg
 	normal.border_color = border
-	normal.set_border_width_all(2 if not is_highlight else 3)
+	normal.set_border_width_all(border_w)
 	normal.set_corner_radius_all(10)
-	normal.content_margin_left = 10
-	normal.content_margin_right = 10
-	normal.content_margin_top = 8
-	normal.content_margin_bottom = 8
 
 	var hover := normal.duplicate()
-	hover.bg_color = bg.lightened(0.14)
+	hover.bg_color = bg.lightened(0.13)
+	hover.border_color = Color(0.98, 0.90, 0.66)
 	var pressed := normal.duplicate()
 	pressed.bg_color = bg.darkened(0.14)
 	var disabled_sb := normal.duplicate()
@@ -238,23 +284,118 @@ func _make_stage_card(sid: String, unlocked: bool, stars: int, is_highlight: boo
 	btn.add_theme_stylebox_override("pressed", pressed)
 	btn.add_theme_stylebox_override("disabled", disabled_sb)
 
-	var star_str := ""
+	var mar := MarginContainer.new()
+	mar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mar.add_theme_constant_override("margin_left", 10)
+	mar.add_theme_constant_override("margin_right", 10)
+	mar.add_theme_constant_override("margin_top", 7)
+	mar.add_theme_constant_override("margin_bottom", 7)
+	btn.add_child(mar)
+
+	var vb := VBoxContainer.new()
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_theme_constant_override("separation", 3)
+	mar.add_child(vb)
+
+	# Top row: Stage ID + optional Boss/Status badge
+	var top_row := HBoxContainer.new()
+	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(top_row)
+
+	var lbl_id := Label.new()
+	lbl_id.text = sid
+	lbl_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_id.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_id.add_theme_font_size_override("font_size", 15)
 	if not unlocked:
-		star_str = "TERKUNCI"
+		lbl_id.add_theme_color_override("font_color", Color(0.56, 0.51, 0.46, 0.85))
+	elif is_frontier:
+		lbl_id.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84))
+	else:
+		lbl_id.add_theme_color_override("font_color", Color(0.95, 0.83, 0.45))
+	top_row.add_child(lbl_id)
+
+	if is_boss:
+		var boss_pill := PanelContainer.new()
+		boss_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bs := StyleBoxFlat.new()
+		bs.bg_color = Color(0.14, 0.09, 0.08, 0.90)
+		bs.border_color = Color(0.96, 0.84, 0.46, 0.90)
+		bs.set_border_width_all(1)
+		bs.set_corner_radius_all(5)
+		bs.content_margin_left = 6
+		bs.content_margin_right = 6
+		bs.content_margin_top = 1
+		bs.content_margin_bottom = 1
+		boss_pill.add_theme_stylebox_override("panel", bs)
+		top_row.add_child(boss_pill)
+
+		var bl := Label.new()
+		bl.text = "BOSS"
+		bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bl.add_theme_font_size_override("font_size", 10)
+		bl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.46))
+		boss_pill.add_child(bl)
+	elif is_frontier:
+		var cta_lbl := Label.new()
+		cta_lbl.text = "MAIN"
+		cta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cta_lbl.add_theme_font_size_override("font_size", 10)
+		cta_lbl.add_theme_color_override("font_color", Color(1.0, 0.94, 0.78))
+		top_row.add_child(cta_lbl)
+	elif not unlocked:
+		var lock_lbl := Label.new()
+		lock_lbl.text = "TERKUNCI"
+		lock_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lock_lbl.add_theme_font_size_override("font_size", 10)
+		lock_lbl.add_theme_color_override("font_color", Color(0.55, 0.50, 0.45, 0.80))
+		top_row.add_child(lock_lbl)
+
+	# Middle: Full wrapped stage title (no ellipsis truncation)
+	var stage_title: String = str(stage_meta.get(sid, sid))
+	var lbl_name := Label.new()
+	lbl_name.text = stage_title
+	lbl_name.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lbl_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_name.add_theme_font_size_override("font_size", 13)
+	if not unlocked:
+		lbl_name.add_theme_color_override("font_color", Color(0.58, 0.53, 0.48, 0.80))
+	else:
+		lbl_name.add_theme_color_override("font_color", Color(0.97, 0.94, 0.88))
+	vb.add_child(lbl_name)
+
+	# Bottom: Star badge row
+	var star_row := HBoxContainer.new()
+	star_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	star_row.add_theme_constant_override("separation", 4)
+	star_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(star_row)
+
+	if not unlocked:
+		var l_dash := Label.new()
+		l_dash.text = "—  —  —"
+		l_dash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		l_dash.add_theme_font_size_override("font_size", 12)
+		l_dash.add_theme_color_override("font_color", Color(0.45, 0.40, 0.36, 0.72))
+		star_row.add_child(l_dash)
 	else:
 		for k in 3:
-			star_str += "★" if k < stars else "☆"
-		if is_boss:
-			star_str = "BOSS  " + star_str
-
-	var stage_title: String = str(stage_meta.get(sid, sid))
-	if stage_title.length() > 21:
-		stage_title = stage_title.substr(0, 20) + "…"
-	btn.text = "%s\n%s\n%s" % [sid, stage_title, star_str]
-	btn.add_theme_font_size_override("font_size", 14)
-	btn.add_theme_color_override("font_color", Color(0.98, 0.95, 0.89))
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	btn.add_theme_color_override("font_disabled_color", Color(0.62, 0.57, 0.52, 0.82))
+			var sl := Label.new()
+			var earned: bool = k < stars
+			sl.text = "★" if earned else "☆"
+			sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			sl.add_theme_font_size_override("font_size", 15)
+			if earned:
+				sl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.38))
+			else:
+				sl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.74, 0.42) if is_frontier else Color(0.56, 0.50, 0.42, 0.72))
+			sl.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.06, 0.85))
+			sl.add_theme_constant_override("outline_size", 2)
+			star_row.add_child(sl)
 
 	var stage_id_cap := sid
 	btn.pressed.connect(func():
