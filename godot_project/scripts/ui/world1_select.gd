@@ -1,8 +1,8 @@
 extends Control
 
 # Layar Peta Pilihan Sub-Level World 1: Lembah Onsen Bambu (1-1 s/d 1-20)
-# Mengikuti palet Anti-Slop DESIGN.md (3 warna inti + 1 aksen Vermilion + netral Warm Lacquer Espresso)
-# dengan latar 2D parallax Visual Studio C++ yang serasi dengan Home Screen.
+# Desain terinspirasi Angry Birds: grid 5x4 tile persegi tebal di tengah, angka besar,
+# 3 bintang melengkung, ikon gembok/mahkota boss, latar Onsen/Bambu terbuka, dan pita preview bawah.
 
 const HOME_SCENE := "res://scenes/ui/home_screen.tscn"
 const WORLD_MAP_SCENE := "res://scenes/ui/world_select_map.tscn"
@@ -11,10 +11,10 @@ const SANDBOX_SCENE := "res://scenes/sandbox/mode_tester.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
 const PHASES := [
-	{ "badge": "FASE 1", "title": "1-1 s/d 1-5  •  Intro Bambu & Chill Capi", "start": 1, "end": 5, "pip": Color(0.45, 0.66, 0.32) },
-	{ "badge": "FASE 2", "title": "1-6 s/d 1-10  •  Kayu & Dash Capi", "start": 6, "end": 10, "pip": Color(0.72, 0.46, 0.26) },
-	{ "badge": "FASE 3", "title": "1-11 s/d 1-15  •  Es/Kaca & Trio Mini-Capi", "start": 11, "end": 15, "pip": Color(0.42, 0.68, 0.82) },
-	{ "badge": "FASE 4", "title": "1-16 s/d 1-20  •  Tong Yuzu TNT & Boss 1-20", "start": 16, "end": 20, "pip": Color(0.82, 0.24, 0.18) }
+	{ "badge": "FASE 1", "short": "Bambu & Chill", "start": 1, "end": 5, "pip": Color(0.45, 0.66, 0.32) },
+	{ "badge": "FASE 2", "short": "Kayu & Dash", "start": 6, "end": 10, "pip": Color(0.72, 0.46, 0.26) },
+	{ "badge": "FASE 3", "short": "Es & Trio Mini", "start": 11, "end": 15, "pip": Color(0.42, 0.68, 0.82) },
+	{ "badge": "FASE 4", "short": "TNT & Boss", "start": 16, "end": 20, "pip": Color(0.82, 0.24, 0.18) }
 ]
 
 var stage_meta: Dictionary = {}
@@ -23,17 +23,24 @@ var grid_container: VBoxContainer
 var lbl_stars_total: Label
 var total_star_bar: ProgressBar
 var btn_unlock_toggle: Button
+var lbl_preview: Label
+var display_font: SystemFont
 
 var elapsed: float = 0.0
 var mouse_px: Vector2 = Vector2.ZERO
 var smooth_px: Vector2 = Vector2.ZERO
 var capture_path: String = ""
 var capture_done: bool = false
+var default_preview_sid: String = "1-1"
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-w1="):
 			capture_path = arg.substr(13)
+
+	display_font = SystemFont.new()
+	display_font.font_names = PackedStringArray(["Impact", "Arial Black", "Segoe UI Black"])
+	display_font.font_weight = 900
 
 	clip_contents = true
 	_load_stage_metadata()
@@ -56,7 +63,8 @@ func _load_stage_metadata() -> void:
 
 func _add_bg_tex(path: String, base_p: Vector2, sz: Vector2, depth: float, alpha: float = 1.0) -> void:
 	var tr := TextureRect.new()
-	tr.texture = load(path)
+	if ResourceLoader.exists(path):
+		tr.texture = load(path)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_SCALE
 	tr.size = sz * 1.06
@@ -70,26 +78,27 @@ func _add_bg_tex(path: String, base_p: Vector2, sz: Vector2, depth: float, alpha
 
 func _setup_parallax_bg() -> void:
 	_add_bg_tex("res://assets/generated/home2d/layer_00_sky_sun.png", Vector2.ZERO, BASE_SIZE, 0.06)
+	_add_bg_tex("res://assets/generated/home2d/layer_01_sunburst.png", Vector2.ZERO, BASE_SIZE, 0.10, 0.72)
 	_add_bg_tex("res://assets/generated/home2d/layer_02_clouds.png", Vector2(0.0, 20.0), Vector2(1280.0, 420.0), 0.14)
 	_add_bg_tex("res://assets/generated/home2d/layer_03_mountains_far.png", Vector2.ZERO, BASE_SIZE, 0.22)
 	_add_bg_tex("res://assets/generated/home2d/layer_04_midground_onsen.png", Vector2.ZERO, BASE_SIZE, 0.34)
 	_add_bg_tex("res://assets/generated/home2d/layer_07_foreground_hill.png", Vector2(0.0, 330.0), Vector2(1280.0, 420.0), 0.52)
 	_add_bg_tex("res://assets/generated/home2d/layer_08_bamboo_frame.png", Vector2.ZERO, BASE_SIZE, 0.80)
 
-	# Lapisan gelap hangat tipis agar kartu 20 sub-level kontras & nyaman dibaca
+	# Lapisan hangat tipis (14%) agar pemandangan Onsen/Bambu bersinar cerah di belakang grid
 	var veil := ColorRect.new()
 	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	veil.color = Color(0.11, 0.08, 0.07, 0.56)
+	veil.color = Color(0.11, 0.08, 0.07, 0.14)
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(veil)
 
 func _setup_ui() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 46)
-	margin.add_theme_constant_override("margin_right", 46)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_left", 38)
+	margin.add_theme_constant_override("margin_right", 38)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 
 	var root_vb := VBoxContainer.new()
@@ -119,9 +128,11 @@ func _setup_ui() -> void:
 	title_vb.add_child(lbl_title)
 
 	var lbl_sub := Label.new()
-	lbl_sub.text = "Pertahankan Lembah Onsen dari Klan Buaya Rakus • 4 Fase (20 Sub-Level)"
+	lbl_sub.text = "Pilih Stage Pertempuran • 4 Fase (20 Sub-Level)"
 	lbl_sub.add_theme_font_size_override("font_size", 13)
-	lbl_sub.add_theme_color_override("font_color", Color(0.86, 0.80, 0.68))
+	lbl_sub.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
+	lbl_sub.add_theme_color_override("font_outline_color", Color(0.14, 0.09, 0.08))
+	lbl_sub.add_theme_constant_override("outline_size", 3)
 	title_vb.add_child(lbl_sub)
 
 	# Star counter plaque (9-slice ui_panel_lacquer.png + ui_star_gold.png)
@@ -134,8 +145,8 @@ func _setup_ui() -> void:
 	sp_st.texture_margin_bottom = 20
 	sp_st.content_margin_left = 18
 	sp_st.content_margin_right = 18
-	sp_st.content_margin_top = 12
-	sp_st.content_margin_bottom = 12
+	sp_st.content_margin_top = 10
+	sp_st.content_margin_bottom = 10
 	star_panel.add_theme_stylebox_override("panel", sp_st)
 	hdr.add_child(star_panel)
 
@@ -183,11 +194,40 @@ func _setup_ui() -> void:
 	btn_sandbox.pressed.connect(func(): get_tree().change_scene_to_file(SANDBOX_SCENE))
 	hdr.add_child(btn_sandbox)
 
-	# 4 PHASE ROWS × 5 SUB-LEVEL CARDS
+	# CENTERED 5x4 ANGRY BIRDS-STYLE TILE GRID
+	var center_wrap := CenterContainer.new()
+	center_wrap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root_vb.add_child(center_wrap)
+
 	grid_container = VBoxContainer.new()
-	grid_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	grid_container.add_theme_constant_override("separation", 10)
-	root_vb.add_child(grid_container)
+	grid_container.add_theme_constant_override("separation", 12)
+	center_wrap.add_child(grid_container)
+
+	# BOTTOM STAGE PREVIEW RIBBON
+	var bot_center := CenterContainer.new()
+	root_vb.add_child(bot_center)
+
+	var preview_panel := PanelContainer.new()
+	preview_panel.custom_minimum_size = Vector2(680, 46)
+	var pv_st := StyleBoxTexture.new()
+	pv_st.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+	pv_st.texture_margin_left = 20
+	pv_st.texture_margin_right = 20
+	pv_st.texture_margin_top = 14
+	pv_st.texture_margin_bottom = 14
+	pv_st.content_margin_left = 20
+	pv_st.content_margin_right = 20
+	pv_st.content_margin_top = 10
+	pv_st.content_margin_bottom = 10
+	preview_panel.add_theme_stylebox_override("panel", pv_st)
+	bot_center.add_child(preview_panel)
+
+	lbl_preview = Label.new()
+	lbl_preview.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_preview.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_preview.add_theme_font_size_override("font_size", 14)
+	lbl_preview.add_theme_color_override("font_color", Color(0.98, 0.94, 0.84))
+	preview_panel.add_child(lbl_preview)
 
 	_rebuild_stage_grid()
 
@@ -201,7 +241,6 @@ func _rebuild_stage_grid() -> void:
 		total_star_bar.value = float(total_stars)
 	btn_unlock_toggle.text = "MODE PROGRES" if SaveManager.unlock_all_preview else "BUKA SEMUA"
 
-	# Cari frontier stage terakhir yang terbuka tapi belum berbintang
 	var frontier_id := "1-1"
 	for s in range(1, 21):
 		var sid := "1-%d" % s
@@ -209,79 +248,74 @@ func _rebuild_stage_grid() -> void:
 			frontier_id = sid
 			if SaveManager.get_stage_stars(sid) == 0:
 				break
+	default_preview_sid = frontier_id
+	_set_preview_stage(default_preview_sid)
 
 	for ph in PHASES:
-		var phase_vb := VBoxContainer.new()
-		phase_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		phase_vb.add_theme_constant_override("separation", 5)
-		grid_container.add_child(phase_vb)
-
 		var s_start: int = int(ph["start"])
 		var s_end: int = int(ph["end"])
 		var phase_stars := 0
 		for s in range(s_start, s_end + 1):
 			phase_stars += SaveManager.get_stage_stars("1-%d" % s)
 
-		# Sleek dark-lacquer phase ribbon with subtle gold underline
-		var ph_banner := PanelContainer.new()
-		var pb_st := StyleBoxFlat.new()
-		pb_st.bg_color = Color(0.13, 0.09, 0.08, 0.88)
-		pb_st.border_color = Color(0.84, 0.72, 0.46, 0.60)
-		pb_st.border_width_bottom = 2
-		pb_st.set_corner_radius_all(6)
-		pb_st.content_margin_left = 10
-		pb_st.content_margin_right = 12
-		pb_st.content_margin_top = 4
-		pb_st.content_margin_bottom = 4
-		ph_banner.add_theme_stylebox_override("panel", pb_st)
-		phase_vb.add_child(ph_banner)
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 16)
+		grid_container.add_child(row)
 
-		var ph_hdr := HBoxContainer.new()
-		ph_hdr.add_theme_constant_override("separation", 10)
-		ph_hdr.alignment = BoxContainer.ALIGNMENT_CENTER
-		ph_banner.add_child(ph_hdr)
+		# Compact left-side Phase Crest Pill
+		var crest_center := CenterContainer.new()
+		row.add_child(crest_center)
+
+		var crest := PanelContainer.new()
+		crest.custom_minimum_size = Vector2(126, 86)
+		var cr_st := StyleBoxTexture.new()
+		cr_st.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
+		cr_st.texture_margin_left = 18
+		cr_st.texture_margin_right = 18
+		cr_st.texture_margin_top = 18
+		cr_st.texture_margin_bottom = 18
+		cr_st.content_margin_left = 12
+		cr_st.content_margin_right = 12
+		cr_st.content_margin_top = 10
+		cr_st.content_margin_bottom = 10
+		crest.add_theme_stylebox_override("panel", cr_st)
+		crest_center.add_child(crest)
+
+		var cr_vb := VBoxContainer.new()
+		cr_vb.alignment = BoxContainer.ALIGNMENT_CENTER
+		cr_vb.add_theme_constant_override("separation", 2)
+		crest.add_child(cr_vb)
+
+		var cr_top := HBoxContainer.new()
+		cr_top.alignment = BoxContainer.ALIGNMENT_CENTER
+		cr_top.add_theme_constant_override("separation", 5)
+		cr_vb.add_child(cr_top)
 
 		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(4, 16)
+		pip.custom_minimum_size = Vector2(4, 13)
 		pip.color = ph["pip"]
-		ph_hdr.add_child(pip)
+		cr_top.add_child(pip)
 
-		var badge_panel := PanelContainer.new()
-		var bp_st := StyleBoxFlat.new()
-		bp_st.bg_color = Color(0.22, 0.16, 0.12, 0.96)
-		bp_st.border_color = Color(0.86, 0.74, 0.48, 0.85)
-		bp_st.set_border_width_all(1)
-		bp_st.set_corner_radius_all(5)
-		bp_st.content_margin_left = 8
-		bp_st.content_margin_right = 8
-		bp_st.content_margin_top = 1
-		bp_st.content_margin_bottom = 1
-		badge_panel.add_theme_stylebox_override("panel", bp_st)
-		ph_hdr.add_child(badge_panel)
+		var cr_badge := Label.new()
+		cr_badge.text = str(ph["badge"])
+		cr_badge.add_theme_font_size_override("font_size", 12)
+		cr_badge.add_theme_color_override("font_color", Color(0.98, 0.86, 0.44))
+		cr_top.add_child(cr_badge)
 
-		var badge_lbl := Label.new()
-		badge_lbl.text = str(ph["badge"])
-		badge_lbl.add_theme_font_size_override("font_size", 11)
-		badge_lbl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.44))
-		badge_panel.add_child(badge_lbl)
+		var cr_short := Label.new()
+		cr_short.text = str(ph["short"])
+		cr_short.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cr_short.add_theme_font_size_override("font_size", 11)
+		cr_short.add_theme_color_override("font_color", Color(0.92, 0.88, 0.78))
+		cr_vb.add_child(cr_short)
 
-		var plbl := Label.new()
-		plbl.text = str(ph["title"])
-		plbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plbl.add_theme_font_size_override("font_size", 13)
-		plbl.add_theme_color_override("font_color", Color(0.96, 0.92, 0.84))
-		ph_hdr.add_child(plbl)
-
-		var pstars := Label.new()
-		pstars.text = "★ %d / 15" % phase_stars
-		pstars.add_theme_font_size_override("font_size", 12)
-		pstars.add_theme_color_override("font_color", Color(0.98, 0.84, 0.40) if phase_stars == 15 else Color(0.84, 0.76, 0.62))
-		ph_hdr.add_child(pstars)
-
-		var row := HBoxContainer.new()
-		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", 10)
-		phase_vb.add_child(row)
+		var cr_stars := Label.new()
+		cr_stars.text = "★ %d / 15" % phase_stars
+		cr_stars.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cr_stars.add_theme_font_size_override("font_size", 11)
+		cr_stars.add_theme_color_override("font_color", Color(0.98, 0.84, 0.40) if phase_stars == 15 else Color(0.80, 0.74, 0.62))
+		cr_vb.add_child(cr_stars)
 
 		for s in range(s_start, s_end + 1):
 			var sid := "1-%d" % s
@@ -289,43 +323,35 @@ func _rebuild_stage_grid() -> void:
 			var stars: int = SaveManager.get_stage_stars(sid)
 			var is_boss: bool = (s == 20)
 			var is_frontier: bool = unlocked and (sid == frontier_id)
-			row.add_child(_make_stage_card(sid, unlocked, stars, is_frontier, is_boss))
+			row.add_child(_make_stage_tile(s, sid, unlocked, stars, is_frontier, is_boss))
 
-func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool, is_boss: bool) -> Button:
+func _make_stage_tile(stage_num: int, sid: String, unlocked: bool, stars: int, is_frontier: bool, is_boss: bool) -> Button:
 	var btn := Button.new()
-	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	btn.custom_minimum_size = Vector2(118, 108)
+	btn.pivot_offset = Vector2(59, 54)
 	btn.disabled = not unlocked
-	btn.clip_contents = true
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if unlocked else Control.CURSOR_ARROW
 
-	var normal := StyleBoxTexture.new()
+	var tex_path := "res://assets/generated/home2d/ui_tile_open.png"
 	if not unlocked:
-		normal.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
-		normal.texture_margin_left = 28
-		normal.texture_margin_right = 28
-		normal.texture_margin_top = 28
-		normal.texture_margin_bottom = 28
-		normal.modulate_color = Color(0.62, 0.58, 0.56, 0.78)
-	elif is_frontier:
-		normal.texture = load("res://assets/generated/home2d/ui_btn_vermilion.png")
-		normal.texture_margin_left = 24
-		normal.texture_margin_right = 24
-		normal.texture_margin_top = 20
-		normal.texture_margin_bottom = 24
-	else:
-		normal.texture = load("res://assets/generated/home2d/ui_card_washi.png")
-		normal.texture_margin_left = 28
-		normal.texture_margin_right = 28
-		normal.texture_margin_top = 28
-		normal.texture_margin_bottom = 28
-		if is_boss:
-			normal.modulate_color = Color(1.0, 0.94, 0.84)
+		tex_path = "res://assets/generated/home2d/ui_tile_locked.png"
+	elif is_boss:
+		tex_path = "res://assets/generated/home2d/ui_tile_boss.png"
+
+	var normal := StyleBoxTexture.new()
+	if ResourceLoader.exists(tex_path):
+		normal.texture = load(tex_path)
+	normal.texture_margin_left = 22
+	normal.texture_margin_right = 22
+	normal.texture_margin_top = 22
+	normal.texture_margin_bottom = 26
+	if is_frontier and not is_boss:
+		normal.modulate_color = Color(1.06, 1.02, 0.90)
 
 	var hover: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
-	hover.modulate_color = normal.modulate_color * Color(1.08, 1.06, 1.03)
+	hover.modulate_color = normal.modulate_color * Color(1.08, 1.06, 1.02)
 	var pressed: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
-	pressed.modulate_color = normal.modulate_color * Color(0.86, 0.84, 0.82)
+	pressed.modulate_color = normal.modulate_color * Color(0.88, 0.86, 0.84)
 	var disabled_sb: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
 
 	btn.add_theme_stylebox_override("normal", normal)
@@ -333,118 +359,117 @@ func _make_stage_card(sid: String, unlocked: bool, stars: int, is_frontier: bool
 	btn.add_theme_stylebox_override("pressed", pressed)
 	btn.add_theme_stylebox_override("disabled", disabled_sb)
 
-	var mar := MarginContainer.new()
-	mar.set_anchors_preset(Control.PRESET_FULL_RECT)
-	mar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mar.add_theme_constant_override("margin_left", 16)
-	mar.add_theme_constant_override("margin_right", 16)
-	mar.add_theme_constant_override("margin_top", 11)
-	mar.add_theme_constant_override("margin_bottom", 11)
-	btn.add_child(mar)
-
-	var vb := VBoxContainer.new()
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_theme_constant_override("separation", 2)
-	mar.add_child(vb)
-
-	# Top row: Stage ID + status badge
-	var top_row := HBoxContainer.new()
-	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(top_row)
-
-	var lbl_id := Label.new()
-	lbl_id.text = sid
-	lbl_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl_id.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_id.add_theme_font_size_override("font_size", 15)
+	# Big bold stage number (Angry Birds style)
+	var lbl_num := Label.new()
+	lbl_num.text = str(stage_num)
+	lbl_num.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	lbl_num.offset_top = 8
+	lbl_num.offset_bottom = 58
+	lbl_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if display_font:
+		lbl_num.add_theme_font_override("font", display_font)
+	lbl_num.add_theme_font_size_override("font_size", 36)
 	if not unlocked:
-		lbl_id.add_theme_color_override("font_color", Color(0.55, 0.50, 0.45, 0.85))
-	elif is_frontier:
-		lbl_id.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84))
+		lbl_num.add_theme_color_override("font_color", Color(0.76, 0.72, 0.68, 0.45))
+		lbl_num.add_theme_color_override("font_outline_color", Color(0.14, 0.11, 0.10, 0.55))
+		lbl_num.add_theme_constant_override("outline_size", 4)
+	elif is_boss:
+		lbl_num.add_theme_color_override("font_color", Color(1.0, 0.94, 0.72))
+		lbl_num.add_theme_color_override("font_outline_color", Color(0.24, 0.06, 0.05))
+		lbl_num.add_theme_constant_override("outline_size", 5)
 	else:
-		# Dark espresso-vermilion ink on warm washi parchment
-		lbl_id.add_theme_color_override("font_color", Color(0.58, 0.16, 0.12))
-	top_row.add_child(lbl_id)
+		lbl_num.add_theme_color_override("font_color", Color(0.99, 0.96, 0.88))
+		lbl_num.add_theme_color_override("font_outline_color", Color(0.20, 0.12, 0.08))
+		lbl_num.add_theme_constant_override("outline_size", 5)
+	btn.add_child(lbl_num)
 
-	if is_boss:
-		top_row.add_child(_make_micro_pill("BOSS", Color(0.18, 0.10, 0.08, 0.94), Color(0.98, 0.86, 0.46), Color(0.96, 0.82, 0.42, 0.92)))
-	elif is_frontier:
-		top_row.add_child(_make_micro_pill("▶ MAIN", Color(0.42, 0.09, 0.07, 0.88), Color(1.0, 0.96, 0.84), Color(0.98, 0.88, 0.62, 0.85)))
-	elif not unlocked:
-		top_row.add_child(_make_micro_pill("TERKUNCI", Color(0.14, 0.12, 0.11, 0.72), Color(0.58, 0.53, 0.48, 0.85), Color(0.36, 0.32, 0.28, 0.50)))
+	# Boss crown badge in top-right corner
+	if is_boss and ResourceLoader.exists("res://assets/generated/home2d/ui_boss_crown.png"):
+		var crown := TextureRect.new()
+		crown.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		crown.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		crown.texture = load("res://assets/generated/home2d/ui_boss_crown.png")
+		crown.custom_minimum_size = Vector2(28, 28)
+		crown.position = Vector2(82, 6)
+		crown.size = Vector2(28, 28)
+		crown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(crown)
 
-	# Middle: Full wrapped stage title (no ellipsis truncation)
-	var stage_title: String = str(stage_meta.get(sid, sid))
-	var lbl_name := Label.new()
-	lbl_name.text = stage_title
-	lbl_name.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lbl_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lbl_name.add_theme_font_size_override("font_size", 13)
-	if not unlocked:
-		lbl_name.add_theme_color_override("font_color", Color(0.58, 0.53, 0.48, 0.80))
-	elif is_frontier:
-		lbl_name.add_theme_color_override("font_color", Color(0.99, 0.96, 0.90))
-	else:
-		# Crisp dark espresso ink (#2A1B14) on cream washi parchment
-		lbl_name.add_theme_color_override("font_color", Color(0.165, 0.106, 0.078))
-	vb.add_child(lbl_name)
-
-	# Bottom: Painted Star Icons (ui_star_gold.png / ui_star_empty.png)
-	var star_row := HBoxContainer.new()
-	star_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	star_row.add_theme_constant_override("separation", 6)
-	star_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(star_row)
+	# Frontier subtle golden indicator dot in top-left
+	if is_frontier and unlocked:
+		var dot := ColorRect.new()
+		dot.position = Vector2(12, 12)
+		dot.size = Vector2(8, 8)
+		dot.color = Color(0.98, 0.84, 0.30)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(dot)
 
 	if not unlocked:
-		var l_dash := Label.new()
-		l_dash.text = "—  —  —"
-		l_dash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		l_dash.add_theme_font_size_override("font_size", 11)
-		l_dash.add_theme_color_override("font_color", Color(0.45, 0.40, 0.36, 0.72))
-		star_row.add_child(l_dash)
+		# Centered padlock icon
+		if ResourceLoader.exists("res://assets/generated/home2d/ui_lock.png"):
+			var lock_ic := TextureRect.new()
+			lock_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			lock_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			lock_ic.texture = load("res://assets/generated/home2d/ui_lock.png")
+			lock_ic.custom_minimum_size = Vector2(36, 36)
+			lock_ic.position = Vector2(41, 48)
+			lock_ic.size = Vector2(36, 36)
+			lock_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(lock_ic)
 	else:
+		# 3 large arched/overlapping stars at bottom (center star larger & higher!)
 		var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
 		var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
+		var star_cfgs := [
+			{ "pos": Vector2(19, 64), "sz": 24.0, "rot": -8.0 },
+			{ "pos": Vector2(45, 58), "sz": 28.0, "rot": 0.0 },
+			{ "pos": Vector2(75, 64), "sz": 24.0, "rot": 8.0 }
+		]
 		for k in 3:
-			var star_ic := TextureRect.new()
-			star_ic.texture = tex_gold if k < stars else tex_empty
-			star_ic.custom_minimum_size = Vector2(20, 20)
-			star_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			star_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			star_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			star_row.add_child(star_ic)
+			var sc: Dictionary = star_cfgs[k]
+			var ssz: float = float(sc["sz"])
+			var s_ic := TextureRect.new()
+			s_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			s_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			s_ic.texture = tex_gold if k < stars else tex_empty
+			s_ic.custom_minimum_size = Vector2(ssz, ssz)
+			s_ic.position = sc["pos"]
+			s_ic.size = Vector2(ssz, ssz)
+			s_ic.pivot_offset = Vector2(ssz * 0.5, ssz * 0.5)
+			s_ic.rotation_degrees = float(sc["rot"])
+			s_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			btn.add_child(s_ic)
 
 	var stage_id_cap := sid
+	btn.mouse_entered.connect(func():
+		_set_preview_stage(stage_id_cap)
+		if unlocked:
+			btn.scale = Vector2(1.06, 1.06)
+	)
+	btn.mouse_exited.connect(func():
+		btn.scale = Vector2.ONE
+		_set_preview_stage(default_preview_sid)
+	)
 	btn.pressed.connect(func():
 		SaveManager.selected_stage_id = stage_id_cap
 		get_tree().change_scene_to_file(RUNNER_SCENE)
 	)
 	return btn
 
-func _make_micro_pill(txt: String, bg_col: Color, txt_col: Color, bdr_col: Color) -> PanelContainer:
-	var pill := PanelContainer.new()
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var st := StyleBoxFlat.new()
-	st.bg_color = bg_col
-	st.border_color = bdr_col
-	st.set_border_width_all(1)
-	st.set_corner_radius_all(5)
-	st.content_margin_left = 6
-	st.content_margin_right = 6
-	st.content_margin_top = 1
-	st.content_margin_bottom = 1
-	pill.add_theme_stylebox_override("panel", st)
-	var lb := Label.new()
-	lb.text = txt
-	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lb.add_theme_font_size_override("font_size", 10)
-	lb.add_theme_color_override("font_color", txt_col)
-	pill.add_child(lb)
-	return pill
+func _set_preview_stage(sid: String) -> void:
+	if not is_instance_valid(lbl_preview):
+		return
+	var title: String = str(stage_meta.get(sid, sid))
+	var best: int = SaveManager.get_stage_best_score(sid)
+	var unlocked: bool = SaveManager.is_stage_unlocked(sid)
+	if not unlocked:
+		lbl_preview.text = "Stage %s: %s  •  Terkunci (Selesaikan stage sebelumnya)" % [sid, title]
+	elif best > 0:
+		lbl_preview.text = "Stage %s: %s  •  Rekor: %d" % [sid, title, best]
+	else:
+		lbl_preview.text = "Stage %s: %s  •  Siap Dimainkan!" % [sid, title]
 
 func _make_btn(txt: String, is_primary: bool, min_sz: Vector2, fsize: int) -> Button:
 	var b := Button.new()

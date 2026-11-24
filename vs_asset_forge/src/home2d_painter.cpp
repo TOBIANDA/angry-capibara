@@ -2395,6 +2395,230 @@ void BuildAllUIPlates(const std::string& dir) {
 	std::cout << "  -> Exported home2d/ui_star_empty.png (128x128)\n";
 }
 
+void BuildChunkySquareTile(
+	const std::string& outPath,
+	const Color4& inkBorder,
+	const Color4& lipShadow,
+	const Color4& innerRim,
+	const Color4& fillTop,
+	const Color4& fillMid,
+	const Color4& fillBot,
+	float grainAmp,
+	int seed) {
+
+	const int W = 160, H = 160;
+	Canvas2D cv(W, H);
+	const Vec2 ctr(80.0f, 78.0f);
+	const float hx = 70.0f, hy = 68.0f;
+	const float cornerR = 20.0f;
+	BBox full{ 0, 0, 160, 160 };
+
+	// 1. Soft grounding drop shadow
+	cv.PaintDropShadow(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr + Vec2(0.0f, 4.0f), hx, hy, cornerR); },
+		Vec2(0.0f, 4.0f), 5.0f, Color4(0.08f, 0.04f, 0.03f, 0.44f));
+
+	// 2. Thick outer dark espresso ink border (with tactile 3D pushable bottom lip!)
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr + Vec2(0.0f, 3.0f), hx, hy + 2.5f, cornerR); },
+		[&](const Vec2&, float) { return inkBorder; }, 1.2f);
+
+	// 3. Tactile 3D lower lip bevel (visible along bottom edge)
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr + Vec2(0.0f, 2.5f), hx - 4.2f, hy - 1.5f, cornerR - 3.5f); },
+		[&](const Vec2&, float) { return lipShadow; }, 1.1f);
+
+	// 4. Sculpted inner rim bezel
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, ctr + Vec2(0.0f, -2.0f), hx - 4.5f, hy - 5.5f, cornerR - 3.5f); },
+		[&](const Vec2& p, float) {
+			float ny = clampf((p.y - 12.0f) / 130.0f, 0.0f, 1.0f);
+			return lerpColor(mulColor(innerRim, 1.12f), mulColor(innerRim, 0.78f), ny);
+		}, 1.1f);
+
+	// 5. Main sunlit chunky tile face with glossy top highlight & subtle painterly grain
+	const Vec2 faceC = ctr + Vec2(0.0f, -2.0f);
+	const float fHx = hx - 8.5f, fHy = hy - 9.5f;
+	const float fR = cornerR - 6.5f;
+	cv.FillSDF(full,
+		[&](const Vec2& p) { return sdRoundBox(p, faceC, fHx, fHy, fR); },
+		[&](const Vec2& p, float d) -> Color4 {
+			float ny = clampf((p.y - (faceC.y - fHy)) / (fHy * 2.0f), 0.0f, 1.0f);
+			Color4 c = (ny < 0.50f)
+				? lerpColor(fillTop, fillMid, ny / 0.50f)
+				: lerpColor(fillMid, fillBot, (ny - 0.50f) / 0.50f);
+
+			float g1 = brushNoise(p.x, p.y, 0.04f, 36.0f, 7.0f, seed);
+			c = mulColor(c, 1.0f + g1 * grainAmp);
+
+			// Crisp Angry-Birds style curved glossy upper highlight bar
+			float glossMask = (1.0f - smoothstep(0.04f, 0.28f, ny)) * smoothstep(2.0f, 9.0f, -d);
+			c = lerpColor(c, Color4(1.0f, 0.99f, 0.92f, 1.0f), glossMask * 0.30f);
+
+			// Subtle inner rim AO
+			float ao = 1.0f - smoothstep(0.0f, 8.0f, -d);
+			c = lerpColor(c, mulColor(lipShadow, 0.95f), ao * 0.16f);
+			c.a = 1.0f;
+			return c;
+		}, 1.1f);
+
+	cv.ApplyAntiSlopMasterGrade(0.94f, 0.04f, 0.012f, 0.008f, seed + 40);
+	cv.SavePNG(outPath);
+}
+
+void BuildUIPadlockIcon(const std::string& outPath, int seed) {
+	Canvas2D cv(96, 96);
+	BBox full{ 0, 0, 96, 96 };
+
+	// Shackle arch SDF
+	auto shackleSdf = [&](const Vec2& p) {
+		float outer = sdEllipse(p, Vec2(48.0f, 40.0f), 22.0f, 26.0f);
+		float inner = sdEllipse(p, Vec2(48.0f, 40.0f), 11.5f, 16.0f);
+		float arch = std::max(outer, -inner);
+		arch = std::max(arch, p.y - 46.0f);
+		return arch;
+	};
+	// Plump lock body SDF
+	auto bodySdf = [&](const Vec2& p) {
+		return sdRoundBox(p, Vec2(48.0f, 62.0f), 26.0f, 21.0f, 8.5f);
+	};
+
+	// Drop shadow
+	cv.PaintDropShadow(full, [&](const Vec2& p) { return std::min(shackleSdf(p), bodySdf(p)); },
+		Vec2(0.0f, 3.5f), 4.0f, Color4(0.08f, 0.04f, 0.03f, 0.42f));
+
+	// Shackle dark outline + brushed bronze-steel fill
+	cv.FillSDF(full, [&](const Vec2& p) { return shackleSdf(p) - 2.8f; },
+		[](const Vec2&, float) { return rgbHex(0x2B1C14); }, 1.1f);
+	VolumetricStyle shSt;
+	shSt.topCol = rgbHex(0xEAE2D2);
+	shSt.midCol = rgbHex(0xB4A694);
+	shSt.botCol = rgbHex(0x6C5E52);
+	shSt.rimCol = rgbHex(0xFFFFFF);
+	shSt.rimWidth = 3.5f;
+	shSt.rimStrength = 0.60f;
+	shSt.specStrength = 0.35f;
+	shSt.seed = seed;
+	cv.PaintVolumetricSDF(full, shackleSdf, shSt, 1.1f);
+
+	// Lock body dark espresso outline + sculpted warm brass fill
+	cv.FillSDF(full, [&](const Vec2& p) { return bodySdf(p) - 3.2f; },
+		[](const Vec2&, float) { return rgbHex(0x2E1A0F); }, 1.1f);
+	VolumetricStyle bSt;
+	bSt.topCol = rgbHex(0xF8D976);
+	bSt.midCol = rgbHex(0xD4982E);
+	bSt.botCol = rgbHex(0x8E5A16);
+	bSt.rimCol = rgbHex(0xFFF6C6);
+	bSt.rimWidth = 4.5f;
+	bSt.rimStrength = 0.58f;
+	bSt.specStrength = 0.32f;
+	bSt.seed = seed + 1;
+	cv.PaintVolumetricSDF(full, bodySdf, bSt, 1.1f);
+
+	// Crisp dark espresso keyhole cutout
+	cv.FillSDF(full, [&](const Vec2& p) {
+		float circ = sdCircle(p, Vec2(48.0f, 58.0f), 5.6f);
+		float stem = sdTaperedCapsule(p, Vec2(48.0f, 59.0f), Vec2(48.0f, 72.0f), 2.4f, 4.4f);
+		return std::min(circ, stem);
+	}, [](const Vec2&, float) { return rgbHex(0x28170E); }, 1.0f);
+
+	cv.ApplyAntiSlopMasterGrade(0.94f, 0.04f, 0.010f, 0.008f, seed + 20);
+	cv.SavePNG(outPath);
+}
+
+void BuildUIBossCrownIcon(const std::string& outPath, int seed) {
+	Canvas2D cv(96, 96);
+	BBox full{ 0, 0, 96, 96 };
+
+	std::vector<Vec2> crownPts = {
+		{ 16.0f, 74.0f },
+		{ 12.0f, 34.0f },
+		{ 32.0f, 50.0f },
+		{ 48.0f, 22.0f },
+		{ 64.0f, 50.0f },
+		{ 84.0f, 34.0f },
+		{ 80.0f, 74.0f }
+	};
+	auto crownSdf = [&](const Vec2& p) {
+		float d = sdPolygon(p, crownPts, 3.2f);
+		// Base royal band
+		d = smin(d, sdRoundBox(p, Vec2(48.0f, 72.0f), 34.0f, 8.5f, 4.5f), 3.0f);
+		// 3 pearl finials on the tips
+		d = std::min(d, sdCircle(p, Vec2(12.0f, 31.0f), 5.2f));
+		d = std::min(d, sdCircle(p, Vec2(48.0f, 19.0f), 6.2f));
+		d = std::min(d, sdCircle(p, Vec2(84.0f, 31.0f), 5.2f));
+		return d;
+	};
+
+	cv.PaintDropShadow(full, crownSdf, Vec2(0.0f, 3.5f), 4.0f, Color4(0.12f, 0.05f, 0.02f, 0.45f));
+	cv.FillSDF(full, [&](const Vec2& p) { return crownSdf(p) - 3.2f; },
+		[](const Vec2&, float) { return rgbHex(0x3E1E0A); }, 1.1f);
+
+	VolumetricStyle gSt;
+	gSt.topCol = rgbHex(0xFFF698);
+	gSt.midCol = rgbHex(0xF4B624);
+	gSt.botCol = rgbHex(0xB46A0E);
+	gSt.rimCol = rgbHex(0xFFFFDE);
+	gSt.lightDir = normalize(Vec2(-0.40f, -0.92f));
+	gSt.rimWidth = 4.8f;
+	gSt.rimStrength = 0.68f;
+	gSt.specStrength = 0.42f;
+	gSt.seed = seed;
+	cv.PaintVolumetricSDF(full, crownSdf, gSt, 1.1f);
+
+	// Center crimson velvet gem + side jade gems on the royal band
+	auto paintGem = [&](Vec2 c, float rx, float ry, uint32_t hiHex, uint32_t loHex) {
+		BBox gb{ c.x - rx - 5, c.y - ry - 5, c.x + rx + 5, c.y + ry + 5 };
+		cv.FillSDF(gb, [&](const Vec2& p) { return sdEllipse(p, c, rx + 1.6f, ry + 1.6f); },
+			[](const Vec2&, float) { return rgbHex(0x4E280E); }, 0.9f);
+		cv.FillSDF(gb, [&](const Vec2& p) { return sdEllipse(p, c, rx, ry); },
+			[&](const Vec2& p, float) {
+				float ny = clampf((p.y - (c.y - ry)) / (ry * 2.0f), 0.0f, 1.0f);
+				return lerpColor(rgbHex(hiHex), rgbHex(loHex), ny);
+			}, 0.9f);
+		cv.FillSDF(gb, [&](const Vec2& p) { return sdCircle(p, c + Vec2(-rx * 0.32f, -ry * 0.30f), rx * 0.28f); },
+			[](const Vec2&, float) { return Color4(1.0f, 0.98f, 0.92f, 0.85f); }, 0.8f);
+	};
+	paintGem(Vec2(48.0f, 67.0f), 6.2f, 6.2f, 0xFF6B58, 0xB81E18);
+	paintGem(Vec2(28.0f, 68.0f), 4.0f, 4.0f, 0x7AE8B8, 0x1E7E58);
+	paintGem(Vec2(68.0f, 68.0f), 4.0f, 4.0f, 0x7AE8B8, 0x1E7E58);
+
+	cv.ApplyAntiSlopMasterGrade(0.94f, 0.04f, 0.010f, 0.008f, seed + 25);
+	cv.SavePNG(outPath);
+}
+
+void BuildAllLevelTileAssets(const std::string& dir) {
+	// 1. Open Level Tile (warm honey-bamboo / sunlit cream-cedar chunky square)
+	BuildChunkySquareTile(
+		dir + "/ui_tile_open.png",
+		rgbHex(0x382115), rgbHex(0x9E6F32), rgbHex(0xFFF3CE),
+		rgbHex(0xFAEBBE), rgbHex(0xE8C276), rgbHex(0xCC9A4A),
+		0.055f, 5301);
+	std::cout << "  -> Exported home2d/ui_tile_open.png (160x160)\n";
+
+	// 2. Locked Level Tile (muted weathered slate-wood chunky square)
+	BuildChunkySquareTile(
+		dir + "/ui_tile_locked.png",
+		rgbHex(0x262322), rgbHex(0x3A3736), rgbHex(0x9A948E),
+		rgbHex(0x827D78), rgbHex(0x635F5C), rgbHex(0x494644),
+		0.045f, 5302);
+	std::cout << "  -> Exported home2d/ui_tile_locked.png (160x160)\n";
+
+	// 3. Boss Level Tile (rich Vermilion lacquer + brushed gold bevel)
+	BuildChunkySquareTile(
+		dir + "/ui_tile_boss.png",
+		rgbHex(0x3D100C), rgbHex(0x741610), rgbHex(0xF8D97E),
+		rgbHex(0xE64D38), rgbHex(0xC22E20), rgbHex(0x8C1C15),
+		0.050f, 5303);
+	std::cout << "  -> Exported home2d/ui_tile_boss.png (160x160)\n";
+
+	// 4. Padlock & Boss Crown Icons (96x96)
+	BuildUIPadlockIcon(dir + "/ui_lock.png", 5311);
+	std::cout << "  -> Exported home2d/ui_lock.png (96x96)\n";
+	BuildUIBossCrownIcon(dir + "/ui_boss_crown.png", 5312);
+	std::cout << "  -> Exported home2d/ui_boss_crown.png (96x96)\n";
+}
+
 } // namespace
 
 bool GenerateAllHome2DLayers(const std::string& outDir) {
@@ -2418,6 +2642,7 @@ bool GenerateAllHome2DLayers(const std::string& outDir) {
 	BuildAll7CapybaraSprites(outDir);
 	BuildAll4WorldIslands(outDir);
 	BuildAllUIPlates(outDir);
+	BuildAllLevelTileAssets(outDir);
 	HarmonizeExternal2DCapybaras(outDir);
 	std::cout << "[AssetForge 2D] All transparent 2D PNG layers & Anti-Slop LUT harmonized sprites exported cleanly!\n";
 	return true;
