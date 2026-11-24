@@ -4,6 +4,7 @@
 !/docs/
 !/vs_asset_forge/
 !/godot_project/
+!/Run_Angry_Capibara.bat
 
 # Visual Studio build artifacts inside vs_asset_forge
 vs_asset_forge/.vs/
