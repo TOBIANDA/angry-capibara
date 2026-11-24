@@ -90,6 +90,7 @@ var is_aiming: bool = false
 var drag_start_px: Vector2 = Vector2.ZERO
 var pull_vector: Vector3 = Vector3.ZERO
 var is_flying: bool = false
+var shot_fired: bool = false
 var skill_used: bool = false
 var flight_timer: float = 0.0
 var settle_timer: float = 0.0
@@ -125,6 +126,7 @@ var btn_next_stage: Button
 
 # CLI flags for capture & automated 20-stage stability validation
 var capture_stage_path: String = ""
+var capture_croco_path: String = ""
 var capture_done: bool = false
 var validate_all_w1: bool = false
 var validate_idx: int = 1
@@ -138,6 +140,8 @@ func _ready() -> void:
 			current_stage_id = arg.substr(8)
 		elif arg.begins_with("--capture-stage="):
 			capture_stage_path = arg.substr(16)
+		elif arg.begins_with("--capture-croco="):
+			capture_croco_path = arg.substr(16)
 		elif arg == "--validate-w1":
 			validate_all_w1 = true
 			current_stage_id = "1-1"
@@ -697,10 +701,11 @@ func _load_stage(stage_id: String) -> void:
 	active_capy_visual = null
 	is_aiming = false
 	is_flying = false
+	shot_fired = false
 	skill_used = false
 	flight_timer = 0.0
 	settle_timer = 0.0
-	spawn_grace = 0.55
+	spawn_grace = 0.65
 	score = 0
 	combo_count = 0
 	combo_timer = 0.0
@@ -826,17 +831,17 @@ func _spawn_enemy_from_def(def: Dictionary) -> void:
 	var pos_arr: Array = def.get("pos", [6.0, 0.4])
 	var is_boss: bool = (etype == "mini_boss")
 	var rad: float = 0.48 if is_boss else 0.36
-	var hp: float = 120.0 if is_boss else 35.0
+	var hp: float = 92.0 if is_boss else 24.0
 	var pts: int = 15000 if is_boss else 5000
 
 	var rb := RigidBody3D.new()
 	rb.position = Vector3(float(pos_arr[0]), float(pos_arr[1]), 0.0)
-	rb.mass = 2.0 if is_boss else 0.85
+	rb.mass = 1.85 if is_boss else 0.80
 	rb.axis_lock_linear_z = true
 	rb.axis_lock_angular_x = true
 	rb.axis_lock_angular_y = true
 	rb.contact_monitor = true
-	rb.max_contacts_reported = 6
+	rb.max_contacts_reported = 8
 	rb.linear_damp = 0.35
 	rb.angular_damp = 0.45
 
@@ -846,21 +851,23 @@ func _spawn_enemy_from_def(def: Dictionary) -> void:
 	col.shape = shape
 	rb.add_child(col)
 
+	var base_sc: float = 1.52 if is_boss else 1.12
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh_croco
-	mi.scale = Vector3.ONE * (1.52 if is_boss else 1.12)
-	_apply_rovio_model_materials(mi, Color(0.95, 0.88, 0.72) if is_boss else Color.WHITE)
+	mi.scale = Vector3.ONE * base_sc
+	var base_tint := Color(0.95, 0.90, 0.76) if is_boss else Color.WHITE
+	_apply_rovio_model_materials(mi, base_tint)
 	rb.add_child(mi)
 
 	# Mahkota Emas Yuzu untuk Mini-Boss Stage 1-20!
 	if is_boss:
 		var crown := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
-		cm.top_radius = 0.24
-		cm.bottom_radius = 0.18
-		cm.height = 0.22
+		cm.top_radius = 0.22
+		cm.bottom_radius = 0.16
+		cm.height = 0.20
 		crown.mesh = cm
-		crown.position = Vector3(0.0, 0.48, 0.0)
+		crown.position = Vector3(-0.08, 0.56, 0.0)
 		crown.material_override = _make_rovio_mat(null, Color(0.96, 0.78, 0.22), Vector2.ONE, 0.30, 0.35)
 		rb.add_child(crown)
 
@@ -870,9 +877,14 @@ func _spawn_enemy_from_def(def: Dictionary) -> void:
 		"type": etype,
 		"hp": hp,
 		"max_hp": hp,
-		"thresh": 2.6 if is_boss else 1.8,
+		"thresh": 1.35 if is_boss else 0.75,
 		"score": pts,
 		"last_vel": Vector3.ZERO,
+		"base_scale": base_sc,
+		"base_tint": base_tint,
+		"hurt_t": 0.0,
+		"bruised": false,
+		"phase": float(enemies.size()) * 1.4,
 		"dead": false
 	}
 	rb.set_meta("kind", "enemy")
@@ -958,6 +970,7 @@ func _on_body_impact(rec: Dictionary, other: Node, is_enemy: bool) -> void:
 	var v_self: Vector3 = rec["last_vel"]
 	var v_other := Vector3.ZERO
 	var other_mass: float = 2.0
+	var other_kind: String = str(other.get_meta("kind", ""))
 	var capy_mult: float = 1.0
 
 	if other is RigidBody3D:
@@ -966,38 +979,85 @@ func _on_body_impact(rec: Dictionary, other: Node, is_enemy: bool) -> void:
 		else:
 			v_other = other.linear_velocity
 		other_mass = other.mass
-		var kind: String = str(other.get_meta("kind", ""))
-		if kind == "capy":
+		if other_kind == "capy":
 			var ctype: String = str(other.get_meta("capy_type", "chill"))
 			var btype: String = str(rec["type"])
 			if ctype == "dash" and btype == "wood":
 				capy_mult = 1.85
 			elif ctype == "mini" and btype == "ice":
 				capy_mult = 2.15
-			elif is_enemy:
-				capy_mult = 1.55
 
 	var rel_speed: float = (v_self - v_other).length()
 	var thresh: float = float(rec["thresh"])
+
+	if is_enemy:
+		# Buaya sensitif terhadap senggolan kapibara, tertimpa/tersenggol balok bangunan, & jatuh ke tanah!
+		if other_kind == "capy":
+			# Senggolan kapibara sekecil apa pun (>= 0.45 m/s) langsung melukai parah (min 16 HP)
+			if rel_speed < 0.45:
+				return
+			var dmg_capy: float = maxf(16.0, (rel_speed - 0.35) * (7.2 + other_mass * 2.8) * 1.45)
+			_apply_damage(rec, dmg_capy, true)
+			return
+		elif other_kind == "block":
+			# Tertimpa / tersenggol bangunan (bambu, kayu, es, TNT): ekstra sakit setelah tembakan!
+			var eff_thresh: float = thresh if shot_fired else 2.2
+			if rel_speed < eff_thresh:
+				return
+			var base_min: float = 10.0 if shot_fired else 0.0
+			var dmg_blk: float = maxf(base_min, (rel_speed - eff_thresh) * (6.8 + other_mass * 4.2) * 1.65)
+			_apply_damage(rec, dmg_blk, true)
+			return
+		elif other_kind == "enemy":
+			if rel_speed < 1.0:
+				return
+			_apply_damage(rec, (rel_speed - 0.6) * 10.5, true)
+			return
+		else:
+			# Jatuh terbanting ke tanah setelah terlempar dari bangunan
+			var g_thresh: float = 1.25 if shot_fired else 2.5
+			if rel_speed < g_thresh:
+				return
+			_apply_damage(rec, (rel_speed - 0.85) * 11.0, true)
+			return
+
 	if rel_speed < thresh:
 		return
 
 	var dmg: float = (rel_speed - thresh) * (4.6 + other_mass * 1.9) * capy_mult
-	_apply_damage(rec, dmg, is_enemy)
+	_apply_damage(rec, dmg, false)
 
 func _apply_damage(rec: Dictionary, dmg: float, is_enemy: bool) -> void:
-	if bool(rec["dead"]) or dmg <= 0.1:
+	if bool(rec["dead"]) or dmg <= 0.08:
 		return
 	rec["hp"] = float(rec["hp"]) - dmg
 	if float(rec["hp"]) <= 0.0:
 		_destroy_entity(rec, is_enemy)
 	else:
-		# Visual retak / gelap saat HP di bawah 50%
 		var ratio: float = float(rec["hp"]) / maxf(float(rec["max_hp"]), 1.0)
-		if ratio < 0.55 and not is_enemy:
+		if is_enemy:
+			# Feedback luka nyata pada buaya: flash + squash-bounce + rona memar di bawah 65% HP!
+			rec["hurt_t"] = 0.24
+			if dmg >= 4.0:
+				var rb: RigidBody3D = rec["rb"]
+				if is_instance_valid(rb):
+					_spawn_vfx_sphere(rb.global_position + Vector3(0.0, 0.15, 0.0), 0.56, Color(0.98, 0.86, 0.42))
+			if ratio < 0.65:
+				rec["bruised"] = true
+			_tint_enemy_mesh(rec, Color(1.0, 0.56, 0.46))
+		elif ratio < 0.55:
 			var mi: MeshInstance3D = rec["mi"]
 			if is_instance_valid(mi) and mi.material_override is ShaderMaterial:
 				(mi.material_override as ShaderMaterial).set_shader_parameter("tint_color", Color(0.62, 0.54, 0.48))
+
+func _tint_enemy_mesh(rec: Dictionary, tint: Color) -> void:
+	var mi: MeshInstance3D = rec["mi"]
+	if not is_instance_valid(mi) or mi.mesh == null:
+		return
+	for s_idx in mi.mesh.get_surface_count():
+		var mat := mi.get_surface_override_material(s_idx)
+		if mat is ShaderMaterial:
+			(mat as ShaderMaterial).set_shader_parameter("tint_color", tint)
 
 func _destroy_entity(rec: Dictionary, is_enemy: bool) -> void:
 	if bool(rec["dead"]):
@@ -1079,16 +1139,23 @@ func _activate_skill() -> void:
 
 	match active_capy_type:
 		"chill":
-			# Zen Bump: dorongan tajam ke bawah + gelombang getar radius 2.5m
-			active_capy.apply_central_impulse(Vector3(0.0, -11.0, 0.0))
-			_spawn_vfx_sphere(pos, 2.2, Color(0.95, 0.88, 0.62))
+			# Zen Bump: dorongan tajam ke bawah + gelombang getar radius 2.8m (melukai balok DAN buaya!)
+			active_capy.apply_central_impulse(Vector3(0.0, -11.5, 0.0))
+			_spawn_vfx_sphere(pos, 2.5, Color(0.95, 0.88, 0.62))
 			for b in blocks.duplicate():
 				var rb: RigidBody3D = b["rb"]
 				if is_instance_valid(rb):
 					var d := rb.global_position - pos
-					if d.length() < 2.6:
-						rb.apply_central_impulse(d.normalized() * 9.0)
-						_apply_damage(b, 18.0, false)
+					if d.length() < 2.8:
+						rb.apply_central_impulse(d.normalized() * 10.0)
+						_apply_damage(b, 20.0, false)
+			for e in enemies.duplicate():
+				var rb: RigidBody3D = e["rb"]
+				if is_instance_valid(rb):
+					var d := rb.global_position - pos
+					if d.length() < 3.0:
+						rb.apply_central_impulse(d.normalized() * 9.5 + Vector3(0.0, 2.5, 0.0))
+						_apply_damage(e, 26.0, true)
 		"dash":
 			# Turbo Dash 2.2x lurus!
 			var vel := active_capy.linear_velocity
@@ -1212,6 +1279,7 @@ func _release_slingshot() -> void:
 	active_capy.set_meta("last_vel", launch_vel)
 	flying_projectiles.append(active_capy)
 	is_flying = true
+	shot_fired = true
 	flight_timer = 0.0
 	settle_timer = 0.0
 	pull_vector = Vector3.ZERO
@@ -1233,6 +1301,28 @@ func _physics_process(delta: float) -> void:
 			e["last_vel"] = rb.linear_velocity
 			if rb.global_position.y < -3.5:
 				_destroy_entity(e, true)
+				continue
+			# Cek kontinu: buaya tertindih/tertimpa balok miring ATAU disenggol kapibara menggelinding!
+			if shot_fired and spawn_grace <= 0.0 and not stage_ended and not bool(e["dead"]):
+				for col_body in rb.get_colliding_bodies():
+					if not (col_body is RigidBody3D):
+						continue
+					var crb: RigidBody3D = col_body as RigidBody3D
+					var ckind: String = str(crb.get_meta("kind", ""))
+					if ckind == "block":
+						var above: bool = crb.global_position.y > rb.global_position.y + 0.14
+						var rel_v: float = (crb.linear_velocity - rb.linear_velocity).length()
+						var spin: float = absf(crb.angular_velocity.z)
+						if above or rel_v > 0.35 or spin > 0.55:
+							_apply_damage(e, (28.0 + crb.mass * 18.0) * delta, true)
+							if bool(e["dead"]):
+								break
+					elif ckind == "capy":
+						var rel_c: float = (crb.linear_velocity - rb.linear_velocity).length()
+						if rel_c > 0.22:
+							_apply_damage(e, 38.0 * delta, true)
+							if bool(e["dead"]):
+								break
 	for p in flying_projectiles:
 		if is_instance_valid(p):
 			p.set_meta("last_vel", p.linear_velocity)
@@ -1251,6 +1341,7 @@ func _process(delta: float) -> void:
 
 	_update_slingshot_bands()
 	_update_capy_anim(delta)
+	_update_enemy_anim(delta)
 	_update_camera(delta)
 	_update_vfx(delta)
 
@@ -1306,6 +1397,11 @@ func _process(delta: float) -> void:
 		capture_done = true
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(capture_stage_path)
+		get_tree().quit()
+	elif capture_croco_path != "" and not capture_done and anim_time > 0.75:
+		capture_done = true
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(capture_croco_path)
 		get_tree().quit()
 
 func _process_automated_validator(delta: float) -> void:
@@ -1486,7 +1582,46 @@ func _update_vfx(delta: float) -> void:
 			node.scale = Vector3.ONE * lerpf(0.2, float(item["max_r"]), p)
 			mat.albedo_color.a = lerpf(0.60, 0.0, p)
 
+func _update_enemy_anim(delta: float) -> void:
+	for e in enemies:
+		if bool(e["dead"]):
+			continue
+		var mi: MeshInstance3D = e["mi"]
+		if not is_instance_valid(mi):
+			continue
+		var base_sc: float = float(e["base_scale"])
+		var ph: float = float(e["phase"])
+		var ht: float = float(e["hurt_t"])
+		if ht > 0.0:
+			ht = maxf(ht - delta, 0.0)
+			e["hurt_t"] = ht
+			var p: float = ht / 0.24
+			# Squash-stretch memantul saat kena senggolan/timpaan!
+			var sq: float = sin(p * PI) * 0.22
+			mi.scale = Vector3(base_sc * (1.0 + sq), base_sc * (1.0 - sq * 0.85), base_sc * (1.0 + sq * 0.5))
+			if ht <= 0.0:
+				var bt: Color = e["base_tint"]
+				var rest_tint: Color = bt * Color(0.86, 0.64, 0.58) if bool(e["bruised"]) else bt
+				_tint_enemy_mesh(e, rest_tint)
+		else:
+			# Napas santai / geliat buaya agar terasa hidup!
+			var br: float = sin(anim_time * 3.0 + ph)
+			mi.scale = Vector3(base_sc * (1.0 - 0.03 * br), base_sc * (1.0 + 0.045 * br), base_sc * (1.0 - 0.02 * br))
+
 func _update_camera(delta: float) -> void:
+	if capture_croco_path != "" and not enemies.is_empty():
+		# Ambil musuh tertinggi/terbuka agar tidak terhalang pilar saat potret close-up
+		var best_rb: RigidBody3D = enemies[0]["rb"]
+		for e in enemies:
+			var erb: RigidBody3D = e["rb"]
+			if is_instance_valid(erb) and (not is_instance_valid(best_rb) or erb.global_position.y > best_rb.global_position.y):
+				best_rb = erb
+		if is_instance_valid(best_rb):
+			cam.fov = 34.0
+			var target := best_rb.global_position + Vector3(-0.06, 0.06, 0.0)
+			cam.position = target + Vector3(-0.95, 0.45, 2.25)
+			cam.look_at(target, Vector3.UP)
+			return
 	var desired_pos := Vector3.ZERO
 	var look_target := Vector3(1.8, 2.0, 0.0)
 	if custom_orbit_active:

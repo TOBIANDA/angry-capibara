@@ -374,9 +374,60 @@ bool GenerateAnimeTexturesW12(const std::string& texDir) {
 		return LerpRGB({ 255, 146, 18 }, { 255, 248, 152 }, core * (0.60f + 0.40f * v));
 	});
 
-	// 5. Tekstur Arena 2.5D Bamboo-Onsen & Musuh Croco Minion (serasi dengan Key-Art Home 2D!)
-	ok &= WriteStylizedFurTexture(texDir + "/tex_croco_green.bmp", { 34, 134, 48 }, { 64, 188, 68 }, { 114, 224, 96 }, 1901);
-	ok &= WriteAnimeEyeTexture(texDir + "/tex_croco_eye.bmp", { 196, 152, 16 }, { 255, 228, 56 }, EyeMood::SlySinis);
+	// 5. Tekstur Arena 2.5D Bamboo-Onsen & Musuh Crocodile Raider (Painterly Halus Anti-Slop, serasi dengan Kapibara!)
+	ok &= WriteBMP24(texDir + "/tex_croco_green.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
+		// Kulit reptil painterly halus hijau-giok/zaitun (bebas pola polkadot/kotak kasar & bebas neon!)
+		float broad = SmoothNoise(px * 0.032f, py * 0.032f, 1901);
+		float blotch = SmoothNoise(px * 0.085f, py * 0.065f, 1902);
+		float scaleHint = 0.5f + 0.5f * std::sin(u * 38.0f + std::sin(v * 20.0f) * 1.4f) * std::sin(v * 34.0f);
+		float t = std::clamp(0.58f * broad + 0.30f * blotch + 0.12f * scaleHint, 0.0f, 1.0f);
+		RGB col = (t < 0.5f)
+			? LerpRGB({ 52, 102, 54 }, { 84, 140, 68 }, t * 2.0f)
+			: LerpRGB({ 84, 140, 68 }, { 126, 174, 92 }, (t - 0.5f) * 2.0f);
+		// Gradasi cahaya halus bagian atas tubuh
+		return LerpRGB(col, { 142, 186, 102 }, 0.14f * std::sin(v * 3.14159f));
+	});
+	ok &= WriteBMP24(texDir + "/tex_croco_scale_dark.bmp", 128, 128, [](float u, float v, int px, int py) -> RGB {
+		float n = SmoothNoise(px * 0.08f, py * 0.08f, 1904);
+		float ridge = 0.5f + 0.5f * std::sin(v * 18.0f);
+		return LerpRGB({ 24, 52, 32 }, { 52, 92, 48 }, 0.55f * n + 0.45f * ridge);
+	});
+	ok &= WriteBMP24(texDir + "/tex_croco_belly.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
+		// Perut buaya krem-oker bergaris-garis (ribbed scutes klasik!)
+		float rib = std::fmod(v * 9.0f, 1.0f);
+		float n = SmoothNoise(px * 0.06f, py * 0.06f, 1907);
+		RGB col = LerpRGB({ 214, 194, 134 }, { 244, 228, 174 }, 0.55f * n + 0.45f * std::sin(rib * 3.14159f));
+		if (rib < 0.12f || rib > 0.90f) col = LerpRGB(col, { 156, 130, 76 }, 0.65f);
+		return col;
+	});
+	ok &= WriteBMP24(texDir + "/tex_croco_eye.bmp", 256, 256, [](float u, float v, int, int) -> RGB {
+		// Mata reptil kuning-amber tajam + pupil celah vertikal + kelopak atas licik + catchlight ganda
+		float du = (u - 0.50f) * 2.0f;
+		float dv = (v - 0.50f) * 2.0f;
+		float r = std::sqrt(du * du + dv * dv);
+		// Iris emas-amber hangat dengan tepi oranye-tembaga
+		RGB iris = LerpRGB({ 254, 224, 72 }, { 226, 142, 22 }, std::clamp(r * 1.15f, 0.0f, 1.0f));
+		if (r > 0.84f) iris = LerpRGB(iris, { 68, 42, 18 }, std::clamp((r - 0.84f) * 6.0f, 0.0f, 1.0f));
+		// Pupil celah vertikal reptil khas buaya nakal
+		float slitX = du / 0.22f;
+		float slitY = dv / 0.68f;
+		float slitD = slitX * slitX + slitY * slitY;
+		if (slitD < 1.0f) {
+			float edge = std::clamp((1.0f - slitD) * 4.0f, 0.0f, 1.0f);
+			iris = LerpRGB(iris, { 20, 14, 12 }, edge);
+		}
+		// Bayangan kelopak atas miring (ekspresi licik!)
+		float lidLine = 0.56f - du * 0.18f;
+		if (dv > lidLine) {
+			iris = LerpRGB(iris, { 34, 62, 34 }, std::clamp((dv - lidLine) * 5.0f, 0.0f, 0.85f));
+		}
+		// Kilau anime putih tajam (catchlight utama + sekunder)
+		float c1 = (du - 0.24f) * (du - 0.24f) + (dv - 0.22f) * (dv - 0.22f);
+		float c2 = (du + 0.20f) * (du + 0.20f) + (dv + 0.22f) * (dv + 0.22f);
+		if (c1 < 0.030f) return { 255, 254, 246 };
+		if (c2 < 0.008f) return { 255, 248, 224 };
+		return iris;
+	});
 	ok &= WriteBMP24(texDir + "/tex_torii_red.bmp", 256, 256, [](float u, float v, int px, int py) -> RGB {
 		float grain = SmoothNoise(px * 0.25f, py * 0.05f, 1910);
 		return LerpRGB({ 146, 32, 24 }, { 206, 56, 36 }, 0.65f * grain + 0.35f * v);

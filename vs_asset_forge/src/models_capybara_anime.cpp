@@ -962,69 +962,156 @@ std::vector<ModelAsset> BuildAllHomeKeyArtAssets() {
 		out.push_back(std::move(sling));
 	}
 
-	// 9. MUSUH CROCO MINION 2.5D EKSPRESIF (enemy_croco_minion.obj — pengganti bola hijau polos!)
+	// 9. MUSUH CROCODILE RAIDER 2.5D EKSPRESIF (enemy_croco_minion.obj — sculpt buaya penuh karakter!)
 	{
 		ModelAsset croco;
 		croco.modelName = "enemy_croco_minion";
 		AddUniqueMaterial(croco, MakeMat("mat_croco", "tex_croco_green.bmp"));
-		AddUniqueMaterial(croco, MakeMat("mat_belly", "tex_capy_belly.bmp"));
-		AddUniqueMaterial(croco, MakeMat("mat_croco_eye", "tex_croco_eye.bmp", glm::vec3(1.0f), glm::vec3(0.06f), 48.0f));
-		AddUniqueMaterial(croco, MakeMat("mat_ink", "tex_anime_ink.bmp", glm::vec3(0.15f), glm::vec3(0.0f), 8.0f));
+		AddUniqueMaterial(croco, MakeMat("mat_croco_dark", "tex_croco_scale_dark.bmp"));
+		AddUniqueMaterial(croco, MakeMat("mat_croco_belly", "tex_croco_belly.bmp"));
+		AddUniqueMaterial(croco, MakeMat("mat_croco_eye", "tex_croco_eye.bmp", glm::vec3(1.0f), glm::vec3(0.08f), 64.0f));
+		AddUniqueMaterial(croco, MakeMat("mat_ink", "tex_anime_ink.bmp", glm::vec3(0.14f), glm::vec3(0.0f), 8.0f));
 		AddUniqueMaterial(croco, MakeMat("mat_white", "tex_capy_eye_white.bmp"));
 		AddUniqueMaterial(croco, MakeMat("mat_mouth_dark", "tex_mouth_dark.bmp"));
+		AddUniqueMaterial(croco, MakeMat("mat_tongue", "tex_tongue_pink.bmp"));
 
+		// A. Tubuh utama, kepala, moncong 2-rahang, tonjolan kelopak mata, ekor melengkung, & kaki pendek
 		SubMesh body;
 		body.objectName = "croco_body";
 		body.materialName = "mat_croco";
-		// Badan bulat-gemuk komik ala babi Angry Birds, tapi versi buaya nakal bermoncong lebar!
-		AppendTransformedMesh(body, BuildEllipsoid(0.35f, 0.31f, 0.34f, 14, 20), glm::mat4(1.0f));
-		// Moncong buaya lebar mengarah ke -X (menghadap ketapel!)
-		AppendTransformedMesh(body, BuildEllipsoid(0.20f, 0.11f, 0.22f, 10, 14), TRS(glm::vec3(-0.28f, -0.04f, 0.0f)));
-		// Duri punggung buaya 3 buah
-		for (int k = 0; k < 3; ++k) {
-			AppendTransformedMesh(body, BuildCone(0.06f, 0.13f, 8), TRS(glm::vec3(0.05f + k * 0.11f, 0.30f - k * 0.04f, 0.0f), glm::vec3(0, 0, -24 - k * 14)));
-		}
+
+		// Badan bulat-gempal reptil membungkuk nakal menyatu mulus dengan kepala (menghadap -X ke arah ketapel!)
+		AppendTransformedMesh(body, BuildEllipsoid(0.30f, 0.255f, 0.275f, 18, 24), TRS(glm::vec3(0.03f, -0.055f, 0.0f), glm::vec3(0, 0, -6)));
+		// Kepala reptil menyatu organik di depan atas badan (tanpa garis sambungan patah)
+		AppendTransformedMesh(body, BuildEllipsoid(0.24f, 0.205f, 0.235f, 16, 22), TRS(glm::vec3(-0.095f, 0.075f, 0.0f), glm::vec3(0, 0, -4)));
+
+		// Moncong ATAS panjang khas buaya (-X) dengan pangkal lebar & ujung bulat berhidung jendol!
+		AppendTransformedMesh(body, BuildEllipsoid(0.24f, 0.082f, 0.172f, 12, 18), TRS(glm::vec3(-0.31f, 0.022f, 0.0f), glm::vec3(0, 0, -4)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.085f, 0.068f, 0.138f, 10, 14), TRS(glm::vec3(-0.485f, 0.022f, 0.0f)));
+		// Dua punuk lubang hidung khas buaya di ujung moncong
+		AppendTransformedMesh(body, BuildEllipsoid(0.044f, 0.036f, 0.038f, 8, 12), TRS(glm::vec3(-0.475f, 0.072f,  0.058f)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.044f, 0.036f, 0.038f, 8, 12), TRS(glm::vec3(-0.475f, 0.072f, -0.058f)));
+
+		// Rahang BAWAH terpisah terbuka menyeringai agar gigi zig-zag terbaca tajam dari samping 2.5D!
+		AppendTransformedMesh(body, BuildEllipsoid(0.205f, 0.052f, 0.154f, 12, 16), TRS(glm::vec3(-0.295f, -0.105f, 0.0f), glm::vec3(0, 0, 11)));
+
+		// Dua kubah kelopak mata (brow turrets) menonjol di atas kepala khas buaya
+		AppendTransformedMesh(body, BuildEllipsoid(0.092f, 0.088f, 0.086f, 12, 14), TRS(glm::vec3(-0.145f, 0.255f,  0.106f)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.092f, 0.088f, 0.086f, 12, 14), TRS(glm::vec3(-0.145f, 0.255f, -0.106f)));
+
+		// Ekor buaya melengkung ke belakang (+X) -> siluet 100% langsung terbaca sebagai buaya!
+		std::array<glm::vec3, 4> tailCurve = {{
+			{ 0.23f, -0.14f, 0.00f },
+			{ 0.40f, -0.17f, 0.00f },
+			{ 0.51f, -0.08f, 0.00f },
+			{ 0.54f,  0.06f, 0.00f }
+		}};
+		AppendTransformedMesh(body, BuildBezierTube(tailCurve, 0.118f, 0.026f, 14, 12, true), glm::mat4(1.0f));
+
+		// Sepasang kaki pendek menapak di bawah (y bottom ~ -0.31) & tangan kecil jahil di sisi badan
+		AppendTransformedMesh(body, BuildEllipsoid(0.095f, 0.055f, 0.072f, 10, 12), TRS(glm::vec3( 0.06f, -0.265f,  0.155f), glm::vec3(0,  14, 0)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.095f, 0.055f, 0.072f, 10, 12), TRS(glm::vec3( 0.06f, -0.265f, -0.155f), glm::vec3(0, -14, 0)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.072f, 0.048f, 0.056f, 10, 12), TRS(glm::vec3(-0.07f, -0.135f,  0.242f), glm::vec3(18,  22, -16)));
+		AppendTransformedMesh(body, BuildEllipsoid(0.072f, 0.048f, 0.056f, 10, 12), TRS(glm::vec3(-0.07f, -0.135f, -0.242f), glm::vec3(-18, -22, -16)));
 		croco.parts.push_back(std::move(body));
 
+		// B. Sisik punggung zirah hijau-pinus gelap (osteoderms) + sirip ekor + punuk alis tegas
+		SubMesh darkScales;
+		darkScales.objectName = "croco_scales_dark";
+		darkScales.materialName = "mat_croco_dark";
+		// 4 duri osteoderm besar dari tengkuk ke punggung
+		const std::array<glm::vec4, 4> backSpines = {{
+			{ 0.03f,  0.225f, 0.056f, -18.0f },
+			{ 0.14f,  0.190f, 0.062f, -34.0f },
+			{ 0.24f,  0.120f, 0.058f, -52.0f },
+			{ 0.30f,  0.025f, 0.048f, -72.0f }
+		}};
+		for (const auto& sp : backSpines) {
+			AppendTransformedMesh(darkScales, BuildCone(sp.z, sp.z * 2.15f, 7),
+				TRS(glm::vec3(sp.x, sp.y, 0.0f), glm::vec3(0, 0, sp.w)));
+		}
+		// 2 sirip osteoderm di atas lengkungan ekor
+		AppendTransformedMesh(darkScales, BuildCone(0.038f, 0.088f, 6), TRS(glm::vec3(0.41f, -0.09f, 0.0f), glm::vec3(0, 0, -24)));
+		AppendTransformedMesh(darkScales, BuildCone(0.028f, 0.072f, 6), TRS(glm::vec3(0.49f, -0.01f, 0.0f), glm::vec3(0, 0,  22)));
+		// Punggung moncong bertekstur
+		AppendTransformedMesh(darkScales, BuildEllipsoid(0.14f, 0.028f, 0.065f, 8, 12), TRS(glm::vec3(-0.31f, 0.092f, 0.0f), glm::vec3(0, 0, -5)));
+		croco.parts.push_back(std::move(darkScales));
+
+		// C. Perut krem-oker bergaris-garis + bagian bawah dagu
 		SubMesh belly;
 		belly.objectName = "croco_belly";
-		belly.materialName = "mat_belly";
-		AppendTransformedMesh(belly, BuildEllipsoid(0.24f, 0.16f, 0.24f, 10, 14), TRS(glm::vec3(-0.08f, -0.17f, 0.0f)));
+		belly.materialName = "mat_croco_belly";
+		AppendTransformedMesh(belly, BuildEllipsoid(0.24f, 0.19f, 0.225f, 12, 16), TRS(glm::vec3(-0.01f, -0.115f, 0.0f), glm::vec3(0, 0, 8)));
+		AppendTransformedMesh(belly, BuildEllipsoid(0.18f, 0.038f, 0.132f, 10, 14), TRS(glm::vec3(-0.275f, -0.128f, 0.0f), glm::vec3(0, 0, 11)));
 		croco.parts.push_back(std::move(belly));
 
+		// D. Mata reptil kuning-amber besar menghadap ke ketapel (-X) DAN agak keluar ke kamera 2.5D (+Z)!
 		SubMesh eyes;
 		eyes.objectName = "croco_eyes";
 		eyes.materialName = "mat_croco_eye";
-		SubMesh eR = BuildAnimeEyeLens(0.068f, 0.074f, 0.068f, true);
-		SubMesh eL = BuildAnimeEyeLens(0.068f, 0.074f, 0.068f, false);
-		AppendTransformedMesh(eyes, eR, TRS(glm::vec3(-0.22f, 0.16f,  0.12f), glm::vec3(0, 165, 0)));
-		AppendTransformedMesh(eyes, eL, TRS(glm::vec3(-0.22f, 0.16f, -0.12f), glm::vec3(0,-165, 0)));
+		SubMesh eR = BuildAnimeEyeLens(0.076f, 0.082f, 0.074f, true);
+		SubMesh eL = BuildAnimeEyeLens(0.076f, 0.082f, 0.074f, false);
+		// rotY = -150 (+Z side) -> mengarah ke (-0.87, 0, +0.50): menatap ketapel sekaligus terbaca di kamera samping!
+		AppendTransformedMesh(eyes, eR, TRS(glm::vec3(-0.195f, 0.252f,  0.118f), glm::vec3(0, -150, 0)));
+		AppendTransformedMesh(eyes, eL, TRS(glm::vec3(-0.195f, 0.252f, -0.118f), glm::vec3(0,  150, 0)));
 		croco.parts.push_back(std::move(eyes));
 
+		// E. Alis licik V-curve Bezier + lubang hidung gelap
 		SubMesh ink;
-		ink.objectName = "croco_brows_snout";
+		ink.objectName = "croco_brows_nostrils";
 		ink.materialName = "mat_ink";
-		// Alis nakal miring & lubang hidung buaya
-		AppendTransformedMesh(ink, BuildBox(0.04f, 0.028f, 0.12f), TRS(glm::vec3(-0.25f, 0.24f,  0.12f), glm::vec3( 20, 14, 0)));
-		AppendTransformedMesh(ink, BuildBox(0.04f, 0.028f, 0.12f), TRS(glm::vec3(-0.25f, 0.24f, -0.12f), glm::vec3(-20,-14, 0)));
-		AppendTransformedMesh(ink, BuildEllipsoid(0.018f, 0.018f, 0.018f, 6, 8), TRS(glm::vec3(-0.45f, 0.02f,  0.065f)));
-		AppendTransformedMesh(ink, BuildEllipsoid(0.018f, 0.018f, 0.018f, 6, 8), TRS(glm::vec3(-0.45f, 0.02f, -0.065f)));
+		std::array<glm::vec3, 4> browR = {{
+			{ -0.245f, 0.305f, 0.055f },
+			{ -0.225f, 0.328f, 0.115f },
+			{ -0.175f, 0.342f, 0.165f },
+			{ -0.125f, 0.332f, 0.188f }
+		}};
+		std::array<glm::vec3, 4> browL = {{
+			{ -0.245f, 0.305f, -0.055f },
+			{ -0.225f, 0.328f, -0.115f },
+			{ -0.175f, 0.342f, -0.165f },
+			{ -0.125f, 0.332f, -0.188f }
+		}};
+		AppendTransformedMesh(ink, BuildBezierTube(browR, 0.020f, 0.015f, 10, 8, true), glm::mat4(1.0f));
+		AppendTransformedMesh(ink, BuildBezierTube(browL, 0.020f, 0.015f, 10, 8, true), glm::mat4(1.0f));
+		// Lubang hidung tajam di punuk moncong
+		AppendTransformedMesh(ink, BuildEllipsoid(0.018f, 0.014f, 0.016f, 6, 8), TRS(glm::vec3(-0.508f, 0.078f,  0.060f)));
+		AppendTransformedMesh(ink, BuildEllipsoid(0.018f, 0.014f, 0.016f, 6, 8), TRS(glm::vec3(-0.508f, 0.078f, -0.060f)));
 		croco.parts.push_back(std::move(ink));
 
-		// Seringai buaya bergigi zig-zag!
+		// F. Rongga mulut merah tua dalam + lidah pink tersembunyi rapi di antara 2 rahang!
 		SubMesh mouth;
 		mouth.objectName = "croco_mouth";
 		mouth.materialName = "mat_mouth_dark";
-		AppendTransformedMesh(mouth, BuildBox(0.04f, 0.032f, 0.26f), TRS(glm::vec3(-0.42f, -0.08f, 0.0f)));
+		AppendTransformedMesh(mouth, BuildEllipsoid(0.185f, 0.056f, 0.144f, 10, 14), TRS(glm::vec3(-0.295f, -0.045f, 0.0f), glm::vec3(0, 0, 3)));
 		croco.parts.push_back(std::move(mouth));
 
+		SubMesh tongue;
+		tongue.objectName = "croco_tongue";
+		tongue.materialName = "mat_tongue";
+		AppendTransformedMesh(tongue, BuildEllipsoid(0.105f, 0.024f, 0.082f, 8, 12), TRS(glm::vec3(-0.275f, -0.076f, 0.0f), glm::vec3(0, 0, 8)));
+		croco.parts.push_back(std::move(tongue));
+
+		// G. Gigi taring zig-zag ikonik di sisi kiri/kanan moncong + taring depan + cakar kaki putih!
 		SubMesh teeth;
-		teeth.objectName = "croco_teeth";
+		teeth.objectName = "croco_teeth_claws";
 		teeth.materialName = "mat_white";
-		for (float tz : { -0.09f, -0.03f, 0.03f, 0.09f }) {
-			AppendTransformedMesh(teeth, BuildCone(0.018f, 0.044f, 6), TRS(glm::vec3(-0.43f, -0.065f, tz), glm::vec3(0, 0, 180)));
+		// Taring atas sepanjang sisi rahang (+Z dan -Z) menunjuk ke bawah
+		for (float side : { 1.0f, -1.0f }) {
+			AppendTransformedMesh(teeth, BuildCone(0.022f, 0.058f, 7), TRS(glm::vec3(-0.23f, -0.018f, side * 0.146f), glm::vec3(0, 0, 180)));
+			AppendTransformedMesh(teeth, BuildCone(0.024f, 0.064f, 7), TRS(glm::vec3(-0.33f, -0.022f, side * 0.148f), glm::vec3(0, 0, 180)));
+			AppendTransformedMesh(teeth, BuildCone(0.022f, 0.060f, 7), TRS(glm::vec3(-0.43f, -0.024f, side * 0.125f), glm::vec3(0, 0, 180)));
+			// Taring bawah menyembul ke atas (overbite buaya komik!)
+			AppendTransformedMesh(teeth, BuildCone(0.020f, 0.054f, 7), TRS(glm::vec3(-0.28f, -0.078f, side * 0.136f), glm::vec3(0, 0, -8)));
+			AppendTransformedMesh(teeth, BuildCone(0.023f, 0.062f, 7), TRS(glm::vec3(-0.38f, -0.082f, side * 0.132f), glm::vec3(0, 0, -10)));
+			// Taring depan
+			AppendTransformedMesh(teeth, BuildCone(0.019f, 0.050f, 7), TRS(glm::vec3(-0.505f, -0.022f, side * 0.052f), glm::vec3(0, 0, 180)));
+			// 2 cakar kecil di tiap kaki
+			AppendTransformedMesh(teeth, BuildCone(0.015f, 0.042f, 6), TRS(glm::vec3(-0.015f, -0.282f, side * 0.135f), glm::vec3(0, 0, 82)));
+			AppendTransformedMesh(teeth, BuildCone(0.015f, 0.042f, 6), TRS(glm::vec3(-0.015f, -0.282f, side * 0.175f), glm::vec3(0, 0, 82)));
 		}
 		croco.parts.push_back(std::move(teeth));
+
 		out.push_back(std::move(croco));
 	}
 

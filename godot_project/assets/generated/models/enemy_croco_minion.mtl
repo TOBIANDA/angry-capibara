@@ -7,26 +7,34 @@ Ns 24.0000
 d 1.0000
 map_Kd ../textures/tex_croco_green.bmp
 
-newmtl mat_belly
+newmtl mat_croco_dark
 Ka 0.2000 0.2000 0.2000
 Kd 1.0000 1.0000 1.0000
 Ks 0.1500 0.1500 0.1500
 Ns 24.0000
 d 1.0000
-map_Kd ../textures/tex_capy_belly.bmp
+map_Kd ../textures/tex_croco_scale_dark.bmp
+
+newmtl mat_croco_belly
+Ka 0.2000 0.2000 0.2000
+Kd 1.0000 1.0000 1.0000
+Ks 0.1500 0.1500 0.1500
+Ns 24.0000
+d 1.0000
+map_Kd ../textures/tex_croco_belly.bmp
 
 newmtl mat_croco_eye
 Ka 0.2000 0.2000 0.2000
 Kd 1.0000 1.0000 1.0000
 Ks 0.1500 0.1500 0.1500
-Ke 0.0600 0.0600 0.0600
-Ns 48.0000
+Ke 0.0800 0.0800 0.0800
+Ns 64.0000
 d 1.0000
 map_Kd ../textures/tex_croco_eye.bmp
 
 newmtl mat_ink
 Ka 0.2000 0.2000 0.2000
-Kd 0.1500 0.1500 0.1500
+Kd 0.1400 0.1400 0.1400
 Ks 0.1500 0.1500 0.1500
 Ns 8.0000
 d 1.0000
@@ -47,4 +55,12 @@ Ks 0.1500 0.1500 0.1500
 Ns 24.0000
 d 1.0000
 map_Kd ../textures/tex_mouth_dark.bmp
+
+newmtl mat_tongue
+Ka 0.2000 0.2000 0.2000
+Kd 1.0000 1.0000 1.0000
+Ks 0.1500 0.1500 0.1500
+Ns 24.0000
+d 1.0000
+map_Kd ../textures/tex_tongue_pink.bmp
 
