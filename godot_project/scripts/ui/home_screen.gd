@@ -21,11 +21,11 @@ const CAPY_DIALOGS := [
 	{ "name": "Trio Mini-Capi", "role": "Trio Usil - Pecah 3 di Udara", "quote": "\"Hehe! Satu aja udah pusing, apalagi bertiga!\"" }
 ]
 
-# 3 grup sprite 2D transparan yang bergerak berlapis independen
+# 3 grup sprite 2D transparan yang telah di-harmonisasi Master Anti-Slop LUT di Visual Studio C++
 const LAYERED_GROUPS := [
 	# 0. Dash Capi melesat di langit kanan atas (di atas gerbang Torii!)
 	{
-		"tex": "res://assets/generated/home2d/capi_2d_dash.png",
+		"tex": "res://assets/generated/home2d/capi_2d_dash_graded.png",
 		"pos": Vector2(1018.0, 188.0),
 		"size": Vector2(278.0, 230.0),
 		"depth": 0.56,
@@ -38,7 +38,7 @@ const LAYERED_GROUPS := [
 	},
 	# 1. Trio Mini-Capi bertumpuk 3 di tebing kiri sebelah ketapel bambu
 	{
-		"tex": "res://assets/generated/home2d/capi_2d_trio_mini.png",
+		"tex": "res://assets/generated/home2d/capi_2d_trio_mini_graded.png",
 		"pos": Vector2(158.0, 444.0),
 		"size": Vector2(142.0, 304.0),
 		"depth": 0.64,
@@ -51,7 +51,7 @@ const LAYERED_GROUPS := [
 	},
 	# 2. Formasi 5 Hero Utama (Seed-Blaster, Yuzu Bomb, Chill Capi, Heavy Onsen, Bambu-Katana)
 	{
-		"tex": "res://assets/generated/home2d/capi_2d_squad_main.png",
+		"tex": "res://assets/generated/home2d/capi_2d_squad_main_graded.png",
 		"pos": Vector2(676.0, 450.0),
 		"size": Vector2(968.0, 396.0),
 		"depth": 0.86,
@@ -268,13 +268,13 @@ func _setup_ambient_2d_particles() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20262425
 
-	# Percikan bara api hangat melayang naik dari api Yuzu Bomb
+	# Percikan bara api hangat terukur dari api Yuzu Bomb (sesuai palet anti-slop)
 	for i in 12:
 		var dot := ColorRect.new()
-		var dsz: float = rng.randf_range(4.0, 8.0)
+		var dsz: float = rng.randf_range(4.0, 7.5)
 		dot.size = Vector2(dsz, dsz)
 		dot.pivot_offset = dot.size * 0.5
-		dot.color = Color(1.0, rng.randf_range(0.64, 0.92), 0.22, 0.92)
+		dot.color = Color(0.95, rng.randf_range(0.72, 0.86), 0.36, 0.84)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var base_p := Vector2(462.0 + rng.randf_range(-38.0, 38.0), 312.0 + rng.randf_range(-14.0, 22.0))
 		dot.position = base_p
@@ -286,12 +286,12 @@ func _setup_ambient_2d_particles() -> void:
 			"phase": rng.randf_range(0.0, TAU)
 		})
 
-	# Daun bambu hijau lembut melayang di angin senja
+	# Daun bambu zaitun lembut melayang di angin (tanpa hijau neon)
 	for i in 9:
 		var lf := ColorRect.new()
-		lf.size = Vector2(rng.randf_range(14.0, 22.0), rng.randf_range(5.0, 8.0))
+		lf.size = Vector2(rng.randf_range(13.0, 20.0), rng.randf_range(4.5, 7.0))
 		lf.pivot_offset = lf.size * 0.5
-		lf.color = Color(0.56, 0.88, 0.28, 0.84)
+		lf.color = Color(0.55, 0.70, 0.34, 0.76)
 		lf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var base_p := Vector2(rng.randf_range(80.0, 1200.0), rng.randf_range(40.0, 560.0))
 		lf.position = base_p
@@ -371,8 +371,8 @@ func _setup_arcade_ui() -> void:
 	loading_bar.add_theme_stylebox_override("fill", lfill)
 	loading_strip.add_child(loading_bar)
 
-	# Tombol PLAY arcade besar bersih di bagian bawah tengah
-	play_button = _make_glossy_button("PLAY", Color(0.94, 0.32, 0.14), Color(1.0, 0.96, 0.80), 34, Vector2(238, 62), 20)
+	# Tombol PLAY — 1 Aksen Fokus Tunggal Vermilion Jepang (miqdadbadjuber/anti-slop R-01!)
+	play_button = _make_glossy_button("PLAY", Color(0.80, 0.22, 0.16), Color(0.98, 0.95, 0.89), 34, Vector2(238, 62), 14, true)
 	play_button.add_theme_font_override("font", display_font)
 	play_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	play_button.offset_left = -119
@@ -383,7 +383,7 @@ func _setup_arcade_ui() -> void:
 	play_button.pressed.connect(_go_to_tester)
 	ui_root.add_child(play_button)
 
-	# Tombol pojok kanan bawah kompak
+	# Tombol sekunder seragam Warm Lacquer Espresso (nol tombol warna-warni pelangi AI slop!)
 	corner_menu = HBoxContainer.new()
 	corner_menu.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	corner_menu.offset_left = -318
@@ -395,19 +395,21 @@ func _setup_arcade_ui() -> void:
 	corner_menu.visible = false
 	ui_root.add_child(corner_menu)
 
-	var btn_worlds := _make_glossy_button("4 WORLD", Color(0.16, 0.48, 0.78), Color(0.95, 0.98, 1.0), 13, Vector2(96, 38), 14)
+	var sec_bg := Color(0.17, 0.13, 0.11, 0.94)
+	var sec_fg := Color(0.96, 0.93, 0.86)
+	var btn_worlds := _make_glossy_button("4 WORLD", sec_bg, sec_fg, 13, Vector2(96, 38), 10, false)
 	btn_worlds.pressed.connect(_show_worlds_modal)
 	corner_menu.add_child(btn_worlds)
 
-	var btn_credits := _make_glossy_button("CREDITS", Color(0.24, 0.58, 0.28), Color(0.96, 1.0, 0.92), 13, Vector2(92, 38), 14)
+	var btn_credits := _make_glossy_button("CREDITS", sec_bg, sec_fg, 13, Vector2(92, 38), 10, false)
 	btn_credits.pressed.connect(_show_credits_modal)
 	corner_menu.add_child(btn_credits)
 
-	var btn_exit := _make_glossy_button("EXIT", Color(0.24, 0.22, 0.28), Color(0.94, 0.92, 0.96), 13, Vector2(72, 38), 14)
+	var btn_exit := _make_glossy_button("EXIT", sec_bg, sec_fg, 13, Vector2(72, 38), 10, false)
 	btn_exit.pressed.connect(func(): get_tree().quit())
 	corner_menu.add_child(btn_exit)
 
-	# Balon dialog sementara saat klik kapibara / tekan 1-7
+	# Balon dialog seragam Warm Lacquer Espresso + border kertas washi
 	speech_bubble = PanelContainer.new()
 	speech_bubble.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	speech_bubble.offset_left = 22
@@ -416,10 +418,10 @@ func _setup_arcade_ui() -> void:
 	speech_bubble.offset_bottom = -20
 	speech_bubble.visible = false
 	var sb_style := StyleBoxFlat.new()
-	sb_style.bg_color = Color(0.09, 0.11, 0.15, 0.90)
-	sb_style.border_color = Color(1.0, 0.82, 0.28)
-	sb_style.set_border_width_all(3)
-	sb_style.set_corner_radius_all(14)
+	sb_style.bg_color = Color(0.15, 0.11, 0.10, 0.94)
+	sb_style.border_color = Color(0.82, 0.74, 0.58)
+	sb_style.set_border_width_all(2)
+	sb_style.set_corner_radius_all(10)
 	speech_bubble.add_theme_stylebox_override("panel", sb_style)
 	ui_root.add_child(speech_bubble)
 
@@ -483,29 +485,29 @@ func _setup_arcade_ui() -> void:
 	modal_body.add_theme_font_size_override("normal_font_size", 14)
 	mvbox.add_child(modal_body)
 
-	var close_btn := _make_glossy_button("TUTUP", Color(0.86, 0.26, 0.20), Color(1, 1, 1), 15, Vector2(140, 38), 14)
+	var close_btn := _make_glossy_button("TUTUP", Color(0.80, 0.22, 0.16), Color(0.98, 0.95, 0.89), 15, Vector2(140, 38), 10, true)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.pressed.connect(func(): modal_overlay.visible = false)
 	mvbox.add_child(close_btn)
 
-func _make_glossy_button(text_str: String, bg: Color, fg: Color, fsize: int, min_sz: Vector2, radius: int) -> Button:
+func _make_glossy_button(text_str: String, bg: Color, fg: Color, fsize: int, min_sz: Vector2, radius: int, is_primary: bool = false) -> Button:
 	var b := Button.new()
 	b.text = text_str
 	b.custom_minimum_size = min_sz
 	b.add_theme_font_size_override("font_size", fsize)
 	b.add_theme_color_override("font_color", fg)
-	b.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
-	b.add_theme_color_override("font_outline_color", Color(0.08, 0.04, 0.03))
-	b.add_theme_constant_override("outline_size", 6 if fsize >= 24 else 3)
+	b.add_theme_color_override("font_hover_color", Color(1.0, 0.98, 0.93))
+	b.add_theme_color_override("font_outline_color", Color(0.14, 0.09, 0.08))
+	b.add_theme_constant_override("outline_size", 5 if is_primary and fsize >= 24 else 2)
 
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = bg
-	normal.border_color = Color(1.0, 0.88, 0.42) if fsize >= 24 else Color(0.08, 0.06, 0.10)
-	normal.set_border_width_all(4 if fsize >= 24 else 3)
+	normal.border_color = Color(0.95, 0.86, 0.66) if is_primary else Color(0.76, 0.68, 0.54, 0.85)
+	normal.set_border_width_all(3 if is_primary else 2)
 	normal.set_corner_radius_all(radius)
-	normal.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
-	normal.shadow_size = 10
-	normal.shadow_offset = Vector2(0, 5)
+	normal.shadow_color = Color(0.12, 0.08, 0.06, 0.45)
+	normal.shadow_size = 6 if is_primary else 4
+	normal.shadow_offset = Vector2(0, 4 if is_primary else 2)
 
 	var hover := normal.duplicate()
 	hover.bg_color = bg.lightened(0.16)

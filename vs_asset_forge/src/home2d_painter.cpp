@@ -136,58 +136,53 @@ void PaintAngerMark(Canvas2D& cv, const Vec2& c, float sz) {
 
 void BuildLayer00_SkySun(const std::string& dir) {
 	Canvas2D cv(1280, 720);
-	// Posisi matahari hangat tepat di belakang kepala Chill Capi & bawah logo (seperti 2D kemarin!)
+	// Anti-Slop Woodblock/Ghibli Daylight-Golden Sky (nol teal-oranye keruh khas AI!)
 	Vec2 sunPos(640.0f, 395.0f);
 
 	for (int y = 0; y < cv.h; ++y) {
 		float ny = static_cast<float>(y) / static_cast<float>(cv.h - 1);
-		// Palet senja golden-hour dramatis ala key-art 2D kemarin: biru teal atas -> jingga keemasan -> kuning krem hangat
 		Color4 skyCol;
-		if (ny < 0.30f) {
-			skyCol = lerpColor(rgbHex(0x164C6E), rgbHex(0x3D8496), smoothstep(0.0f, 0.30f, ny));
-		} else if (ny < 0.58f) {
-			skyCol = lerpColor(rgbHex(0x3D8496), rgbHex(0xF6A442), smoothstep(0.30f, 0.58f, ny));
+		if (ny < 0.36f) {
+			skyCol = lerpColor(rgbHex(0x5296BD), rgbHex(0x8DC0D2), smoothstep(0.0f, 0.36f, ny));
+		} else if (ny < 0.68f) {
+			skyCol = lerpColor(rgbHex(0x8DC0D2), rgbHex(0xE9D7AE), smoothstep(0.36f, 0.68f, ny));
 		} else {
-			skyCol = lerpColor(rgbHex(0xF6A442), rgbHex(0xFFDF7E), smoothstep(0.58f, 1.0f, ny));
+			skyCol = lerpColor(rgbHex(0xE9D7AE), rgbHex(0xF6E6BC), smoothstep(0.68f, 1.0f, ny));
 		}
 
 		for (int x = 0; x < cv.w; ++x) {
 			Vec2 p(x + 0.5f, y + 0.5f);
 			float dist = length(p - sunPos);
-			// Pijar matahari besar hangat menyinari seluruh lembah tengah
-			float haloWide = std::exp(-(dist * dist) / (460.0f * 460.0f));
-			float haloMid  = std::exp(-(dist * dist) / (250.0f * 250.0f));
-			float haloCore = std::exp(-(dist * dist) / (125.0f * 125.0f));
-			Color4 c = lerpColor(skyCol, rgbHex(0xFFC452), haloWide * 0.72f);
-			c = lerpColor(c, rgbHex(0xFFE78A), haloMid * 0.82f);
-			c = lerpColor(c, rgbHex(0xFFFDF0), haloCore * 0.92f);
-
-			float g = (hash21(x, y, 71) - 0.5f) * 0.012f;
-			c.r = clampf(c.r + g, 0.0f, 1.0f);
-			c.g = clampf(c.g + g, 0.0f, 1.0f);
-			c.b = clampf(c.b + g, 0.0f, 1.0f);
+			// Pijar matahari washi hangat & bersih di lembah tengah (tanpa blob oranye radioaktif)
+			float haloWide = std::exp(-(dist * dist) / (450.0f * 450.0f));
+			float haloMid  = std::exp(-(dist * dist) / (240.0f * 240.0f));
+			float haloCore = std::exp(-(dist * dist) / (120.0f * 120.0f));
+			Color4 c = lerpColor(skyCol, rgbHex(0xF5D993), haloWide * 0.65f);
+			c = lerpColor(c, rgbHex(0xFAF0CE), haloMid * 0.78f);
+			c = lerpColor(c, rgbHex(0xFCF8E8), haloCore * 0.90f);
 			c.a = 1.0f;
 			cv.BlendPixelOver(x, y, c);
 		}
 	}
 
-	// Inti cakram matahari berkilau putih-emas lembut
+	// Inti cakram matahari washi-emas lembut
 	BBox sunBox{ sunPos.x - 185, sunPos.y - 185, sunPos.x + 185, sunPos.y + 185 };
-	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 145.0f); },
+	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 140.0f); },
 		[&](const Vec2&, float d) -> Color4 {
-			float t = clampf(-d / 145.0f, 0.0f, 1.0f);
-			return lerpColor(rgbHex(0xFFE886), rgbHex(0xFFFFF4), smoothstep(0.0f, 0.65f, t));
-		}, 26.0f);
+			float t = clampf(-d / 140.0f, 0.0f, 1.0f);
+			return lerpColor(rgbHex(0xF7DF9A), rgbHex(0xFDF9EB), smoothstep(0.0f, 0.65f, t));
+		}, 24.0f);
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.04f, 0.015f, 0.010f, 1001);
 	cv.SavePNG(dir + "/layer_00_sky_sun.png");
-	std::cout << "  -> Exported home2d/layer_00_sky_sun.png (1280x720)\n";
+	std::cout << "  -> Exported home2d/layer_00_sky_sun.png (1280x720, anti-slop graded)\n";
 }
 
 void BuildLayer01_Sunburst(const std::string& dir) {
 	Canvas2D cv(1280, 1280);
 	Vec2 center(640.0f, 640.0f);
 
-	// Pancaran sinar matahari dramatis bervariasi lebar seperti key-art 2D kemarin!
+	// Pancaran sinar woodblock krem-madu tegas berhierarki (mengarahkan mata ke logo & MC)
 	for (int y = 0; y < cv.h; ++y) {
 		for (int x = 0; x < cv.w; ++x) {
 			Vec2 d = Vec2(x + 0.5f, y + 0.5f) - center;
@@ -195,26 +190,25 @@ void BuildLayer01_Sunburst(const std::string& dir) {
 			if (r > 638.0f) continue;
 			float ang = std::atan2(d.y, d.x);
 
-			// Gabungan 12 sinar utama + 24 sinar halus aksen agar terasa alami seperti lukisan 2D
 			float w1 = 0.5f + 0.5f * std::cos(ang * 12.0f + 0.15f);
 			float w2 = 0.5f + 0.5f * std::cos(ang * 24.0f - 0.40f);
-			float rayMain = smoothstep(0.38f, 0.82f, w1);
-			float rayFine = smoothstep(0.58f, 0.92f, w2) * 0.45f;
+			float rayMain = smoothstep(0.46f, 0.72f, w1);
+			float rayFine = smoothstep(0.64f, 0.86f, w2) * 0.35f;
 			float ray = clampf(rayMain + rayFine, 0.0f, 1.0f);
 
-			float coreGlow = std::exp(-(r * r) / (195.0f * 195.0f));
-			float radialFade = (1.0f - smoothstep(140.0f, 632.0f, r));
-			float alpha = clampf(ray * radialFade * 0.58f + coreGlow * 0.68f, 0.0f, 0.92f);
+			float coreGlow = std::exp(-(r * r) / (185.0f * 185.0f));
+			float radialFade = (1.0f - smoothstep(160.0f, 628.0f, r));
+			float alpha = clampf(ray * radialFade * 0.44f + coreGlow * 0.55f, 0.0f, 0.84f);
 
 			if (alpha > 0.003f) {
-				Color4 c = lerpColor(rgbHex(0xFFBE44), rgbHex(0xFFFBE2), clampf(coreGlow * 1.25f + (1.0f - r / 640.0f) * 0.45f, 0.0f, 1.0f));
+				Color4 c = lerpColor(rgbHex(0xF2D488), rgbHex(0xFCF7E6), clampf(coreGlow * 1.15f + (1.0f - r / 640.0f) * 0.45f, 0.0f, 1.0f));
 				c.a = alpha;
 				cv.BlendPixelOver(x, y, c);
 			}
 		}
 	}
 	cv.SavePNG(dir + "/layer_01_sunburst.png");
-	std::cout << "  -> Exported home2d/layer_01_sunburst.png (1280x1280)\n";
+	std::cout << "  -> Exported home2d/layer_01_sunburst.png (1280x1280, anti-slop woodblock rays)\n";
 }
 
 void PaintPuffyCloud(Canvas2D& cv, const Vec2& c, float sc, int seed) {
@@ -224,29 +218,29 @@ void PaintPuffyCloud(Canvas2D& cv, const Vec2& c, float sc, int seed) {
 		d = smin(d, sdCircle(p, c + Vec2(-28.0f * sc, -26.0f * sc), 54.0f * sc), 20.0f * sc);
 		d = smin(d, sdCircle(p, c + Vec2( 36.0f * sc, -18.0f * sc), 46.0f * sc), 18.0f * sc);
 		d = smin(d, sdCircle(p, c + Vec2( 84.0f * sc,  8.0f * sc), 38.0f * sc), 16.0f * sc);
-		// Flat soft cloud belly bottom
 		float flatCut = (c.y + 34.0f * sc) - p.y;
 		d = smax(d, -flatCut, 18.0f * sc);
 		return d;
 	};
 	BBox box{ c.x - 165 * sc, c.y - 95 * sc, c.x + 165 * sc, c.y + 55 * sc };
+	// Awan Ghibli gading cerah + bayangan bawah slate-lavender sejuk (nol awan oranye keruh AI!)
 	VolumetricStyle st;
-	st.topCol = rgbHex(0xFFF5D4);
-	st.midCol = rgbHex(0xFFD08A);
-	st.botCol = rgbHex(0xE88F62);
-	st.rimCol = rgbHex(0xFFFDF0);
+	st.topCol = rgbHex(0xFDF9EE);
+	st.midCol = rgbHex(0xEFE5D4);
+	st.botCol = rgbHex(0xB4BFC8);
+	st.rimCol = rgbHex(0xFFFFFF);
 	st.lightDir = normalize(Vec2(0.0f, -1.0f));
-	st.rimWidth = 10.0f * sc;
-	st.rimStrength = 0.65f;
-	st.aoDepth = 22.0f * sc;
-	st.aoStrength = 0.26f;
-	st.specStrength = 0.14f;
-	st.brushAmp = 0.045f;
+	st.rimWidth = 9.0f * sc;
+	st.rimStrength = 0.58f;
+	st.aoDepth = 20.0f * sc;
+	st.aoStrength = 0.22f;
+	st.specStrength = 0.10f;
+	st.brushAmp = 0.040f;
 	st.brushAngle = 0.05f;
 	st.brushAlong = 42.0f;
 	st.brushAcross = 14.0f;
 	st.seed = seed;
-	cv.PaintVolumetricSDF(box, sdf, st, 2.2f);
+	cv.PaintVolumetricSDF(box, sdf, st, 2.0f);
 }
 
 void BuildLayer02_Clouds(const std::string& dir) {
@@ -254,6 +248,7 @@ void BuildLayer02_Clouds(const std::string& dir) {
 	PaintPuffyCloud(cv, Vec2(280.0f, 175.0f), 1.05f, 301);
 	PaintPuffyCloud(cv, Vec2(990.0f, 165.0f), 1.12f, 302);
 	PaintPuffyCloud(cv, Vec2(645.0f, 108.0f), 0.72f, 303);
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.04f, 0.012f, 0.009f, 1002);
 	cv.SavePNG(dir + "/layer_02_clouds.png");
 	std::cout << "  -> Exported home2d/layer_02_clouds.png (1280x420)\n";
 }
@@ -261,7 +256,7 @@ void BuildLayer02_Clouds(const std::string& dir) {
 void BuildLayer03_MountainsFar(const std::string& dir) {
 	Canvas2D cv(1280, 720);
 
-	// Back misty ridge (soft teal-jade)
+	// Back misty ridge (soft woodblock pine-slate)
 	for (int x = 0; x < cv.w; ++x) {
 		float fx = static_cast<float>(x) / 1280.0f;
 		float hFar = 340.0f
@@ -273,16 +268,15 @@ void BuildLayer03_MountainsFar(const std::string& dir) {
 			float d = hFar - (y + 0.5f);
 			float a = clampf(0.5f - d / 2.2f, 0.0f, 1.0f);
 			float depth = clampf((y - hFar) / 280.0f, 0.0f, 1.0f);
-			Color4 c = lerpColor(rgbHex(0x4D8D7B), rgbHex(0x88BA94), depth);
-			// Warm golden-hour rim right along ridge crest
+			Color4 c = lerpColor(rgbHex(0x69948A), rgbHex(0xA4BFB0), depth);
 			float crest = 1.0f - smoothstep(0.0f, 14.0f, y - hFar);
-			c = lerpColor(c, rgbHex(0xD8E3A6), crest * 0.32f);
+			c = lerpColor(c, rgbHex(0xDDE4BE), crest * 0.28f);
 			c.a = a;
 			cv.BlendPixelOver(x, y, c);
 		}
 	}
 
-	// Closer layered misty hills (left & right framing valley)
+	// Closer layered misty hills (natural botanical sage)
 	for (int x = 0; x < cv.w; ++x) {
 		float fx = static_cast<float>(x) / 1280.0f;
 		float hMid = 435.0f
@@ -294,9 +288,9 @@ void BuildLayer03_MountainsFar(const std::string& dir) {
 			float d = hMid - (y + 0.5f);
 			float a = clampf(0.5f - d / 2.0f, 0.0f, 1.0f);
 			float depth = clampf((y - hMid) / 240.0f, 0.0f, 1.0f);
-			Color4 c = lerpColor(rgbHex(0x36755D), rgbHex(0x6BA274), depth);
+			Color4 c = lerpColor(rgbHex(0x4E7A61), rgbHex(0x7DA37E), depth);
 			float crest = 1.0f - smoothstep(0.0f, 12.0f, y - hMid);
-			c = lerpColor(c, rgbHex(0xB8D88A), crest * 0.35f);
+			c = lerpColor(c, rgbHex(0xC2D49C), crest * 0.30f);
 			float bn = brushNoise(static_cast<float>(x), static_cast<float>(y), -0.4f, 45.0f, 12.0f, 99);
 			c = mulColor(c, 1.0f + bn * 0.045f);
 			c.a = a;
@@ -304,15 +298,16 @@ void BuildLayer03_MountainsFar(const std::string& dir) {
 		}
 	}
 
-	// Soft golden valley mist along the lower valley band
+	// Soft warm parchment mist along lower valley
 	for (int y = 390; y < 600; ++y) {
 		float t = 1.0f - std::fabs((y - 495.0f) / 105.0f);
-		float a = smoothstep(0.0f, 1.0f, t) * 0.22f;
+		float a = smoothstep(0.0f, 1.0f, t) * 0.20f;
 		for (int x = 0; x < cv.w; ++x) {
-			cv.BlendPixelOver(x, y, Color4(1.0f, 0.88f, 0.62f, a));
+			cv.BlendPixelOver(x, y, Color4(0.97f, 0.92f, 0.80f, a));
 		}
 	}
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.05f, 0.015f, 0.010f, 1003);
 	cv.SavePNG(dir + "/layer_03_mountains_far.png");
 	std::cout << "  -> Exported home2d/layer_03_mountains_far.png (1280x720)\n";
 }
@@ -326,13 +321,13 @@ void BuildLayer04_MidgroundOnsen(const std::string& dir) {
 	{
 		Vec2 base(355.0f, 455.0f);
 
-		// Supporting mossy hillside mound under the onsen house
+		// Supporting mossy hillside mound under the onsen house (botanical matcha)
 		BBox mBox{ 140, 395, 570, 620 };
 		VolumetricStyle mSt;
-		mSt.topCol = rgbHex(0x6CA84E);
-		mSt.midCol = rgbHex(0x478242);
-		mSt.botCol = rgbHex(0x28543B);
-		mSt.rimCol = rgbHex(0xC2E47A);
+		mSt.topCol = rgbHex(0x6C9454);
+		mSt.midCol = rgbHex(0x4A7044);
+		mSt.botCol = rgbHex(0x2B4935);
+		mSt.rimCol = rgbHex(0xB9CE7C);
 		mSt.brushAmp = 0.06f;
 		mSt.seed = 401;
 		cv.PaintVolumetricSDF(mBox, [&](const Vec2& p) {
@@ -342,10 +337,10 @@ void BuildLayer04_MidgroundOnsen(const std::string& dir) {
 		// Stone masonry foundation
 		BBox stoneBox{ base.x - 102, base.y - 26, base.x + 102, base.y + 12 };
 		VolumetricStyle stStone;
-		stStone.topCol = rgbHex(0xB9B5AA);
-		stStone.midCol = rgbHex(0x88847C);
-		stStone.botCol = rgbHex(0x565454);
-		stStone.rimCol = rgbHex(0xE6DFCC);
+		stStone.topCol = rgbHex(0xBAB4A6);
+		stStone.midCol = rgbHex(0x8A847A);
+		stStone.botCol = rgbHex(0x5A5652);
+		stStone.rimCol = rgbHex(0xECE3CE);
 		stStone.rimWidth = 4.0f;
 		stStone.brushAmp = 0.08f;
 		stStone.seed = 402;
@@ -353,13 +348,13 @@ void BuildLayer04_MidgroundOnsen(const std::string& dir) {
 			return sdRoundBox(p, Vec2(base.x, base.y - 8.0f), 96.0f, 16.0f, 4.0f);
 		}, stStone);
 
-		// Warm Cedar Timber Main Wall
+		// Aged Cedar Timber Main Wall (muted natural wood, no neon orange)
 		BBox wallBox{ base.x - 94, base.y - 122, base.x + 94, base.y - 20 };
 		VolumetricStyle stWood;
-		stWood.topCol = rgbHex(0xDE8842);
-		stWood.midCol = rgbHex(0xB56028);
-		stWood.botCol = rgbHex(0x6E341A);
-		stWood.rimCol = rgbHex(0xFFD282);
+		stWood.topCol = rgbHex(0xBD7D4A);
+		stWood.midCol = rgbHex(0x93562D);
+		stWood.botCol = rgbHex(0x5C321C);
+		stWood.rimCol = rgbHex(0xEAD09C);
 		stWood.rimWidth = 5.0f;
 		stWood.brushAmp = 0.09f;
 		stWood.brushAngle = 0.0f;
@@ -458,28 +453,28 @@ void BuildLayer04_MidgroundOnsen(const std::string& dir) {
 	// B. RIGHT: Rocky Bluff + Vermilion Torii Gate + Glowing Onsen Pool
 	// -----------------------------------------------------------------
 	{
-		// Right mossy bluff
+		// Right mossy bluff (harmonized matcha-sage)
 		BBox rbBox{ 800, 400, 1280, 680 };
 		VolumetricStyle rbSt;
-		rbSt.topCol = rgbHex(0x63A452);
-		rbSt.midCol = rgbHex(0x3F7C46);
-		rbSt.botCol = rgbHex(0x254E3A);
-		rbSt.rimCol = rgbHex(0xC2E682);
+		rbSt.topCol = rgbHex(0x669254);
+		rbSt.midCol = rgbHex(0x467046);
+		rbSt.botCol = rgbHex(0x2A4B38);
+		rbSt.rimCol = rgbHex(0xB8CE7F);
 		rbSt.brushAmp = 0.06f;
 		rbSt.seed = 410;
 		cv.PaintVolumetricSDF(rbBox, [&](const Vec2& p) {
 			return sdEllipse(p, Vec2(1070.0f, 550.0f), 240.0f, 130.0f);
 		}, rbSt, 1.8f);
 
-		// Vermilion Japanese Torii Gate
+		// Atmospheric Vermilion Japanese Torii Gate (subtle distance mute so Chill Capi owns focal red!)
 		Vec2 tc(1025.0f, 430.0f);
 		VolumetricStyle stTorii;
-		stTorii.topCol = rgbHex(0xFF4F38);
-		stTorii.midCol = rgbHex(0xDF281E);
-		stTorii.botCol = rgbHex(0x8C1216);
-		stTorii.rimCol = rgbHex(0xFFD586);
+		stTorii.topCol = rgbHex(0xDC5542);
+		stTorii.midCol = rgbHex(0xBC3528);
+		stTorii.botCol = rgbHex(0x751F1E);
+		stTorii.rimCol = rgbHex(0xF2D49C);
 		stTorii.rimWidth = 4.5f;
-		stTorii.rimStrength = 0.55f;
+		stTorii.rimStrength = 0.50f;
 		stTorii.brushAmp = 0.045f;
 		stTorii.seed = 411;
 
@@ -540,6 +535,7 @@ void BuildLayer04_MidgroundOnsen(const std::string& dir) {
 		}
 	}
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 1004);
 	cv.SavePNG(dir + "/layer_04_midground_onsen.png");
 	std::cout << "  -> Exported home2d/layer_04_midground_onsen.png (1280x720)\n";
 }
@@ -568,13 +564,13 @@ void BuildLayer05_SteamWisps(const std::string& dir) {
 void BuildLayer06_SlingshotCliff(const std::string& dir) {
 	Canvas2D cv(1280, 720);
 
-	// Mossy sunlit left cliff ledge supporting the Trio Mini & Bamboo Slingshot
+	// Mossy sunlit left cliff ledge supporting the Trio Mini & Bamboo Slingshot (natural botanical olive-moss)
 	BBox clBox{ -40, 400, 390, 720 };
 	VolumetricStyle clSt;
-	clSt.topCol = rgbHex(0x88CC44);
-	clSt.midCol = rgbHex(0x4F9835);
-	clSt.botCol = rgbHex(0x285B2E);
-	clSt.rimCol = rgbHex(0xDFF68A);
+	clSt.topCol = rgbHex(0x78A24E);
+	clSt.midCol = rgbHex(0x4C7638);
+	clSt.botCol = rgbHex(0x2A482A);
+	clSt.rimCol = rgbHex(0xC6D87A);
 	clSt.rimWidth = 10.0f;
 	clSt.brushAmp = 0.075f;
 	clSt.seed = 601;
@@ -584,17 +580,17 @@ void BuildLayer06_SlingshotCliff(const std::string& dir) {
 		return d;
 	}, clSt, 2.0f);
 
-	// Hand-painted Classic Bamboo Y-Slingshot perched on the left cliff
+	// Hand-painted Classic Bamboo Y-Slingshot perched on the left cliff (natural warm bamboo)
 	Vec2 base(165.0f, 445.0f);
 	Vec2 fork(160.0f, 342.0f);
 	Vec2 tipL(112.0f, 214.0f);
 	Vec2 tipR(218.0f, 210.0f);
 
 	VolumetricStyle bamSt;
-	bamSt.topCol = rgbHex(0xC0E85C);
-	bamSt.midCol = rgbHex(0x7CB832);
-	bamSt.botCol = rgbHex(0x42701E);
-	bamSt.rimCol = rgbHex(0xF6FF9E);
+	bamSt.topCol = rgbHex(0xA4BE5E);
+	bamSt.midCol = rgbHex(0x70923C);
+	bamSt.botCol = rgbHex(0x415B25);
+	bamSt.rimCol = rgbHex(0xE2EC9E);
 	bamSt.rimWidth = 5.5f;
 	bamSt.rimStrength = 0.65f;
 	bamSt.specStrength = 0.25f;
@@ -633,16 +629,17 @@ void BuildLayer06_SlingshotCliff(const std::string& dir) {
 		cv.FillSDF(sBox, [&](const Vec2& p) { return sdCapsule(p, rg[0], rg[1], 2.5f); },
 			[](const Vec2&, float) { return rgbHex(0x3B6418); });
 	}
-	// Golden rope binding around Y-junction
+	// Golden rope binding around Y-junction (natural hemp)
 	for (int i = 0; i < 4; ++i) {
 		float yOff = -8.0f + i * 6.0f;
 		cv.FillSDF(sBox, [&](const Vec2& p) { return sdCapsule(p, fork + Vec2(-18, yOff), fork + Vec2(18, yOff + 2.0f), 3.4f); },
-			[](const Vec2&, float) { return rgbHex(0xE8AA34); });
+			[](const Vec2&, float) { return rgbHex(0xD2A048); });
 	}
-	// Front crimson elastic band
+	// Front vermilion elastic band
 	cv.FillSDF(sBox, [&](const Vec2& p) { return sdQuadBezierStroke(p, tipL + Vec2(4, 18), Vec2(115, 255), Vec2(118, 284), 5.5f, 5.0f, 12); },
-		[](const Vec2&, float) { return rgbHex(0xE8342A); });
+		[](const Vec2&, float) { return rgbHex(0xC83A2E); });
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 1006);
 	cv.SavePNG(dir + "/layer_06_slingshot_cliff.png");
 	std::cout << "  -> Exported home2d/layer_06_slingshot_cliff.png (1280x720)\n";
 }
@@ -650,7 +647,7 @@ void BuildLayer06_SlingshotCliff(const std::string& dir) {
 void BuildLayer07_ForegroundHill(const std::string& dir) {
 	Canvas2D cv(1280, 420);
 
-	// Rolling emerald-moss hill across bottom of canvas
+	// Rolling Ghibli meadow-moss hill (natural desaturated gouache green, ZERO neon acid green!)
 	auto hillSdf = [&](const Vec2& p) {
 		float fx = (p.x - 640.0f) / 720.0f;
 		float crestY = 128.0f + fx * fx * 86.0f + std::sin(p.x * 0.0085f) * 14.0f;
@@ -659,18 +656,17 @@ void BuildLayer07_ForegroundHill(const std::string& dir) {
 	BBox hBox{ 0, 95, 1280, 420 };
 	cv.FillSDF(hBox, hillSdf, [&](const Vec2& p, float d) -> Color4 {
 		float depth = clampf(-d / 280.0f, 0.0f, 1.0f);
-		Color4 c = lerpColor(rgbHex(0x7FD43A), rgbHex(0x2F7E2A), smoothstep(0.0f, 0.85f, depth));
-		c = lerpColor(c, rgbHex(0x1B4D24), smoothstep(0.65f, 1.0f, depth));
-		// Sunlit golden-lime rim along top edge of hill
+		Color4 c = lerpColor(rgbHex(0x749F4A), rgbHex(0x3F6A36), smoothstep(0.0f, 0.85f, depth));
+		c = lerpColor(c, rgbHex(0x284329), smoothstep(0.65f, 1.0f, depth));
+		// Soft warm cream-olive sunlit crest
 		float rim = 1.0f - smoothstep(0.0f, 18.0f, -d);
-		c = lerpColor(c, rgbHex(0xD8F872), rim * 0.58f);
-		// Soft painterly brushstroke variation
+		c = lerpColor(c, rgbHex(0xC4D678), rim * 0.52f);
 		float bn = brushNoise(p.x, p.y, -0.18f, 52.0f, 12.0f, 701);
 		c = mulColor(c, 1.0f + bn * 0.07f);
 		return c;
 	}, 2.2f);
 
-	// Painterly sunlit grass blades & moss tufts along crest & bottom corners
+	// Painterly grass tufts along crest
 	for (int i = 0; i < 28; ++i) {
 		float gx = 32.0f + i * 45.5f + std::sin(i * 2.1f) * 14.0f;
 		float fx = (gx - 640.0f) / 720.0f;
@@ -682,11 +678,11 @@ void BuildLayer07_ForegroundHill(const std::string& dir) {
 			[&](const Vec2& p) { return sdQuadBezierStroke(p, Vec2(gx, gy + 6), Vec2(gx + lean * 0.4f, gy - hBlade * 0.5f), Vec2(gx + lean, gy - hBlade), 5.5f, 1.0f, 10); },
 			[&](const Vec2& p, float) {
 				float t = clampf((gy - p.y) / hBlade, 0.0f, 1.0f);
-				return lerpColor(rgbHex(0x52A82E), rgbHex(0xC6F264), t);
+				return lerpColor(rgbHex(0x527B34), rgbHex(0xB4C86A), t);
 			}, 1.2f);
 	}
 
-	// Grounding contact shadow ellipses where the squad stands
+	// Grounding contact shadow ellipses under the squad
 	const Vec2 shPos[] = { {640, 208}, {465, 194}, {825, 198}, {290, 224}, {1005, 226} };
 	const float shRx[] = { 130.0f, 88.0f, 102.0f, 74.0f, 78.0f };
 	for (int i = 0; i < 5; ++i) {
@@ -694,10 +690,11 @@ void BuildLayer07_ForegroundHill(const std::string& dir) {
 		cv.FillSDF(sb, [&](const Vec2& p) { return sdEllipse(p, shPos[i], shRx[i], 20.0f); },
 			[&](const Vec2&, float d) {
 				float fall = clampf(1.0f - (d + 16.0f) / 36.0f, 0.0f, 1.0f);
-				return Color4(0.08f, 0.24f, 0.12f, fall * 0.34f);
+				return Color4(0.12f, 0.20f, 0.14f, fall * 0.36f);
 			}, 18.0f);
 	}
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.011f, 1007);
 	cv.SavePNG(dir + "/layer_07_foreground_hill.png");
 	std::cout << "  -> Exported home2d/layer_07_foreground_hill.png (1280x420)\n";
 }
@@ -729,14 +726,14 @@ void PaintBambooStalk(Canvas2D& cv, const Vec2& p0, const Vec2& p1, const Vec2& 
 	BBox box{ minX, minY, maxX, maxY };
 
 	VolumetricStyle st;
-	st.topCol = rgbHex(0xB4E854);
-	st.midCol = rgbHex(0x69B42E);
-	st.botCol = rgbHex(0x31661C);
-	st.rimCol = rgbHex(0xF6FF9E);
+	st.topCol = rgbHex(0x9ABA5A);
+	st.midCol = rgbHex(0x638838);
+	st.botCol = rgbHex(0x345124);
+	st.rimCol = rgbHex(0xDCE89A);
 	st.lightDir = normalize(Vec2(p0.x < 640 ? 0.85f : -0.85f, -0.45f));
 	st.rimWidth = 6.0f;
-	st.rimStrength = 0.68f;
-	st.specStrength = 0.22f;
+	st.rimStrength = 0.62f;
+	st.specStrength = 0.20f;
 	st.brushAmp = 0.055f;
 	st.brushAngle = 1.52f;
 	st.seed = seed;
@@ -755,10 +752,10 @@ void PaintBambooStalk(Canvas2D& cv, const Vec2& p0, const Vec2& p1, const Vec2& 
 		float r = lerpf(radius * 1.16f, radius * 0.88f, t);
 		cv.FillSDF(BBox{ pt.x - r - 6, pt.y - r - 6, pt.x + r + 6, pt.y + r + 6 },
 			[&](const Vec2& p) { return sdCapsule(p, pt - perp * r, pt + perp * r, 2.4f); },
-			[](const Vec2&, float) { return rgbHex(0x2F5E18); });
+			[](const Vec2&, float) { return rgbHex(0x2F4C1E); });
 		cv.FillSDF(BBox{ pt.x - r - 6, pt.y - r - 6, pt.x + r + 6, pt.y + r + 6 },
 			[&](const Vec2& p) { return sdCapsule(p, pt - perp * (r * 0.9f) + Vec2(0, -3.5f), pt + perp * (r * 0.9f) + Vec2(0, -3.5f), 1.6f); },
-			[](const Vec2&, float) { return Color4(0.86f, 1.0f, 0.56f, 0.55f); });
+			[](const Vec2&, float) { return Color4(0.84f, 0.92f, 0.60f, 0.50f); });
 	}
 }
 
@@ -772,19 +769,20 @@ void BuildLayer08_BambooFrame(const std::string& dir) {
 	PaintBambooStalk(cv, Vec2(1248, 740), Vec2(1232, 360), Vec2(1262, -20), 21.0f, 803);
 	PaintBambooStalk(cv, Vec2(1188, 740), Vec2(1176, 400), Vec2(1144, -20), 14.5f, 804);
 
-	// Lush bamboo leaf fans sprouting inward from both edges
-	PaintBambooLeaf(cv, Vec2(36, 130),  0.32f, 120, 14, rgbHex(0xB8EE54), rgbHex(0x4E9624));
-	PaintBambooLeaf(cv, Vec2(36, 130), -0.18f, 105, 12, rgbHex(0xD2FA74), rgbHex(0x5CA82A));
-	PaintBambooLeaf(cv, Vec2(94, 240),  0.55f, 110, 12, rgbHex(0xA4E048), rgbHex(0x3F8220));
-	PaintBambooLeaf(cv, Vec2(94, 240),  0.08f,  95, 11, rgbHex(0xC8F468), rgbHex(0x529C28));
-	PaintBambooLeaf(cv, Vec2(34, 415),  0.42f, 100, 12, rgbHex(0x9AD840), rgbHex(0x3D7E20));
+	// Botanical olive-jade bamboo leaf fans
+	PaintBambooLeaf(cv, Vec2(36, 130),  0.32f, 120, 14, rgbHex(0xA4C45E), rgbHex(0x4C742E));
+	PaintBambooLeaf(cv, Vec2(36, 130), -0.18f, 105, 12, rgbHex(0xBCD472), rgbHex(0x588234));
+	PaintBambooLeaf(cv, Vec2(94, 240),  0.55f, 110, 12, rgbHex(0x92B652), rgbHex(0x416828));
+	PaintBambooLeaf(cv, Vec2(94, 240),  0.08f,  95, 11, rgbHex(0xB2CE6A), rgbHex(0x4E7830));
+	PaintBambooLeaf(cv, Vec2(34, 415),  0.42f, 100, 12, rgbHex(0x8BB04C), rgbHex(0x3D6426));
 
-	PaintBambooLeaf(cv, Vec2(1238, 120), PI_F - 0.30f, 125, 14, rgbHex(0xB8EE54), rgbHex(0x4E9624));
-	PaintBambooLeaf(cv, Vec2(1238, 120), PI_F + 0.18f, 102, 12, rgbHex(0xD2FA74), rgbHex(0x5CA82A));
-	PaintBambooLeaf(cv, Vec2(1174, 265), PI_F - 0.52f, 112, 12, rgbHex(0xA4E048), rgbHex(0x3F8220));
-	PaintBambooLeaf(cv, Vec2(1174, 265), PI_F - 0.06f,  94, 11, rgbHex(0xC8F468), rgbHex(0x529C28));
-	PaintBambooLeaf(cv, Vec2(1240, 445), PI_F - 0.40f, 105, 12, rgbHex(0x9AD840), rgbHex(0x3D7E20));
+	PaintBambooLeaf(cv, Vec2(1238, 120), PI_F - 0.30f, 125, 14, rgbHex(0xA4C45E), rgbHex(0x4C742E));
+	PaintBambooLeaf(cv, Vec2(1238, 120), PI_F + 0.18f, 102, 12, rgbHex(0xBCD472), rgbHex(0x588234));
+	PaintBambooLeaf(cv, Vec2(1174, 265), PI_F - 0.52f, 112, 12, rgbHex(0x92B652), rgbHex(0x416828));
+	PaintBambooLeaf(cv, Vec2(1174, 265), PI_F - 0.06f,  94, 11, rgbHex(0xB2CE6A), rgbHex(0x4E7830));
+	PaintBambooLeaf(cv, Vec2(1240, 445), PI_F - 0.40f, 105, 12, rgbHex(0x8BB04C), rgbHex(0x3D6426));
 
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 1008);
 	cv.SavePNG(dir + "/layer_08_bamboo_frame.png");
 	std::cout << "  -> Exported home2d/layer_08_bamboo_frame.png (1280x720)\n";
 }
@@ -1568,6 +1566,29 @@ void BuildAll7CapybaraSprites(const std::string& dir) {
 	}
 }
 
+void HarmonizeExternal2DCapybaras(const std::string& dir) {
+	// Harmonisasi seluruh cutout kapibara 2D kemarin dengan Master Anti-Slop LUT yang sama persis
+	// dengan background Visual Studio C++ (angkat hitam spidol murni ke Warm Espresso #231917,
+	// jinakkan saturasi berlebih AI, samakan suhu cahaya daylight-golden & tekstur kertas washi!)
+	const std::pair<std::string, int> files[] = {
+		{ "capi_2d_dash", 2001 },
+		{ "capi_2d_trio_mini", 2002 },
+		{ "capi_2d_squad_main", 2003 }
+	};
+	for (const auto& item : files) {
+		std::string srcPath = dir + "/" + item.first + ".png";
+		std::string dstPath = dir + "/" + item.first + "_graded.png";
+		if (!fs::exists(srcPath)) continue;
+		Canvas2D cv(1, 1);
+		if (Canvas2D::LoadPNG(srcPath, cv)) {
+			cv.ApplyAntiSlopMasterGrade(0.84f, 0.11f, 0.022f, 0.011f, item.second);
+			if (cv.SavePNG(dstPath)) {
+				std::cout << "  -> Harmonized (Anti-Slop LUT) home2d/" << item.first << "_graded.png (" << cv.w << "x" << cv.h << ")\n";
+			}
+		}
+	}
+}
+
 } // namespace
 
 bool GenerateAllHome2DLayers(const std::string& outDir) {
@@ -1578,7 +1599,7 @@ bool GenerateAllHome2DLayers(const std::string& outDir) {
 		return false;
 	}
 
-	std::cout << "[AssetForge 2D] Rendering lineless Rovio-style 2D parallax layers -> " << outDir << "\n";
+	std::cout << "[AssetForge 2D] Rendering Anti-Slop harmonized 2D parallax layers -> " << outDir << "\n";
 	BuildLayer00_SkySun(outDir);
 	BuildLayer01_Sunburst(outDir);
 	BuildLayer02_Clouds(outDir);
@@ -1589,6 +1610,7 @@ bool GenerateAllHome2DLayers(const std::string& outDir) {
 	BuildLayer07_ForegroundHill(outDir);
 	BuildLayer08_BambooFrame(outDir);
 	BuildAll7CapybaraSprites(outDir);
-	std::cout << "[AssetForge 2D] All 16 transparent 2D PNG layers exported cleanly!\n";
+	HarmonizeExternal2DCapybaras(outDir);
+	std::cout << "[AssetForge 2D] All transparent 2D PNG layers & Anti-Slop LUT harmonized sprites exported cleanly!\n";
 	return true;
 }

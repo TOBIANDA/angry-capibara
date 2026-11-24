@@ -453,6 +453,111 @@ public:
 		}
 	}
 
+	// Load an existing 32-bit RGBA PNG into Canvas2D (premultiplied float buffer) via Windows GDI+
+	static bool LoadPNG(const std::string& path, Canvas2D& out) {
+		static bool gdiInit = false;
+		static ULONG_PTR gdiToken = 0;
+		if (!gdiInit) {
+			Gdiplus::GdiplusStartupInput si;
+			if (Gdiplus::GdiplusStartup(&gdiToken, &si, nullptr) == Gdiplus::Ok) {
+				gdiInit = true;
+			}
+		}
+		int wlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
+		std::wstring wpath(static_cast<size_t>(std::max(wlen - 1, 0)), L'\0');
+		if (wlen > 1) MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, &wpath[0], wlen);
+
+		Gdiplus::Bitmap bmp(wpath.c_str());
+		if (bmp.GetLastStatus() != Gdiplus::Ok) return false;
+		int bw = static_cast<int>(bmp.GetWidth());
+		int bh = static_cast<int>(bmp.GetHeight());
+		if (bw <= 0 || bh <= 0) return false;
+
+		Gdiplus::BitmapData bd{};
+		Gdiplus::Rect rect(0, 0, bw, bh);
+		if (bmp.LockBits(&rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bd) != Gdiplus::Ok) {
+			return false;
+		}
+		out = Canvas2D(bw, bh);
+		for (int y = 0; y < bh; ++y) {
+			const uint8_t* src = static_cast<const uint8_t*>(bd.Scan0) + y * bd.Stride;
+			for (int x = 0; x < bw; ++x) {
+				float b = src[x * 4 + 0] / 255.0f;
+				float g = src[x * 4 + 1] / 255.0f;
+				float r = src[x * 4 + 2] / 255.0f;
+				float a = src[x * 4 + 3] / 255.0f;
+				size_t idx = (static_cast<size_t>(y) * bw + x) * 4;
+				out.buf[idx + 0] = r * a;
+				out.buf[idx + 1] = g * a;
+				out.buf[idx + 2] = b * a;
+				out.buf[idx + 3] = a;
+			}
+		}
+		bmp.UnlockBits(&bd);
+		return true;
+	}
+
+	// Master Anti-Slop Filmic/Gouache Color Harmonizer (miqdadbadjuber/anti-slop):
+	// Unifies shadows into warm espresso-umber (#231917), rolls highlights into warm washi ivory (#FCF5E6),
+	// tames harsh digital AI saturation spikes, and binds BG + characters with subtle paper grain.
+	void ApplyAntiSlopMasterGrade(float satScale = 0.88f, float shadowLift = 0.085f, float warmBias = 0.035f, float paperGrain = 0.012f, int seed = 2026) {
+		const Color4 shadowTint = rgbHex(0x231917);
+		const Color4 highTint   = rgbHex(0xFCF5E6);
+		for (int y = 0; y < h; ++y) {
+			for (int x = 0; x < w; ++x) {
+				size_t idx = (static_cast<size_t>(y) * w + x) * 4;
+				float a = clampf(buf[idx + 3], 0.0f, 1.0f);
+				if (a <= 1e-4f) continue;
+
+				float r = clampf(buf[idx + 0] / a, 0.0f, 1.0f);
+				float g = clampf(buf[idx + 1] / a, 0.0f, 1.0f);
+				float b = clampf(buf[idx + 2] / a, 0.0f, 1.0f);
+
+				// 1. Soft gouache saturation discipline (keeps focal crimson punch, kills neon AI spikes)
+				float luma = 0.299f * r + 0.587f * g + 0.114f * b;
+				float chroma = std::max({ r, g, b }) - std::min({ r, g, b });
+				// Gently compress extreme neon saturation (>0.72) more than subtle midtones
+				float effSat = satScale * (1.0f - smoothstep(0.68f, 1.0f, chroma) * 0.14f);
+				r = clampf(luma + (r - luma) * effSat, 0.0f, 1.0f);
+				g = clampf(luma + (g - luma) * effSat, 0.0f, 1.0f);
+				b = clampf(luma + (b - luma) * effSat, 0.0f, 1.0f);
+
+				// 2. Lift harsh pure-black ink & shadows toward unified Warm Espresso (#231917)
+				float darkWeight = (1.0f - smoothstep(0.0f, 0.42f, luma));
+				r = lerpf(r, std::max(r, shadowTint.r), darkWeight * shadowLift * 3.8f);
+				g = lerpf(g, std::max(g, shadowTint.g), darkWeight * shadowLift * 3.8f);
+				b = lerpf(b, std::max(b, shadowTint.b), darkWeight * shadowLift * 3.8f);
+
+				// 3. Roll highlights softly toward Warm Washi Paper (#FCF5E6) & apply cohesive daylight warmth
+				float hiWeight = smoothstep(0.58f, 1.0f, luma);
+				r = lerpf(r, r * highTint.r, hiWeight * 0.35f) + warmBias * (0.45f + 0.55f * luma);
+				g = lerpf(g, g * highTint.g, hiWeight * 0.35f) + warmBias * 0.55f * (0.45f + 0.55f * luma);
+				b = lerpf(b, b * highTint.b, hiWeight * 0.35f) - warmBias * 0.30f * (1.0f - luma);
+
+				// 4. Gentle S-curve contrast for crisp hand-printed clarity
+				auto scurve = [](float v) {
+					v = clampf(v, 0.0f, 1.0f);
+					return lerpf(v, v * v * (3.0f - 2.0f * v), 0.12f);
+				};
+				r = scurve(r);
+				g = scurve(g);
+				b = scurve(b);
+
+				// 5. Subtle coherent washi paper tooth (removes plastic digital look!)
+				if (paperGrain > 1e-4f) {
+					float tooth = (noise2D(x * 0.45f, y * 0.45f, seed) - 0.5f) * 2.0f * paperGrain;
+					r = clampf(r + tooth, 0.0f, 1.0f);
+					g = clampf(g + tooth * 0.95f, 0.0f, 1.0f);
+					b = clampf(b + tooth * 0.85f, 0.0f, 1.0f);
+				}
+
+				buf[idx + 0] = r * a;
+				buf[idx + 1] = g * a;
+				buf[idx + 2] = b * a;
+			}
+		}
+	}
+
 	// Save as true 32-bit RGBA compressed PNG via Windows GDI+
 	bool SavePNG(const std::string& path) const {
 		static bool gdiInit = false;
