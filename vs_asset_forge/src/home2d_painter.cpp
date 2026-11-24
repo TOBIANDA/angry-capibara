@@ -136,29 +136,31 @@ void PaintAngerMark(Canvas2D& cv, const Vec2& c, float sz) {
 
 void BuildLayer00_SkySun(const std::string& dir) {
 	Canvas2D cv(1280, 720);
-	// Matahari besar berpendar hangat di lembah tengah tepat di bawah logo (gaya versi 2.5D kemarin)
-	Vec2 sunPos(640.0f, 342.0f);
+	// Posisi matahari hangat tepat di belakang kepala Chill Capi & bawah logo (seperti 2D kemarin!)
+	Vec2 sunPos(640.0f, 395.0f);
 
 	for (int y = 0; y < cv.h; ++y) {
 		float ny = static_cast<float>(y) / static_cast<float>(cv.h - 1);
-		// Palet senja golden-hour Bamboo-Onsen: biru-teal atas -> hangat keemasan bawah
+		// Palet senja golden-hour dramatis ala key-art 2D kemarin: biru teal atas -> jingga keemasan -> kuning krem hangat
 		Color4 skyCol;
-		if (ny < 0.34f) {
-			skyCol = lerpColor(rgbHex(0x1B5B86), rgbHex(0x4E96A8), smoothstep(0.0f, 0.34f, ny));
-		} else if (ny < 0.62f) {
-			skyCol = lerpColor(rgbHex(0x4E96A8), rgbHex(0xF6B458), smoothstep(0.34f, 0.62f, ny));
+		if (ny < 0.30f) {
+			skyCol = lerpColor(rgbHex(0x164C6E), rgbHex(0x3D8496), smoothstep(0.0f, 0.30f, ny));
+		} else if (ny < 0.58f) {
+			skyCol = lerpColor(rgbHex(0x3D8496), rgbHex(0xF6A442), smoothstep(0.30f, 0.58f, ny));
 		} else {
-			skyCol = lerpColor(rgbHex(0xF6B458), rgbHex(0xFFE38E), smoothstep(0.62f, 1.0f, ny));
+			skyCol = lerpColor(rgbHex(0xF6A442), rgbHex(0xFFDF7E), smoothstep(0.58f, 1.0f, ny));
 		}
 
 		for (int x = 0; x < cv.w; ++x) {
 			Vec2 p(x + 0.5f, y + 0.5f);
 			float dist = length(p - sunPos);
-			// Pendar atmosfer matahari yang lebih kuat & hangat
-			float halo = std::exp(-(dist * dist) / (410.0f * 410.0f));
-			float halo2 = std::exp(-(dist * dist) / (230.0f * 230.0f));
-			Color4 c = lerpColor(skyCol, rgbHex(0xFFD97C), halo * 0.62f);
-			c = lerpColor(c, rgbHex(0xFFF6C8), halo2 * 0.78f);
+			// Pijar matahari besar hangat menyinari seluruh lembah tengah
+			float haloWide = std::exp(-(dist * dist) / (460.0f * 460.0f));
+			float haloMid  = std::exp(-(dist * dist) / (250.0f * 250.0f));
+			float haloCore = std::exp(-(dist * dist) / (125.0f * 125.0f));
+			Color4 c = lerpColor(skyCol, rgbHex(0xFFC452), haloWide * 0.72f);
+			c = lerpColor(c, rgbHex(0xFFE78A), haloMid * 0.82f);
+			c = lerpColor(c, rgbHex(0xFFFDF0), haloCore * 0.92f);
 
 			float g = (hash21(x, y, 71) - 0.5f) * 0.012f;
 			c.r = clampf(c.r + g, 0.0f, 1.0f);
@@ -169,41 +171,50 @@ void BuildLayer00_SkySun(const std::string& dir) {
 		}
 	}
 
-	// Bola matahari senja besar cerah berpendar (tampak menonjol di sela pegunungan & belakang logo!)
-	BBox sunBox{ sunPos.x - 210, sunPos.y - 210, sunPos.x + 210, sunPos.y + 210 };
-	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 178.0f); },
-		[&](const Vec2& p, float d) -> Color4 {
-			float t = clampf(-d / 178.0f, 0.0f, 1.0f);
-			return lerpColor(rgbHex(0xFFE892), rgbHex(0xFFFFEE), smoothstep(0.0f, 0.58f, t));
-		}, 6.0f);
+	// Inti cakram matahari berkilau putih-emas lembut
+	BBox sunBox{ sunPos.x - 185, sunPos.y - 185, sunPos.x + 185, sunPos.y + 185 };
+	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 145.0f); },
+		[&](const Vec2&, float d) -> Color4 {
+			float t = clampf(-d / 145.0f, 0.0f, 1.0f);
+			return lerpColor(rgbHex(0xFFE886), rgbHex(0xFFFFF4), smoothstep(0.0f, 0.65f, t));
+		}, 26.0f);
 
 	cv.SavePNG(dir + "/layer_00_sky_sun.png");
 	std::cout << "  -> Exported home2d/layer_00_sky_sun.png (1280x720)\n";
 }
 
 void BuildLayer01_Sunburst(const std::string& dir) {
-	Canvas2D cv(1024, 1024);
-	Vec2 center(512.0f, 512.0f);
-	const int numRays = 12;
+	Canvas2D cv(1280, 1280);
+	Vec2 center(640.0f, 640.0f);
 
+	// Pancaran sinar matahari dramatis bervariasi lebar seperti key-art 2D kemarin!
 	for (int y = 0; y < cv.h; ++y) {
 		for (int x = 0; x < cv.w; ++x) {
 			Vec2 d = Vec2(x + 0.5f, y + 0.5f) - center;
 			float r = length(d);
-			if (r > 510.0f || r < 24.0f) continue;
+			if (r > 638.0f) continue;
 			float ang = std::atan2(d.y, d.x);
-			float wave = 0.5f + 0.5f * std::cos(ang * numRays);
-			// Sinar sunburst tegas & bersih seperti versi 2.5D kemarin!
-			float ray = smoothstep(0.46f, 0.62f, wave);
-			float radialFade = smoothstep(30.0f, 120.0f, r) * (1.0f - smoothstep(280.0f, 508.0f, r));
-			float alpha = ray * radialFade * 0.34f;
-			if (alpha > 0.002f) {
-				cv.BlendPixelOver(x, y, Color4(1.0f, 0.94f, 0.62f, alpha));
+
+			// Gabungan 12 sinar utama + 24 sinar halus aksen agar terasa alami seperti lukisan 2D
+			float w1 = 0.5f + 0.5f * std::cos(ang * 12.0f + 0.15f);
+			float w2 = 0.5f + 0.5f * std::cos(ang * 24.0f - 0.40f);
+			float rayMain = smoothstep(0.38f, 0.82f, w1);
+			float rayFine = smoothstep(0.58f, 0.92f, w2) * 0.45f;
+			float ray = clampf(rayMain + rayFine, 0.0f, 1.0f);
+
+			float coreGlow = std::exp(-(r * r) / (195.0f * 195.0f));
+			float radialFade = (1.0f - smoothstep(140.0f, 632.0f, r));
+			float alpha = clampf(ray * radialFade * 0.58f + coreGlow * 0.68f, 0.0f, 0.92f);
+
+			if (alpha > 0.003f) {
+				Color4 c = lerpColor(rgbHex(0xFFBE44), rgbHex(0xFFFBE2), clampf(coreGlow * 1.25f + (1.0f - r / 640.0f) * 0.45f, 0.0f, 1.0f));
+				c.a = alpha;
+				cv.BlendPixelOver(x, y, c);
 			}
 		}
 	}
 	cv.SavePNG(dir + "/layer_01_sunburst.png");
-	std::cout << "  -> Exported home2d/layer_01_sunburst.png (1024x1024)\n";
+	std::cout << "  -> Exported home2d/layer_01_sunburst.png (1280x1280)\n";
 }
 
 void PaintPuffyCloud(Canvas2D& cv, const Vec2& c, float sc, int seed) {

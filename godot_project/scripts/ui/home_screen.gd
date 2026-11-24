@@ -1,184 +1,82 @@
 extends Control
 
-# Halaman Home Hybrid 2.5D untuk Angry Capibara:
-# - Latar belakang & bingkai bambu depan: 9 layer 2D Vector/SDF Painterly Parallax hasil Visual Studio C++
-#   (langit senja, matahari besar berpendar + sunburst berputar ala versi kemarin, awan empuk, pegunungan berkabut,
-#   rumah onsen kayu Jepang, gerbang Torii merah, kolam air panas beruap, tebing ketapel bambu, bukit lumut, bingkai bambu)
-# - Karakter utama: 9 Kapibara 3D pahatan Visual Studio C++ dengan shader lineless painterly (rovio_25d.gdshader)
-#   dirender transparan di atas latar 2D & di belakang bingkai bambu depan!
-# - Logo Vektor Original Opsi 2 (tulisannya saja) & menu PLAY / 4 WORLD / CREDITS / EXIT.
+# Halaman Home 2D Berlapis (Multi-Plane Parallax) untuk Angry Capibara:
+# - Background 9 layer parallax bersih dari Visual Studio C++ 2D Vector/SDF Engine
+#   (langit, awan, pegunungan bambu, rumah onsen, Torii, uap, tebing ketapel, bukit lumut, bingkai bambu)
+# - Matahari & pancaran sunburst senja golden-hour + seluruh kapibara dari Key-Art 2D kemarin
+#   yang dipotong transparan per grup (Dash terbang, Trio Mini bertumpuk, & 5 Hero Squad)
+#   lengkap dengan animasi bernafas, hover, klik dialog per karakter, & Logo Opsi 2.
 
 const TESTER_SCENE_PATH := "res://scenes/sandbox/mode_tester.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
-const SQUAD_ACTORS := [
-	# 0. HERO DEPAN-TENGAH: Chill Capi Mengaum (MC Merah Crimson)
+# Data dialog 7 karakter kapibara (bisa diklik langsung di layar atau tekan tombol 1-7)
+const CAPY_DIALOGS := [
+	{ "name": "Chill Capi (MC)", "role": "Pemimpin Pemarah - Gelombang Zen", "quote": "\"Sentuh jeruk Yuzu lagi... HABIS KALIAN!\"" },
+	{ "name": "Yuzu Bomb", "role": "Sumbu Pendek - Ledakan Api Yuzu", "quote": "\"Hoaam... jangan bangunin pas sumbu udah nyala!\"" },
+	{ "name": "Heavy Onsen Capi", "role": "Titan Sumo - Penghancur Batu & Baja", "quote": "\"Hmph! Satu benturan, rata semua.\"" },
+	{ "name": "Seed-Blaster Capi", "role": "Penembak Sinis - Tembakan Biji Kembar", "quote": "\"Target segede itu masa meleset?\"" },
+	{ "name": "Bambu-Katana Capi", "role": "Ronin Serius - Tebasan & Pantul Laser", "quote": "\"Satu tebasan, seluruh benteng tumbang.\"" },
+	{ "name": "Dash Capi", "role": "Sprinter Hiperaktif - Turbo Seruduk", "quote": "\"WUUUSSSHH!! Ketinggalan semua nih!\"" },
+	{ "name": "Trio Mini-Capi", "role": "Trio Usil - Pecah 3 di Udara", "quote": "\"Hehe! Satu aja udah pusing, apalagi bertiga!\"" }
+]
+
+# 3 grup sprite 2D transparan yang bergerak berlapis independen
+const LAYERED_GROUPS := [
+	# 0. Dash Capi melesat di langit kanan atas (di atas gerbang Torii!)
 	{
-		"name": "Chill Capi (MC)",
-		"role": "Pemimpin Pemarah - Gelombang Zen",
-		"quote": "\"Sentuh jeruk Yuzu lagi... HABIS KALIAN!\"",
-		"mesh": "res://assets/generated/models/home_capy_chill_roar.obj",
-		"pos": Vector3(-0.02, 0.84, 1.56),
-		"scale": 1.66,
-		"yaw": -62.0,
-		"pitch": -7.0,
-		"roll": 2.0,
-		"bob_amp": 0.024,
-		"bob_spd": 2.6,
+		"tex": "res://assets/generated/home2d/capi_2d_dash.png",
+		"pos": Vector2(1018.0, 188.0),
+		"size": Vector2(278.0, 230.0),
+		"depth": 0.56,
+		"bob_amp": 11.0,
+		"bob_spd": 3.6,
+		"sway_deg": 3.6,
+		"phase": 0.6,
+		"pivot_y": 0.55,
+		"dialog_idx": 5
+	},
+	# 1. Trio Mini-Capi bertumpuk 3 di tebing kiri sebelah ketapel bambu
+	{
+		"tex": "res://assets/generated/home2d/capi_2d_trio_mini.png",
+		"pos": Vector2(158.0, 444.0),
+		"size": Vector2(142.0, 304.0),
+		"depth": 0.64,
+		"bob_amp": 4.2,
+		"bob_spd": 3.2,
+		"sway_deg": 2.0,
+		"phase": 1.8,
+		"pivot_y": 0.88,
+		"dialog_idx": 6
+	},
+	# 2. Formasi 5 Hero Utama (Seed-Blaster, Yuzu Bomb, Chill Capi, Heavy Onsen, Bambu-Katana)
+	{
+		"tex": "res://assets/generated/home2d/capi_2d_squad_main.png",
+		"pos": Vector2(676.0, 450.0),
+		"size": Vector2(968.0, 396.0),
+		"depth": 0.86,
+		"bob_amp": 3.4,
+		"bob_spd": 2.2,
+		"sway_deg": 0.7,
 		"phase": 0.0,
-		"rim": Color(1.0, 0.80, 0.40)
-	},
-	# 1. BAHU KIRI CHILL: Yuzu Bomb + Kobaran Api Menyala!
-	{
-		"name": "Yuzu Bomb",
-		"role": "Sumbu Pendek - Ledakan Api Yuzu",
-		"quote": "\"Hoaam... jangan bangunin pas sumbu udah nyala!\"",
-		"mesh": "res://assets/generated/models/home_capy_bomb_blaze.obj",
-		"pos": Vector3(-1.12, 0.96, 0.72),
-		"scale": 1.28,
-		"yaw": -50.0,
-		"pitch": 4.0,
-		"roll": -4.0,
-		"bob_amp": 0.022,
-		"bob_spd": 1.9,
-		"phase": 1.2,
-		"rim": Color(1.0, 0.68, 0.28)
-	},
-	# 2. BAHU KANAN MENJULANG: Heavy Onsen ("Merah Besar") Raksasa!
-	{
-		"name": "Heavy Onsen Capi",
-		"role": "Titan Sumo - Penghancur Batu & Baja",
-		"quote": "\"Hmph! Satu benturan, rata semua.\"",
-		"mesh": "res://assets/generated/models/anime_capy_heavy_onsen.obj",
-		"pos": Vector3(1.16, 1.12, 0.34),
-		"scale": 1.30,
-		"yaw": -124.0,
-		"pitch": -4.0,
-		"roll": 2.0,
-		"bob_amp": 0.018,
-		"bob_spd": 1.4,
-		"phase": 2.1,
-		"rim": Color(1.0, 0.78, 0.52)
-	},
-	# 3. SAYAP KANAN DEPAN: Bambu-Katana + Tebasan Sabit Cyan!
-	{
-		"name": "Bambu-Katana Capi",
-		"role": "Ronin Serius - Tebasan & Pantul Laser",
-		"quote": "\"Satu tebasan, seluruh benteng tumbang.\"",
-		"mesh": "res://assets/generated/models/home_capy_katana_slash.obj",
-		"pos": Vector3(1.86, 0.68, 1.06),
-		"scale": 1.12,
-		"yaw": -132.0,
-		"pitch": -9.0,
-		"roll": 7.0,
-		"bob_amp": 0.028,
-		"bob_spd": 3.1,
-		"phase": 3.4,
-		"rim": Color(0.55, 0.94, 1.0)
-	},
-	# 4. SAYAP KIRI DEPAN: Seed-Blaster (Koboi Sinis)
-	{
-		"name": "Seed-Blaster Capi",
-		"role": "Penembak Sinis - Tembakan Biji Kembar",
-		"quote": "\"Target segede itu masa meleset?\"",
-		"mesh": "res://assets/generated/models/anime_capy_seed_blaster.obj",
-		"pos": Vector3(-1.66, 0.68, 1.18),
-		"scale": 1.04,
-		"yaw": -46.0,
-		"pitch": -3.0,
-		"roll": -5.0,
-		"bob_amp": 0.024,
-		"bob_spd": 2.4,
-		"phase": 4.0,
-		"rim": Color(1.0, 0.80, 0.42)
-	},
-	# 5. MELESAT DI LANGIT SENJA KANAN ATAS (tepat di atas Gerbang Torii 2D!)
-	{
-		"name": "Dash Capi",
-		"role": "Sprinter Hiperaktif - Turbo Seruduk",
-		"quote": "\"WUUUSSSHH!! Ketinggalan semua nih!\"",
-		"mesh": "res://assets/generated/models/home_capy_dash_leap.obj",
-		"pos": Vector3(2.26, 2.52, -0.35),
-		"scale": 1.12,
-		"yaw": -142.0,
-		"pitch": -15.0,
-		"roll": -14.0,
-		"bob_amp": 0.095,
-		"bob_spd": 4.2,
-		"phase": 0.7,
-		"rim": Color(1.0, 0.92, 0.46)
-	},
-	# 6-8. TRIO MINI BERTUMPUK 3 DI TEBING KIRI SEBELAH KETAPEL BAMBU 2D!
-	{
-		"name": "Trio Mini-Capi",
-		"role": "Trio Usil - Pecah 3 di Udara",
-		"quote": "\"Hehe! Satu aja udah pusing, apalagi bertiga!\"",
-		"mesh": "res://assets/generated/models/anime_capy_mini.obj",
-		"pos": Vector3(-2.34, 0.78, 0.56),
-		"scale": 0.78,
-		"yaw": -36.0,
-		"pitch": 6.0,
-		"roll": 5.0,
-		"bob_amp": 0.028,
-		"bob_spd": 3.8,
-		"phase": 1.4,
-		"rim": Color(0.68, 0.90, 1.0)
-	},
-	{
-		"name": "Trio Mini-Capi",
-		"role": "Trio Usil - Pecah 3 di Udara",
-		"quote": "\"Ayo luncurin kita duluan!!\"",
-		"mesh": "res://assets/generated/models/anime_capy_mini.obj",
-		"pos": Vector3(-2.42, 1.22, 0.46),
-		"scale": 0.76,
-		"yaw": -44.0,
-		"pitch": 10.0,
-		"roll": -7.0,
-		"bob_amp": 0.036,
-		"bob_spd": 4.2,
-		"phase": 2.4,
-		"rim": Color(0.68, 0.90, 1.0)
-	},
-	{
-		"name": "Trio Mini-Capi",
-		"role": "Trio Usil - Pecah 3 di Udara",
-		"quote": "\"Wihh dari puncak tebing bambu kelihatan semua!\"",
-		"mesh": "res://assets/generated/models/anime_capy_mini.obj",
-		"pos": Vector3(-2.34, 1.64, 0.36),
-		"scale": 0.74,
-		"yaw": -34.0,
-		"pitch": 14.0,
-		"roll": 10.0,
-		"bob_amp": 0.044,
-		"bob_spd": 4.6,
-		"phase": 3.5,
-		"rim": Color(0.68, 0.90, 1.0)
+		"pivot_y": 0.86,
+		"dialog_idx": -1
 	}
 ]
 
-const BASE_CAM_POS := Vector3(0.0, 1.48, 6.25)
-const BASE_CAM_TARGET := Vector3(0.0, 1.32, 0.0)
-
-var shader_rovio: Shader
 var shader_vignette: Shader
-
-var bg_stage: Control
-var fg_stage: Control
-var sub_viewport: SubViewport
-var world_3d_root: Node3D
-var cam: Camera3D
+var stage_root: Control
 
 var parallax_layers: Array[Dictionary] = []
 var sunburst_node: TextureRect
 var clouds_node: TextureRect
 var steam_nodes: Array[Dictionary] = []
+var groups: Array[Dictionary] = []
+var ember_nodes: Array[Dictionary] = []
 var leaf_nodes: Array[Dictionary] = []
 
-var actors: Array[Dictionary] = []
-var ember_nodes: Array[Dictionary] = []
-
 var elapsed_time: float = 0.0
-var intro_duration: float = 1.10
+var intro_duration: float = 1.05
 var intro_finished: bool = false
 var mouse_parallax: Vector2 = Vector2.ZERO
 var smooth_parallax: Vector2 = Vector2.ZERO
@@ -205,35 +103,22 @@ func _ready() -> void:
 		if arg.begins_with("--capture="):
 			capture_path = arg.substr(10)
 
-	shader_rovio = load("res://shaders/rovio_25d.gdshader")
 	shader_vignette = load("res://shaders/vignette.gdshader")
 	clip_contents = true
 
-	# 1. Latar 2D Berlapis (Layer 00 s/d 07)
-	bg_stage = Control.new()
-	bg_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg_stage)
-	_setup_2d_background_layers()
+	stage_root = Control.new()
+	stage_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	stage_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stage_root)
 
-	# 2. SubViewport 3D Transparan untuk 9 Kapibara 3D Lineless Painterly (rovio_25d.gdshader)
-	_setup_3d_capybara_viewport()
-
-	# 3. Bingkai Bambu Depan & Daun Melayang (di depan karakter 3D untuk kedalaman 2.5D sejati!)
-	fg_stage = Control.new()
-	fg_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fg_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fg_stage)
-	_setup_2d_foreground_layers()
-
-	# 4. Antarmuka Logo Opsi 2 & Tombol Arcade
+	_setup_hybrid_2d_stage()
 	_setup_arcade_ui()
 
 	if capture_path != "":
 		elapsed_time = 2.0
 		_finish_intro()
 
-func _add_layer_sprite(parent: Control, path: String, base_pos: Vector2, sz: Vector2, depth: float, overscan: float = 1.06) -> TextureRect:
+func _add_layer_sprite(path: String, base_pos: Vector2, sz: Vector2, depth: float, overscan: float = 1.06) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = load(path)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -244,37 +129,40 @@ func _add_layer_sprite(parent: Control, path: String, base_pos: Vector2, sz: Vec
 	tr.position = pos
 	tr.pivot_offset = tr.size * 0.5
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(tr)
+	stage_root.add_child(tr)
 	parallax_layers.append({ "node": tr, "base": pos, "depth": depth })
 	return tr
 
-func _setup_2d_background_layers() -> void:
-	# Layer 0: Langit senja golden-hour + bola matahari besar berpendar ala versi kemarin
-	_add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_00_sky_sun.png", Vector2.ZERO, BASE_SIZE, 0.06, 1.06)
+func _setup_hybrid_2d_stage() -> void:
+	# Layer 0: Langit senja golden-hour + matahari hangat (VS C++)
+	_add_layer_sprite("res://assets/generated/home2d/layer_00_sky_sun.png", Vector2.ZERO, BASE_SIZE, 0.06, 1.06)
 
-	# Layer 1: Sunburst tegas berputar halus berpusat di bola matahari (640, 342)
+	# Layer 1: Pancaran sunburst emas menyala ala 2D kemarin (berputar halus!)
 	sunburst_node = TextureRect.new()
 	sunburst_node.texture = load("res://assets/generated/home2d/layer_01_sunburst.png")
 	sunburst_node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	sunburst_node.stretch_mode = TextureRect.STRETCH_SCALE
-	sunburst_node.size = Vector2(1240.0, 1240.0)
-	var sun_base := Vector2(640.0 - 620.0, 342.0 - 620.0)
+	sunburst_node.size = Vector2(1280.0, 1280.0)
+	var sun_base := Vector2(640.0 - 640.0, 395.0 - 640.0)
 	sunburst_node.position = sun_base
-	sunburst_node.pivot_offset = Vector2(620.0, 620.0)
+	sunburst_node.pivot_offset = Vector2(640.0, 640.0)
 	sunburst_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg_stage.add_child(sunburst_node)
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	sunburst_node.material = add_mat
+	stage_root.add_child(sunburst_node)
 	parallax_layers.append({ "node": sunburst_node, "base": sun_base, "depth": 0.10 })
 
-	# Layer 2: Awan empuk melayang pelan
-	clouds_node = _add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_02_clouds.png", Vector2(0.0, 18.0), Vector2(1280.0, 420.0), 0.16, 1.08)
+	# Layer 2: Awan empuk melayang pelan (VS C++)
+	clouds_node = _add_layer_sprite("res://assets/generated/home2d/layer_02_clouds.png", Vector2(0.0, 26.0), Vector2(1280.0, 420.0), 0.16, 1.08)
 
-	# Layer 3: Pegunungan bambu berkabut jauh
-	_add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_03_mountains_far.png", Vector2.ZERO, BASE_SIZE, 0.24, 1.07)
+	# Layer 3: Pegunungan bambu berkabut jauh (VS C++)
+	_add_layer_sprite("res://assets/generated/home2d/layer_03_mountains_far.png", Vector2.ZERO, BASE_SIZE, 0.24, 1.07)
 
-	# Layer 4: Rumah Onsen kayu Jepang + Gerbang Torii merah + Kolam air panas
-	_add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_04_midground_onsen.png", Vector2.ZERO, BASE_SIZE, 0.38, 1.07)
+	# Layer 4: Rumah Onsen kayu Jepang + Gerbang Torii + Kolam air panas (VS C++)
+	_add_layer_sprite("res://assets/generated/home2d/layer_04_midground_onsen.png", Vector2.ZERO, BASE_SIZE, 0.38, 1.07)
 
-	# Layer 5: Kepulan uap onsen lembut naik di atas kolam kanan
+	# Layer 5: Uap onsen lembut naik di atas kolam kanan
 	var steam_tex: Texture2D = load("res://assets/generated/home2d/layer_05_steam_wisps.png")
 	for i in 2:
 		var st := TextureRect.new()
@@ -286,192 +174,128 @@ func _setup_2d_background_layers() -> void:
 		st.position = base_p
 		st.pivot_offset = st.size * 0.5
 		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bg_stage.add_child(st)
+		stage_root.add_child(st)
 		steam_nodes.append({ "node": st, "base": base_p, "depth": 0.42, "phase": float(i) * 1.45 })
 
-	# Layer 6: Tebing kiri berlumut + Ketapel Bambu 2D
-	_add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_06_slingshot_cliff.png", Vector2.ZERO, BASE_SIZE, 0.54, 1.08)
+	# Layer 6: Tebing kiri berlumut + Ketapel Bambu 2D (VS C++)
+	_add_layer_sprite("res://assets/generated/home2d/layer_06_slingshot_cliff.png", Vector2.ZERO, BASE_SIZE, 0.54, 1.08)
 
-	# Layer 7: Bukit rumput lumut depan tempat seluruh 9 kapibara 3D berpijak
-	_add_layer_sprite(bg_stage, "res://assets/generated/home2d/layer_07_foreground_hill.png", Vector2(0.0, 318.0), Vector2(1280.0, 420.0), 0.78, 1.08)
+	# Partikel daun bambu & bara api dipasang di belakang squad utama agar tidak menutupi wajah kapibara!
+	_setup_ambient_2d_particles()
 
-func _setup_3d_capybara_viewport() -> void:
-	var vp_container := SubViewportContainer.new()
-	vp_container.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vp_container.stretch = true
-	vp_container.mouse_filter = Control.MOUSE_FILTER_PASS
-	add_child(vp_container)
+	# Grup 0 (Langit): Dash Capi 2D melesat di atas gerbang Torii!
+	_spawn_group(0)
 
-	sub_viewport = SubViewport.new()
-	sub_viewport.size = Vector2i(1280, 720)
-	sub_viewport.transparent_bg = true
-	sub_viewport.own_world_3d = true
-	sub_viewport.physics_object_picking = true
-	sub_viewport.msaa_3d = Viewport.MSAA_4X
-	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	vp_container.add_child(sub_viewport)
+	# Layer 7: Bukit rumput lumut depan (VS C++)
+	_add_layer_sprite("res://assets/generated/home2d/layer_07_foreground_hill.png", Vector2(0.0, 330.0), Vector2(1280.0, 420.0), 0.78, 1.08)
 
-	world_3d_root = Node3D.new()
-	sub_viewport.add_child(world_3d_root)
+	# Grup 1 (Tebing Kiri): Trio Mini-Capi 2D bertumpuk 3
+	_spawn_group(1)
 
-	# Environment 3D transparan (BG_CLEAR_COLOR) + pencahayaan studio golden-hour kemarin
-	var env := Environment.new()
-	env.background_mode = Environment.BG_CLEAR_COLOR
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.64, 0.58, 0.62)
-	env.ambient_light_energy = 0.28
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.00
+	# Grup 2 (Depan Tengah): 5 Hero Squad 2D (Seed-Blaster, Yuzu Bomb, Chill, Heavy, Katana)
+	_spawn_group(2)
 
-	var we := WorldEnvironment.new()
-	we.environment = env
-	world_3d_root.add_child(we)
+	# Layer 8: Bingkai rumpun bambu & daun depan kiri-kanan (parallax tercepat!)
+	_add_layer_sprite("res://assets/generated/home2d/layer_08_bamboo_frame.png", Vector2.ZERO, BASE_SIZE, 1.18, 1.08)
 
-	var key_light := DirectionalLight3D.new()
-	key_light.rotation_degrees = Vector3(-28.0, 26.0, 0.0)
-	key_light.light_energy = 0.80
-	key_light.light_color = Color(1.0, 0.94, 0.85)
-	world_3d_root.add_child(key_light)
+func _spawn_group(idx: int) -> void:
+	var cfg: Dictionary = LAYERED_GROUPS[idx]
+	var sz: Vector2 = cfg["size"]
+	var center_pos: Vector2 = cfg["pos"]
+	var top_left: Vector2 = center_pos - sz * 0.5
+	var piv_y: float = float(cfg["pivot_y"])
+	var dlg_idx: int = int(cfg["dialog_idx"])
 
-	var rim_light := DirectionalLight3D.new()
-	rim_light.rotation_degrees = Vector3(-14.0, -160.0, 0.0)
-	rim_light.light_energy = 0.34
-	rim_light.light_color = Color(1.0, 0.78, 0.40)
-	world_3d_root.add_child(rim_light)
+	var tr := TextureRect.new()
+	tr.texture = load(cfg["tex"])
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.size = sz
+	tr.position = top_left
+	tr.pivot_offset = Vector2(sz.x * 0.5, sz.y * piv_y)
 
-	var fire_light := OmniLight3D.new()
-	fire_light.position = Vector3(-1.14, 1.94, 0.82)
-	fire_light.light_color = Color(1.0, 0.56, 0.16)
-	fire_light.light_energy = 0.34
-	fire_light.omni_range = 1.25
-	world_3d_root.add_child(fire_light)
-
-	var slash_light := OmniLight3D.new()
-	slash_light.position = Vector3(2.18, 1.04, 1.32)
-	slash_light.light_color = Color(0.28, 0.92, 1.0)
-	slash_light.light_energy = 0.30
-	slash_light.omni_range = 1.25
-	world_3d_root.add_child(slash_light)
-
-	cam = Camera3D.new()
-	cam.fov = 34.0
-	cam.near = 0.1
-	cam.far = 100.0
-	cam.position = BASE_CAM_POS
-	world_3d_root.add_child(cam)
-	cam.make_current()
-	cam.look_at(BASE_CAM_TARGET, Vector3.UP)
-
-	# Spawn seluruh 9 aktor kapibara 3D pahatan Visual Studio C++
-	for i in SQUAD_ACTORS.size():
-		var cfg: Dictionary = SQUAD_ACTORS[i]
-		var root := Node3D.new()
-		root.position = cfg["pos"]
-		root.rotation_degrees = Vector3(0.0, float(cfg["yaw"]), 0.0)
-		world_3d_root.add_child(root)
-
-		var pose_pivot := Node3D.new()
-		pose_pivot.rotation_degrees = Vector3(float(cfg["roll"]), 0.0, float(cfg["pitch"]))
-		pose_pivot.scale = Vector3.ONE * float(cfg["scale"])
-		root.add_child(pose_pivot)
-
-		var mi := MeshInstance3D.new()
-		mi.mesh = load(cfg["mesh"])
-		_apply_25d_model_materials(mi, cfg["rim"], 0.34, 0.16)
-		pose_pivot.add_child(mi)
-
-		# Hitbox klik interaktif untuk pose lompat & balon dialog singkat
-		var area := Area3D.new()
-		var col := CollisionShape3D.new()
-		var sphere := SphereShape3D.new()
-		sphere.radius = 0.46 * float(cfg["scale"])
-		col.shape = sphere
-		col.position = Vector3(0.0, 0.10, 0.0)
-		area.add_child(col)
-		var idx := i
-		area.input_event.connect(func(_cam, event, _pos, _norm, _shape):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				_trigger_actor_reaction(idx)
+	var g_idx := groups.size()
+	if dlg_idx >= 0:
+		tr.mouse_filter = Control.MOUSE_FILTER_STOP
+		tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tr.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_trigger_dialog_and_hop(dlg_idx, g_idx)
 		)
-		root.add_child(area)
+		tr.mouse_entered.connect(func():
+			if g_idx < groups.size():
+				groups[g_idx]["hovered"] = true
+		)
+		tr.mouse_exited.connect(func():
+			if g_idx < groups.size():
+				groups[g_idx]["hovered"] = false
+		)
+	else:
+		# Untuk formasi 5 Hero, pasang 5 zona klik transparan sesuai posisi masing-masing kapibara!
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hitboxes: Array = [
+			[Rect2(0.02, 0.32, 0.19, 0.65), 3], # Seed-Blaster
+			[Rect2(0.20, 0.14, 0.17, 0.72), 1], # Yuzu Bomb
+			[Rect2(0.36, 0.10, 0.24, 0.80), 0], # Chill Capi (MC)
+			[Rect2(0.58, 0.04, 0.21, 0.76), 2], # Heavy Onsen
+			[Rect2(0.74, 0.38, 0.24, 0.60), 4]  # Bambu-Katana
+		]
+		for hb in hitboxes:
+			var r: Rect2 = hb[0]
+			var d_id: int = int(hb[1])
+			var btn := Control.new()
+			btn.position = Vector2(r.position.x * sz.x, r.position.y * sz.y)
+			btn.size = Vector2(r.size.x * sz.x, r.size.y * sz.y)
+			btn.mouse_filter = Control.MOUSE_FILTER_STOP
+			btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			btn.gui_input.connect(func(ev: InputEvent):
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+					_trigger_dialog_and_hop(d_id, g_idx)
+			)
+			tr.add_child(btn)
 
-		actors.append({
-			"cfg": cfg,
-			"root": root,
-			"pose": pose_pivot,
-			"hop_t": 0.0,
-			"drop_delay": 0.060 * float(i)
+	stage_root.add_child(tr)
+	groups.append({
+		"cfg": cfg,
+		"node": tr,
+		"base": top_left,
+		"hop_t": 0.0,
+		"hovered": false,
+		"drop_delay": 0.08 * float(g_idx)
+	})
+
+func _setup_ambient_2d_particles() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20262425
+
+	# Percikan bara api hangat melayang naik dari api Yuzu Bomb
+	for i in 12:
+		var dot := ColorRect.new()
+		var dsz: float = rng.randf_range(4.0, 8.0)
+		dot.size = Vector2(dsz, dsz)
+		dot.pivot_offset = dot.size * 0.5
+		dot.color = Color(1.0, rng.randf_range(0.64, 0.92), 0.22, 0.92)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var base_p := Vector2(462.0 + rng.randf_range(-38.0, 38.0), 312.0 + rng.randf_range(-14.0, 22.0))
+		dot.position = base_p
+		stage_root.add_child(dot)
+		ember_nodes.append({
+			"node": dot,
+			"base": base_p,
+			"spd": rng.randf_range(0.65, 1.25),
+			"phase": rng.randf_range(0.0, TAU)
 		})
 
-	# Percikan bara api 3D hangat naik dari kobaran api Yuzu Bomb
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20262332
-	var em_mat := StandardMaterial3D.new()
-	em_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	em_mat.albedo_color = Color(1.0, 0.84, 0.28)
-	em_mat.emission_enabled = true
-	em_mat.emission = Color(1.0, 0.56, 0.14)
-	em_mat.emission_energy_multiplier = 1.6
-	for i in 12:
-		var em := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = rng.randf_range(0.018, 0.036)
-		sm.height = sm.radius * 2.0
-		em.mesh = sm
-		em.material_override = em_mat
-		var orig := Vector3(-1.12 + rng.randf_range(-0.28, 0.28), 1.68 + rng.randf_range(0.0, 0.95), 0.78 + rng.randf_range(-0.15, 0.20))
-		em.position = orig
-		world_3d_root.add_child(em)
-		ember_nodes.append({ "node": em, "base": orig, "spd": rng.randf_range(0.65, 1.3), "phase": rng.randf_range(0.0, TAU) })
-
-func _apply_25d_model_materials(mi: MeshInstance3D, rim_col: Color, rim_str: float, sheen_str: float = 0.16) -> void:
-	if not mi.mesh or not shader_rovio:
-		return
-
-	for s_idx in mi.mesh.get_surface_count():
-		var orig := mi.mesh.surface_get_material(s_idx)
-		var mat_name: String = orig.resource_name if orig else ""
-		var rovio_mat := ShaderMaterial.new()
-		rovio_mat.shader = shader_rovio
-
-		var local_rim: float = rim_str
-		var local_sheen: float = sheen_str
-		if mat_name in ["mat_ink", "mat_mouth_dark", "mat_anime_eye"]:
-			local_rim = 0.05
-			local_sheen = 0.24 if mat_name == "mat_anime_eye" else 0.04
-		elif mat_name in ["mat_home_flame", "mat_home_slash", "mat_home_speed", "mat_spark", "mat_shoji_glow"]:
-			local_rim = 0.0
-			local_sheen = 0.0
-
-		rovio_mat.set_shader_parameter("rim_color", Vector3(rim_col.r, rim_col.g, rim_col.b))
-		rovio_mat.set_shader_parameter("rim_strength", local_rim)
-		rovio_mat.set_shader_parameter("sheen_strength", local_sheen)
-
-		if orig is BaseMaterial3D:
-			if orig.albedo_texture:
-				rovio_mat.set_shader_parameter("albedo_tex", orig.albedo_texture)
-			rovio_mat.set_shader_parameter("tint_color", orig.albedo_color)
-			if orig.emission_enabled:
-				rovio_mat.set_shader_parameter("emission_color", Vector3(orig.emission.r, orig.emission.g, orig.emission.b))
-		mi.set_surface_override_material(s_idx, rovio_mat)
-
-func _setup_2d_foreground_layers() -> void:
-	# Layer 8: Bingkai batang & daun bambu 2D di depan kapibara 3D (parallax tercepat!)
-	_add_layer_sprite(fg_stage, "res://assets/generated/home2d/layer_08_bamboo_frame.png", Vector2.ZERO, BASE_SIZE, 1.18, 1.08)
-
-	# Daun bambu hijau lembut melayang di sisi kiri & kanan dekat rumpun bambu (tidak menutupi wajah MC!)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20262424
-	for i in 8:
+	# Daun bambu hijau lembut melayang di angin senja
+	for i in 9:
 		var lf := ColorRect.new()
-		lf.size = Vector2(rng.randf_range(12.0, 18.0), rng.randf_range(4.5, 6.5))
+		lf.size = Vector2(rng.randf_range(14.0, 22.0), rng.randf_range(5.0, 8.0))
 		lf.pivot_offset = lf.size * 0.5
-		lf.color = Color(0.58, 0.90, 0.28, 0.78)
+		lf.color = Color(0.56, 0.88, 0.28, 0.84)
 		lf.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var lx: float = rng.randf_range(45.0, 290.0) if (i % 2 == 0) else rng.randf_range(990.0, 1235.0)
-		var base_p := Vector2(lx, rng.randf_range(40.0, 560.0))
+		var base_p := Vector2(rng.randf_range(80.0, 1200.0), rng.randf_range(40.0, 560.0))
 		lf.position = base_p
-		fg_stage.add_child(lf)
+		stage_root.add_child(lf)
 		leaf_nodes.append({
 			"node": lf,
 			"base": base_p,
@@ -697,10 +521,10 @@ func _make_glossy_button(text_str: String, bg: Color, fg: Color, fsize: int, min
 
 func _process(delta: float) -> void:
 	elapsed_time += delta
-	smooth_parallax = smooth_parallax.lerp(mouse_parallax, minf(delta * 5.2, 1.0))
+	smooth_parallax = smooth_parallax.lerp(mouse_parallax, minf(delta * 5.5, 1.0))
 
-	# 1. Geser seluruh layer latar 2D & bingkai bambu depan sesuai parallax mouse
-	var px_offset := Vector2(-smooth_parallax.x * 26.0, -smooth_parallax.y * 13.0)
+	# 1. Geser 9 layer latar VS C++ sesuai kedalaman parallax
+	var px_offset := Vector2(-smooth_parallax.x * 28.0, -smooth_parallax.y * 14.0)
 	for lyr in parallax_layers:
 		var node: TextureRect = lyr["node"]
 		var base_p: Vector2 = lyr["base"]
@@ -711,9 +535,9 @@ func _process(delta: float) -> void:
 		node.position = base_p + px_offset * depth + extra
 
 	if sunburst_node:
-		sunburst_node.rotation = elapsed_time * 0.10
+		sunburst_node.rotation = elapsed_time * 0.08
 
-	# 2. Uap onsen 2D naik lembut di atas kolam kanan
+	# 2. Uap onsen naik lembut
 	for sp in steam_nodes:
 		var n: TextureRect = sp["node"]
 		var base_p: Vector2 = sp["base"]
@@ -721,9 +545,19 @@ func _process(delta: float) -> void:
 		var ph: float = float(sp["phase"])
 		var cyc: float = fmod(elapsed_time * 0.34 + ph, 2.0) / 2.0
 		n.position = base_p + px_offset * depth + Vector2(sin(elapsed_time * 0.9 + ph) * 12.0, -cyc * 68.0)
-		n.modulate.a = sin(cyc * PI) * 0.85
+		n.modulate.a = sin(cyc * PI) * 0.82
 
-	# 3. Daun bambu 2D melayang di depan
+	# 3. Bara api Yuzu Bomb & daun bambu melayang
+	for em in ember_nodes:
+		var n: ColorRect = em["node"]
+		var b: Vector2 = em["base"]
+		var ph: float = float(em["phase"])
+		var spd: float = float(em["spd"])
+		var cyc: float = fmod(elapsed_time * spd + ph, 1.8) / 1.8
+		n.position = b + px_offset * 0.82 + Vector2(sin(elapsed_time * 3.2 + ph) * 16.0, -cyc * 120.0)
+		n.rotation = elapsed_time * 2.5 + ph
+		n.modulate.a = sin(cyc * PI) * 0.95
+
 	for lf in leaf_nodes:
 		var n: ColorRect = lf["node"]
 		var b: Vector2 = lf["base"]
@@ -733,17 +567,7 @@ func _process(delta: float) -> void:
 		n.position = Vector2(b.x + sin(elapsed_time * spd + ph) * 44.0, ny) + px_offset * 1.05
 		n.rotation = sin(elapsed_time * 1.8 + ph) * 0.85
 
-	# 4. Bara api 3D naik dari Yuzu Bomb
-	for em in ember_nodes:
-		var n: MeshInstance3D = em["node"]
-		var b: Vector3 = em["base"]
-		var ph: float = float(em["phase"])
-		var spd: float = float(em["spd"])
-		var cycle: float = fmod(elapsed_time * spd + ph, 1.8)
-		n.position = b + Vector3(sin(elapsed_time * 3.0 + ph) * 0.16 + cycle * 0.16, cycle * 0.80, 0.0)
-		n.scale = Vector3.ONE * maxf(sin((cycle / 1.8) * PI), 0.01)
-
-	# 5. Intro loading bar & logo pulse
+	# 4. Intro loading bar & logo breathing
 	if not intro_finished:
 		var pct := clampf(elapsed_time / intro_duration, 0.0, 1.0)
 		loading_bar.value = pct * 100.0
@@ -763,49 +587,54 @@ func _process(delta: float) -> void:
 		if speech_timer <= 0.0 and speech_bubble:
 			speech_bubble.visible = false
 
-	# 6. Animasi 9 Kapibara 3D & kamera 3D tersinkron halus dengan parallax 2D
-	for i in actors.size():
-		var a: Dictionary = actors[i]
-		var cfg: Dictionary = a["cfg"]
-		var root: Node3D = a["root"]
-		var pose: Node3D = a["pose"]
+	# 5. Animasi parallax + squash-and-stretch 3 grup kapibara 2D
+	for i in groups.size():
+		var g: Dictionary = groups[i]
+		var cfg: Dictionary = g["cfg"]
+		var node: TextureRect = g["node"]
+		var base_p: Vector2 = g["base"]
+		var depth: float = float(cfg["depth"])
+		var phase: float = float(cfg["phase"])
+		var bob_spd: float = float(cfg["bob_spd"])
+		var bob_amp: float = float(cfg["bob_amp"])
+		var sway_deg: float = float(cfg["sway_deg"])
+		var hovered: bool = bool(g["hovered"])
 
-		var t_local := maxf(elapsed_time - float(a["drop_delay"]), 0.0)
-		var drop_h := 0.0
+		var t_local := maxf(elapsed_time - float(g["drop_delay"]), 0.0)
+		var drop_y := 0.0
+		var sx := 1.0
 		var sy := 1.0
-		var sxz := 1.0
-		if t_local < 0.50:
-			var u := t_local / 0.50
-			if u < 0.65:
-				var d := 1.0 - (u / 0.65)
-				drop_h = d * d * 2.2
+		if t_local < 0.48:
+			var u := t_local / 0.48
+			if u < 0.62:
+				var d := 1.0 - (u / 0.62)
+				drop_y = -d * d * 220.0
 			else:
-				var sq := sin(((u - 0.65) / 0.35) * PI)
-				sy = 1.0 - sq * 0.22
-				sxz = 1.0 + sq * 0.15
+				var sq := sin(((u - 0.62) / 0.38) * PI)
+				sy = 1.0 - sq * 0.14
+				sx = 1.0 + sq * 0.10
 
-		if float(a["hop_t"]) > 0.0:
-			a["hop_t"] = maxf(float(a["hop_t"]) - delta * 2.2, 0.0)
-			var hu: float = float(a["hop_t"])
-			drop_h += sin(hu * PI) * 0.36
-			root.rotation_degrees.y = float(cfg["yaw"]) + sin(hu * TAU) * 16.0
-		else:
-			root.rotation_degrees.y = float(cfg["yaw"]) + sin(elapsed_time * 0.9 + float(cfg["phase"])) * 2.5
+		var hop_y := 0.0
+		var hop_rot := 0.0
+		if float(g["hop_t"]) > 0.0:
+			g["hop_t"] = maxf(float(g["hop_t"]) - delta * 2.5, 0.0)
+			var hu: float = float(g["hop_t"])
+			hop_y = -sin(hu * PI) * (34.0 if i < 2 else 18.0)
+			hop_rot = sin(hu * TAU) * (6.0 if i < 2 else 1.5)
+			sy *= 1.0 + sin(hu * PI) * 0.05
+			sx *= 1.0 - sin(hu * PI) * 0.03
 
-		var bob: float = sin(elapsed_time * float(cfg["bob_spd"]) + float(cfg["phase"])) * float(cfg["bob_amp"])
-		var base_p: Vector3 = cfg["pos"]
-		root.position = base_p + Vector3(0.0, drop_h + bob, 0.0)
-		pose.scale = Vector3(sxz, sy, sxz) * float(cfg["scale"])
-		pose.rotation_degrees = Vector3(
-			float(cfg["roll"]) + cos(elapsed_time * float(cfg["bob_spd"]) * 0.7 + float(cfg["phase"])) * 2.0,
-			0.0,
-			float(cfg["pitch"]) + sin(elapsed_time * float(cfg["bob_spd"]) + float(cfg["phase"])) * 2.8
-		)
+		var breath: float = sin(elapsed_time * bob_spd + phase)
+		var bob_y: float = breath * bob_amp
+		sy *= 1.0 + breath * 0.012
+		sx *= 1.0 - breath * 0.008
+		if hovered:
+			sx *= 1.045
+			sy *= 1.045
 
-	if cam:
-		var target_cam := BASE_CAM_POS + Vector3(smooth_parallax.x * 0.32, -smooth_parallax.y * 0.16, 0.0)
-		cam.position = cam.position.lerp(target_cam, minf(delta * 5.2, 1.0))
-		cam.look_at(BASE_CAM_TARGET, Vector3.UP)
+		node.position = base_p + px_offset * depth + Vector2(0.0, drop_y + hop_y + bob_y)
+		node.scale = Vector2(sx, sy)
+		node.rotation_degrees = sin(elapsed_time * bob_spd * 0.65 + phase) * sway_deg + hop_rot
 
 	if capture_path != "" and not capture_done and elapsed_time > 2.25:
 		capture_done = true
@@ -822,13 +651,14 @@ func _finish_intro() -> void:
 	if corner_menu:
 		corner_menu.visible = true
 
-func _trigger_actor_reaction(idx: int) -> void:
-	if idx < 0 or idx >= actors.size():
+func _trigger_dialog_and_hop(dialog_idx: int, group_idx: int) -> void:
+	if group_idx >= 0 and group_idx < groups.size():
+		groups[group_idx]["hop_t"] = 1.0
+	if dialog_idx < 0 or dialog_idx >= CAPY_DIALOGS.size():
 		return
-	actors[idx]["hop_t"] = 1.0
-	var cfg: Dictionary = SQUAD_ACTORS[idx]
-	speech_name.text = "%s  —  %s" % [cfg["name"], cfg["role"]]
-	speech_quote.text = cfg["quote"]
+	var d: Dictionary = CAPY_DIALOGS[dialog_idx]
+	speech_name.text = "%s  —  %s" % [d["name"], d["role"]]
+	speech_quote.text = d["quote"]
 	speech_bubble.visible = true
 	speech_timer = 3.8
 
@@ -842,7 +672,7 @@ func _show_worlds_modal() -> void:
 
 func _show_credits_modal() -> void:
 	modal_title.text = "CREDITS — ANGRY CAPIBARA"
-	modal_body.text = "[b]Ketua Tim & Pengembang Utama:[/b]\nTobias Andra Valentino (NIM: 245150200111076)\n\n[b]Mata Kuliah:[/b]\nKomputer Grafika — Interactive 3D Computer Graphics\n\n[b]Teknologi & Toolchain (100% Offline Visual Studio C++ + Godot):[/b]\n- Latar 2D Berlapis: Visual Studio C++ 2D Vector/SDF Painterly Engine (9 RGBA PNG layers)\n- Karakter 3D & Tekstur `.bmp`: Visual Studio C++ OpenGL Asset Forge (FreeGLUT, GLEW, GLM, Bicubic Bezier)\n- Game Engine & Shaders: Godot Engine 4.7.1.stable (GL Compatibility + Lineless 2.5D Painterly Shader)\n\n[b]Referensi Utama:[/b]\nAngry Birds Star Wars I & II"
+	modal_body.text = "[b]Ketua Tim & Pengembang Utama:[/b]\nTobias Andra Valentino (NIM: 245150200111076)\n\n[b]Mata Kuliah:[/b]\nKomputer Grafika — Interactive 3D Computer Graphics\n\n[b]Teknologi & Toolchain (100% Offline Visual Studio C++ + Godot):[/b]\n- Latar 2D Berlapis: Visual Studio C++ 2D Vector/SDF Painterly Engine (Parallax 9 layer)\n- Pemodelan 3D Gameplay & Tekstur `.bmp`: Visual Studio C++ OpenGL Asset Forge (FreeGLUT, GLEW, GLM, Bicubic Bezier)\n- Game Engine: Godot Engine 4.7.1.stable (GL Compatibility)\n\n[b]Referensi Utama:[/b]\nAngry Birds Star Wars I & II"
 	modal_overlay.visible = true
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -852,7 +682,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			mouse_parallax = (event.position / vp - Vector2(0.5, 0.5)) * 2.0
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode >= KEY_1 and event.keycode <= KEY_7:
-			_trigger_actor_reaction(event.keycode - KEY_1)
+			var d_idx: int = event.keycode - KEY_1
+			var g_idx: int = 2
+			if d_idx == 5:
+				g_idx = 0
+			elif d_idx == 6:
+				g_idx = 1
+			_trigger_dialog_and_hop(d_idx, g_idx)
 		elif event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
 			if intro_finished and not modal_overlay.visible:
 				_go_to_tester()
