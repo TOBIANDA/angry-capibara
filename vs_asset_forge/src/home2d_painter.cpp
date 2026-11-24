@@ -136,30 +136,30 @@ void PaintAngerMark(Canvas2D& cv, const Vec2& c, float sz) {
 
 void BuildLayer00_SkySun(const std::string& dir) {
 	Canvas2D cv(1280, 720);
-	Vec2 sunPos(640.0f, 415.0f);
+	// Matahari besar berpendar hangat di lembah tengah tepat di bawah logo (gaya versi 2.5D kemarin)
+	Vec2 sunPos(640.0f, 342.0f);
 
 	for (int y = 0; y < cv.h; ++y) {
 		float ny = static_cast<float>(y) / static_cast<float>(cv.h - 1);
-		// Rich Rovio golden-hour sky: deep cerulean-teal zenith -> warm honey -> peach-gold horizon
+		// Palet senja golden-hour Bamboo-Onsen: biru-teal atas -> hangat keemasan bawah
 		Color4 skyCol;
-		if (ny < 0.36f) {
-			skyCol = lerpColor(rgbHex(0x1D5E8C), rgbHex(0x4E9BB0), smoothstep(0.0f, 0.36f, ny));
-		} else if (ny < 0.64f) {
-			skyCol = lerpColor(rgbHex(0x4E9BB0), rgbHex(0xF6B35A), smoothstep(0.36f, 0.64f, ny));
+		if (ny < 0.34f) {
+			skyCol = lerpColor(rgbHex(0x1B5B86), rgbHex(0x4E96A8), smoothstep(0.0f, 0.34f, ny));
+		} else if (ny < 0.62f) {
+			skyCol = lerpColor(rgbHex(0x4E96A8), rgbHex(0xF6B458), smoothstep(0.34f, 0.62f, ny));
 		} else {
-			skyCol = lerpColor(rgbHex(0xF6B35A), rgbHex(0xFFE08B), smoothstep(0.64f, 1.0f, ny));
+			skyCol = lerpColor(rgbHex(0xF6B458), rgbHex(0xFFE38E), smoothstep(0.62f, 1.0f, ny));
 		}
 
 		for (int x = 0; x < cv.w; ++x) {
 			Vec2 p(x + 0.5f, y + 0.5f);
 			float dist = length(p - sunPos);
-			// Warm radial atmospheric sunset halo
-			float halo = std::exp(-(dist * dist) / (360.0f * 360.0f));
-			float halo2 = std::exp(-(dist * dist) / (190.0f * 190.0f));
-			Color4 c = lerpColor(skyCol, rgbHex(0xFFD67A), halo * 0.55f);
-			c = lerpColor(c, rgbHex(0xFFF3BA), halo2 * 0.65f);
+			// Pendar atmosfer matahari yang lebih kuat & hangat
+			float halo = std::exp(-(dist * dist) / (410.0f * 410.0f));
+			float halo2 = std::exp(-(dist * dist) / (230.0f * 230.0f));
+			Color4 c = lerpColor(skyCol, rgbHex(0xFFD97C), halo * 0.62f);
+			c = lerpColor(c, rgbHex(0xFFF6C8), halo2 * 0.78f);
 
-			// Subtle warm painterly grain so sky never bands
 			float g = (hash21(x, y, 71) - 0.5f) * 0.012f;
 			c.r = clampf(c.r + g, 0.0f, 1.0f);
 			c.g = clampf(c.g + g, 0.0f, 1.0f);
@@ -169,14 +169,13 @@ void BuildLayer00_SkySun(const std::string& dir) {
 		}
 	}
 
-	// Crisp glowing sunset sun disk
-	BBox sunBox{ sunPos.x - 165, sunPos.y - 165, sunPos.x + 165, sunPos.y + 165 };
-	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 138.0f); },
+	// Bola matahari senja besar cerah berpendar (tampak menonjol di sela pegunungan & belakang logo!)
+	BBox sunBox{ sunPos.x - 210, sunPos.y - 210, sunPos.x + 210, sunPos.y + 210 };
+	cv.FillSDF(sunBox, [&](const Vec2& p) { return sdCircle(p, sunPos, 178.0f); },
 		[&](const Vec2& p, float d) -> Color4 {
-			float t = clampf(-d / 138.0f, 0.0f, 1.0f);
-			Color4 c = lerpColor(rgbHex(0xFFE388), rgbHex(0xFFFCE2), smoothstep(0.0f, 0.7f, t));
-			return c;
-		}, 4.5f);
+			float t = clampf(-d / 178.0f, 0.0f, 1.0f);
+			return lerpColor(rgbHex(0xFFE892), rgbHex(0xFFFFEE), smoothstep(0.0f, 0.58f, t));
+		}, 6.0f);
 
 	cv.SavePNG(dir + "/layer_00_sky_sun.png");
 	std::cout << "  -> Exported home2d/layer_00_sky_sun.png (1280x720)\n";
@@ -185,7 +184,7 @@ void BuildLayer00_SkySun(const std::string& dir) {
 void BuildLayer01_Sunburst(const std::string& dir) {
 	Canvas2D cv(1024, 1024);
 	Vec2 center(512.0f, 512.0f);
-	const int numRays = 14;
+	const int numRays = 12;
 
 	for (int y = 0; y < cv.h; ++y) {
 		for (int x = 0; x < cv.w; ++x) {
@@ -194,11 +193,12 @@ void BuildLayer01_Sunburst(const std::string& dir) {
 			if (r > 510.0f || r < 24.0f) continue;
 			float ang = std::atan2(d.y, d.x);
 			float wave = 0.5f + 0.5f * std::cos(ang * numRays);
-			float ray = smoothstep(0.45f, 0.88f, wave);
-			float radialFade = smoothstep(28.0f, 130.0f, r) * (1.0f - smoothstep(230.0f, 505.0f, r));
-			float alpha = ray * radialFade * 0.24f;
+			// Sinar sunburst tegas & bersih seperti versi 2.5D kemarin!
+			float ray = smoothstep(0.46f, 0.62f, wave);
+			float radialFade = smoothstep(30.0f, 120.0f, r) * (1.0f - smoothstep(280.0f, 508.0f, r));
+			float alpha = ray * radialFade * 0.34f;
 			if (alpha > 0.002f) {
-				cv.BlendPixelOver(x, y, Color4(1.0f, 0.94f, 0.66f, alpha));
+				cv.BlendPixelOver(x, y, Color4(1.0f, 0.94f, 0.62f, alpha));
 			}
 		}
 	}
