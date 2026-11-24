@@ -5,7 +5,7 @@
   "name": "Menara Kembar Boulder",
   "tip": "Jatuhkan Boulder Batu di menara tengah agar menghancurkan bunker di bawahnya!",
   "slingshot_pos": [
-    -11.2,
+    -15.8,
     1.4
   ],
   "queue": [
@@ -18,11 +18,11 @@
   "terrain": [
     {
       "pos": [
-        -12.0,
+        -16.6,
         0.56
       ],
       "size": [
-        5.6,
+        7.0,
         1.12,
         2.3
       ],
@@ -31,11 +31,11 @@
     },
     {
       "pos": [
-        -11.8,
+        -16.4,
         1.26
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

@@ -5,7 +5,7 @@
   "name": "Gerbang Lembah Bambu",
   "tip": "Tarik ketapel di bukit kiri lalu lepaskan! Klik/Spasi di udara untuk Zen Bump Chill Capi.",
   "slingshot_pos": [
-    -10.2,
+    -14.6,
     1.0
   ],
   "queue": [
@@ -16,11 +16,11 @@
   "terrain": [
     {
       "pos": [
-        -11.0,
+        -15.4,
         0.36
       ],
       "size": [
-        5.6,
+        7.0,
         0.72,
         2.3
       ],
@@ -29,11 +29,11 @@
     },
     {
       "pos": [
-        -10.8,
+        -15.2,
         0.86
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

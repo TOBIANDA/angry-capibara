@@ -5,7 +5,7 @@
   "name": "Jembatan Jurang Onsen",
   "tip": "Runtuhkan tiang penyangga jembatan di antara dua tebing batu!",
   "slingshot_pos": [
-    -10.5,
+    -15.0,
     1.4
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -11.3,
+        -15.8,
         0.56
       ],
       "size": [
-        5.6,
+        7.0,
         1.12,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -11.1,
+        -15.6,
         1.26
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

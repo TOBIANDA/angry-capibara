@@ -5,7 +5,7 @@
   "name": "Dua Lereng Longsor",
   "tip": "Hancurkan ganjalan ES penahan Boulder di tebing kiri & kanan dengan Triple Split!",
   "slingshot_pos": [
-    -11.2,
+    -15.8,
     1.6
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -12.0,
+        -16.6,
         0.66
       ],
       "size": [
-        5.6,
+        7.0,
         1.32,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -11.8,
+        -16.4,
         1.46
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

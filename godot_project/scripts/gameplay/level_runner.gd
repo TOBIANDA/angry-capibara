@@ -13,7 +13,7 @@ const HOME_SCENE := "res://scenes/ui/home_screen.tscn"
 
 const GRAVITY := 18.0
 const MAX_PULL_DIST := 3.20
-const LAUNCH_POWER := 10.6
+const LAUNCH_POWER := 13.0
 
 const CAPY_SPECS := {
 	"chill": {
@@ -128,15 +128,21 @@ var snap_camera: bool = true
 
 # HUD & Overlays
 var lbl_stage_title: Label
+var lbl_enemy_pill: Label
 var lbl_score: Label
+var score_star_bar: ProgressBar
+var hud_star_pips: Array[Label] = []
 var combo_panel: PanelContainer
 var lbl_combo: Label
+var hud_squad_row: HBoxContainer
 var lbl_queue_info: Label
 var lbl_tip: Label
 var btn_views: Array[Button] = []
 var result_overlay: ColorRect
+var result_badge_lbl: Label
 var result_title: Label
 var result_stars: Label
+var result_star_labels: Array[Label] = []
 var result_body: Label
 var btn_retry: Button
 var btn_next_stage: Button
@@ -283,36 +289,36 @@ func _setup_ground() -> void:
 	ground.set_meta("kind", "ground")
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(68.0, 2.0, 16.0)
+	shape.size = Vector3(84.0, 2.0, 16.0)
 	col.shape = shape
-	ground.position = Vector3(1.5, -1.0, 0.0)
+	ground.position = Vector3(2.0, -1.0, 0.0)
 	ground.add_child(col)
 
 	var moss_top := MeshInstance3D.new()
 	var mt := BoxMesh.new()
-	mt.size = Vector3(60.0, 0.42, 12.0)
+	mt.size = Vector3(76.0, 0.42, 12.0)
 	moss_top.mesh = mt
 	moss_top.position = Vector3(0.0, 0.79, 0.0)
-	var moss_mat := _make_rovio_mat(tex_moss, Color(0.68, 0.80, 0.56), Vector2(8.0, 1.8), 0.10, 0.05)
+	var moss_mat := _make_rovio_mat(tex_moss, Color(0.68, 0.80, 0.56), Vector2(10.0, 1.8), 0.10, 0.05)
 	moss_mat.set_shader_parameter("shadow_tint", Vector3(0.36, 0.46, 0.38))
 	moss_top.material_override = moss_mat
 	ground.add_child(moss_top)
 
 	var cliff := MeshInstance3D.new()
 	var cm := BoxMesh.new()
-	cm.size = Vector3(59.4, 3.8, 11.4)
+	cm.size = Vector3(75.4, 3.8, 11.4)
 	cliff.mesh = cm
 	cliff.position = Vector3(0.0, -1.30, 0.0)
-	cliff.material_override = _make_rovio_mat(tex_cliff, Color(0.68, 0.62, 0.56), Vector2(9.5, 1.2), 0.06, 0.04)
+	cliff.material_override = _make_rovio_mat(tex_cliff, Color(0.68, 0.62, 0.56), Vector2(12.0, 1.2), 0.06, 0.04)
 	ground.add_child(cliff)
 	add_child(ground)
 
-	# Jalan setapak pasir hangat sepanjang arena luas di Z=0
+	# Jalan setapak pasir hangat sepanjang arena luas di Z=0 (-28..+32)
 	var lane := MeshInstance3D.new()
 	var lm := BoxMesh.new()
-	lm.size = Vector3(42.0, 0.025, 0.46)
+	lm.size = Vector3(60.0, 0.025, 0.46)
 	lane.mesh = lm
-	lane.position = Vector3(1.5, 0.015, 0.0)
+	lane.position = Vector3(2.0, 0.015, 0.0)
 	var lane_mat := _make_rovio_mat(null, Color(0.56, 0.50, 0.38), Vector2.ONE, 0.0, 0.02)
 	lane_mat.set_shader_parameter("shadow_tint", Vector3(0.42, 0.38, 0.30))
 	lane.material_override = lane_mat
@@ -360,10 +366,10 @@ func _setup_world1_scenery() -> void:
 	# 2. Pegunungan bambu berkabut (palet woodblock-pine DESIGN.md)
 	var hill_mesh: Mesh = load("res://assets/generated/models/home_stage_hill.obj")
 	for ml in [
-		[Vector3(-12.5, -1.5, -14.0), Vector3(2.3, 3.8, 1.6), Color(0.36, 0.54, 0.44)],
-		[Vector3(  2.0, -2.0, -18.5), Vector3(3.4, 4.4, 1.8), Color(0.45, 0.62, 0.57)],
-		[Vector3( 15.5, -1.4, -14.5), Vector3(2.5, 4.0, 1.6), Color(0.34, 0.52, 0.42)],
-		[Vector3( -5.0, -1.8, -11.5), Vector3(1.6, 2.2, 1.3), Color(0.41, 0.58, 0.40)]
+		[Vector3(-18.0, -1.5, -14.5), Vector3(2.8, 4.0, 1.6), Color(0.36, 0.54, 0.44)],
+		[Vector3(  1.5, -2.0, -19.0), Vector3(4.0, 4.6, 1.8), Color(0.45, 0.62, 0.57)],
+		[Vector3( 19.0, -1.4, -14.5), Vector3(2.8, 4.2, 1.6), Color(0.34, 0.52, 0.42)],
+		[Vector3( -6.5, -1.8, -11.5), Vector3(1.9, 2.3, 1.3), Color(0.41, 0.58, 0.40)]
 	]:
 		var m := MeshInstance3D.new()
 		m.mesh = hill_mesh
@@ -421,8 +427,8 @@ func _setup_world1_scenery() -> void:
 
 	var grove_mesh: Mesh = load("res://assets/generated/models/prop_bamboo_grove.obj")
 	for bg_cfg in [
-		[Vector3(-11.4, 0.1, -5.8), Vector3(0.0, 14.0, -3.0), 1.85],
-		[Vector3( 14.0, 0.1, -6.2), Vector3(0.0, -158.0, 3.0), 1.90]
+		[Vector3(-18.5, 0.1, -6.2), Vector3(0.0, 14.0, -3.0), 1.95],
+		[Vector3( 17.5, 0.1, -6.2), Vector3(0.0, -158.0, 3.0), 1.95]
 	]:
 		var grove := MeshInstance3D.new()
 		grove.mesh = grove_mesh
@@ -432,11 +438,11 @@ func _setup_world1_scenery() -> void:
 		_apply_rovio_model_materials(grove, Color(0.78, 0.84, 0.64))
 		scenery.add_child(grove)
 
-	for cp in [Vector3(-11.0, 7.6, -15.5), Vector3(11.5, 7.8, -16.0), Vector3(-2.5, 9.2, -18.5)]:
+	for cp in [Vector3(-16.5, 8.2, -16.0), Vector3(16.0, 8.4, -16.5), Vector3(-1.5, 9.8, -19.0)]:
 		var cl := MeshInstance3D.new()
 		cl.mesh = cloud_mesh
 		cl.position = cp
-		cl.scale = Vector3(2.4, 1.7, 1.3)
+		cl.scale = Vector3(2.6, 1.8, 1.3)
 		var cmat := _make_rovio_mat(null, Color(0.98, 0.96, 0.92), Vector2.ONE, 0.18, 0.04)
 		cmat.set_shader_parameter("shadow_tint", Vector3(0.68, 0.72, 0.78))
 		cmat.set_shader_parameter("rim_color", Vector3(1.0, 0.99, 0.96))
@@ -452,7 +458,7 @@ func _setup_world1_scenery() -> void:
 		bm.size = Vector3(0.22, 0.022, 0.08)
 		lf.mesh = bm
 		lf.material_override = leaf_mat
-		var st := Vector3(-10.0 + float(i) * 2.8, 2.4 + fmod(float(i) * 1.7, 5.0), -2.8 + sin(float(i)) * 2.0)
+		var st := Vector3(-16.0 + float(i) * 4.2, 2.6 + fmod(float(i) * 1.7, 5.2), -2.8 + sin(float(i)) * 2.0)
 		lf.position = st
 		scenery.add_child(lf)
 		bg_leaves.append({ "node": lf, "base": st, "phase": float(i) * 1.1 })
@@ -488,10 +494,10 @@ func _setup_trajectory_dots() -> void:
 	var dot_mat := StandardMaterial3D.new()
 	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dot_mat.albedo_color = Color(0.98, 0.94, 0.78)
-	for i in 26:
+	for i in 30:
 		var mi := MeshInstance3D.new()
 		var sm := SphereMesh.new()
-		sm.radius = lerp(0.11, 0.045, float(i) / 25.0)
+		sm.radius = lerp(0.115, 0.042, float(i) / 29.0)
 		sm.height = sm.radius * 2.0
 		mi.mesh = sm
 		mi.material_override = dot_mat
@@ -499,27 +505,47 @@ func _setup_trajectory_dots() -> void:
 		add_child(mi)
 		traj_dots.append(mi)
 
+func _make_lacquer_sb(bg: Color = Color(0.14, 0.10, 0.09, 0.94), bdr: Color = Color(0.84, 0.74, 0.52, 0.88), radius: int = 11) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = bdr
+	sb.set_border_width_all(2)
+	sb.border_width_bottom = 3
+	sb.set_corner_radius_all(radius)
+	sb.shadow_color = Color(0.03, 0.02, 0.02, 0.52)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(0, 3)
+	return sb
+
+func _add_hud_bevel(panel: Control, col: Color = Color(0.86, 0.76, 0.54, 0.28)) -> void:
+	var bevel := ColorRect.new()
+	bevel.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bevel.offset_left = 10
+	bevel.offset_right = -10
+	bevel.offset_top = 3
+	bevel.offset_bottom = 5
+	bevel.color = col
+	bevel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(bevel)
+
 func _setup_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 
-	var hud_sb := StyleBoxFlat.new()
-	hud_sb.bg_color = Color(0.15, 0.11, 0.10, 0.92)
-	hud_sb.border_color = Color(0.80, 0.72, 0.56, 0.85)
-	hud_sb.set_border_width_all(2)
-	hud_sb.set_corner_radius_all(10)
+	var hud_sb := _make_lacquer_sb()
 
-	# TOP-LEFT: Navigasi & Kamera
+	# TOP-LEFT: Navigasi & Kamera (tactile woodblock plaque)
 	var top_l := PanelContainer.new()
 	top_l.position = Vector2(14, 12)
 	top_l.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(top_l)
+	_add_hud_bevel(top_l)
 
 	var tl_mar := MarginContainer.new()
 	tl_mar.add_theme_constant_override("margin_left", 10)
 	tl_mar.add_theme_constant_override("margin_right", 10)
-	tl_mar.add_theme_constant_override("margin_top", 6)
-	tl_mar.add_theme_constant_override("margin_bottom", 6)
+	tl_mar.add_theme_constant_override("margin_top", 7)
+	tl_mar.add_theme_constant_override("margin_bottom", 7)
 	top_l.add_child(tl_mar)
 
 	var tl_row := HBoxContainer.new()
@@ -534,6 +560,11 @@ func _setup_hud() -> void:
 	btn_restart.pressed.connect(func(): _load_stage(current_stage_id))
 	tl_row.add_child(btn_restart)
 
+	var sep := ColorRect.new()
+	sep.custom_minimum_size = Vector2(2, 22)
+	sep.color = Color(0.76, 0.66, 0.48, 0.35)
+	tl_row.add_child(sep)
+
 	for i in 3:
 		var names := ["[1] 2.5D", "[2] Serong", "[3] 3D"]
 		var b := _make_hud_btn(names[i], false)
@@ -543,51 +574,99 @@ func _setup_hud() -> void:
 		tl_row.add_child(b)
 		btn_views.append(b)
 
-	# TOP-RIGHT: Stage Title & Score Counter
+	# TOP-RIGHT: Stage Title, Enemy Pill, Score & Live 1★/2★/3★ Progress Bar
 	var top_r := PanelContainer.new()
 	top_r.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	top_r.offset_left = -390
+	top_r.offset_left = -410
 	top_r.offset_right = -14
 	top_r.offset_top = 12
-	top_r.offset_bottom = 64
+	top_r.offset_bottom = 86
 	top_r.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(top_r)
+	_add_hud_bevel(top_r)
 
 	var tr_mar := MarginContainer.new()
 	tr_mar.add_theme_constant_override("margin_left", 14)
 	tr_mar.add_theme_constant_override("margin_right", 14)
-	tr_mar.add_theme_constant_override("margin_top", 6)
-	tr_mar.add_theme_constant_override("margin_bottom", 6)
+	tr_mar.add_theme_constant_override("margin_top", 7)
+	tr_mar.add_theme_constant_override("margin_bottom", 7)
 	top_r.add_child(tr_mar)
 
 	var tr_vb := VBoxContainer.new()
-	tr_vb.add_theme_constant_override("separation", 1)
+	tr_vb.add_theme_constant_override("separation", 4)
 	tr_mar.add_child(tr_vb)
 
+	var tr_top := HBoxContainer.new()
+	tr_top.add_theme_constant_override("separation", 8)
+	tr_vb.add_child(tr_top)
+
 	lbl_stage_title = Label.new()
+	lbl_stage_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl_stage_title.add_theme_font_size_override("font_size", 14)
 	lbl_stage_title.add_theme_color_override("font_color", Color(0.98, 0.94, 0.86))
-	lbl_stage_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	tr_vb.add_child(lbl_stage_title)
+	tr_top.add_child(lbl_stage_title)
+
+	var enemy_pill := PanelContainer.new()
+	var ep_sb := StyleBoxFlat.new()
+	ep_sb.bg_color = Color(0.18, 0.26, 0.14, 0.95)
+	ep_sb.border_color = Color(0.56, 0.78, 0.42, 0.85)
+	ep_sb.set_border_width_all(1)
+	ep_sb.set_corner_radius_all(6)
+	ep_sb.content_margin_left = 8
+	ep_sb.content_margin_right = 8
+	ep_sb.content_margin_top = 1
+	ep_sb.content_margin_bottom = 1
+	enemy_pill.add_theme_stylebox_override("panel", ep_sb)
+	tr_top.add_child(enemy_pill)
+
+	lbl_enemy_pill = Label.new()
+	lbl_enemy_pill.add_theme_font_size_override("font_size", 12)
+	lbl_enemy_pill.add_theme_color_override("font_color", Color(0.86, 0.96, 0.76))
+	enemy_pill.add_child(lbl_enemy_pill)
 
 	lbl_score = Label.new()
 	lbl_score.add_theme_font_size_override("font_size", 13)
-	lbl_score.add_theme_color_override("font_color", Color(0.95, 0.84, 0.46))
-	lbl_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lbl_score.add_theme_color_override("font_color", Color(0.98, 0.85, 0.44))
 	tr_vb.add_child(lbl_score)
+
+	var bar_row := HBoxContainer.new()
+	bar_row.add_theme_constant_override("separation", 8)
+	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	tr_vb.add_child(bar_row)
+
+	score_star_bar = ProgressBar.new()
+	score_star_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	score_star_bar.custom_minimum_size = Vector2(0, 8)
+	score_star_bar.show_percentage = false
+	var ssb_bg := StyleBoxFlat.new()
+	ssb_bg.bg_color = Color(0.08, 0.06, 0.05, 0.92)
+	ssb_bg.border_color = Color(0.46, 0.39, 0.30, 0.60)
+	ssb_bg.set_border_width_all(1)
+	ssb_bg.set_corner_radius_all(4)
+	var ssb_fill := StyleBoxFlat.new()
+	ssb_fill.bg_color = Color(0.96, 0.80, 0.32)
+	ssb_fill.set_corner_radius_all(4)
+	score_star_bar.add_theme_stylebox_override("background", ssb_bg)
+	score_star_bar.add_theme_stylebox_override("fill", ssb_fill)
+	bar_row.add_child(score_star_bar)
+
+	hud_star_pips.clear()
+	for k in 3:
+		var sp := Label.new()
+		sp.text = "☆"
+		sp.add_theme_font_size_override("font_size", 13)
+		sp.add_theme_color_override("font_color", Color(0.50, 0.44, 0.36, 0.75))
+		bar_row.add_child(sp)
+		hud_star_pips.append(sp)
 
 	# COMBO BADGE (visible when combo_count >= 2)
 	combo_panel = PanelContainer.new()
 	combo_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	combo_panel.offset_left = -210
+	combo_panel.offset_left = -220
 	combo_panel.offset_right = -14
-	combo_panel.offset_top = 70
-	combo_panel.offset_bottom = 104
-	var combo_sb := StyleBoxFlat.new()
-	combo_sb.bg_color = Color(0.82, 0.22, 0.17, 0.95)
-	combo_sb.border_color = Color(0.98, 0.88, 0.56)
-	combo_sb.set_border_width_all(2)
-	combo_sb.set_corner_radius_all(8)
+	combo_panel.offset_top = 92
+	combo_panel.offset_bottom = 126
+	var combo_sb := _make_lacquer_sb(Color(0.82, 0.22, 0.17, 0.96), Color(0.98, 0.88, 0.56), 8)
 	combo_panel.add_theme_stylebox_override("panel", combo_sb)
 	combo_panel.visible = false
 	canvas.add_child(combo_panel)
@@ -605,63 +684,99 @@ func _setup_hud() -> void:
 	lbl_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cm_mar.add_child(lbl_combo)
 
-	# BOTTOM BAR: Active Capybara Skill & Stage Tip
+	# BOTTOM BAR: Color-Coded Squad Queue Pills + Active Skill & Stage Tip
 	var bot := PanelContainer.new()
 	bot.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	bot.offset_left = 14
-	bot.offset_right = 880
-	bot.offset_top = -62
+	bot.offset_right = 910
+	bot.offset_top = -72
 	bot.offset_bottom = -12
 	bot.add_theme_stylebox_override("panel", hud_sb)
 	canvas.add_child(bot)
+	_add_hud_bevel(bot)
 
 	var b_mar := MarginContainer.new()
 	b_mar.add_theme_constant_override("margin_left", 12)
 	b_mar.add_theme_constant_override("margin_right", 12)
-	b_mar.add_theme_constant_override("margin_top", 5)
-	b_mar.add_theme_constant_override("margin_bottom", 5)
+	b_mar.add_theme_constant_override("margin_top", 7)
+	b_mar.add_theme_constant_override("margin_bottom", 6)
 	bot.add_child(b_mar)
 
 	var b_vb := VBoxContainer.new()
-	b_vb.add_theme_constant_override("separation", 2)
+	b_vb.add_theme_constant_override("separation", 4)
 	b_mar.add_child(b_vb)
 
+	var b_top := HBoxContainer.new()
+	b_top.add_theme_constant_override("separation", 10)
+	b_vb.add_child(b_top)
+
+	hud_squad_row = HBoxContainer.new()
+	hud_squad_row.add_theme_constant_override("separation", 4)
+	b_top.add_child(hud_squad_row)
+
 	lbl_queue_info = Label.new()
+	lbl_queue_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl_queue_info.add_theme_font_size_override("font_size", 13)
 	lbl_queue_info.add_theme_color_override("font_color", Color(0.96, 0.86, 0.50))
-	b_vb.add_child(lbl_queue_info)
+	b_top.add_child(lbl_queue_info)
 
 	lbl_tip = Label.new()
 	lbl_tip.add_theme_font_size_override("font_size", 12)
 	lbl_tip.add_theme_color_override("font_color", Color(0.88, 0.84, 0.76))
 	b_vb.add_child(lbl_tip)
 
-	# RESULT OVERLAY (Win / Lose)
+	# RESULT OVERLAY (Celebratory Woodblock Lacquer Plaque)
 	result_overlay = ColorRect.new()
 	result_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	result_overlay.color = Color(0.08, 0.06, 0.05, 0.76)
+	result_overlay.color = Color(0.07, 0.05, 0.04, 0.80)
 	result_overlay.visible = false
 	canvas.add_child(result_overlay)
 
 	var rpanel := PanelContainer.new()
 	rpanel.set_anchors_preset(Control.PRESET_CENTER)
-	rpanel.offset_left = -250
-	rpanel.offset_right = 250
-	rpanel.offset_top = -170
-	rpanel.offset_bottom = 170
-	rpanel.add_theme_stylebox_override("panel", hud_sb)
+	rpanel.offset_left = -270
+	rpanel.offset_right = 270
+	rpanel.offset_top = -195
+	rpanel.offset_bottom = 195
+	var rp_sb := _make_lacquer_sb(Color(0.15, 0.11, 0.09, 0.98), Color(0.92, 0.80, 0.50), 14)
+	rp_sb.set_border_width_all(3)
+	rp_sb.border_width_bottom = 5
+	rpanel.add_theme_stylebox_override("panel", rp_sb)
 	result_overlay.add_child(rpanel)
+	_add_hud_bevel(rpanel, Color(0.96, 0.84, 0.52, 0.48))
 
 	var rmar := MarginContainer.new()
-	rmar.add_theme_constant_override("margin_left", 24)
-	rmar.add_theme_constant_override("margin_right", 24)
+	rmar.add_theme_constant_override("margin_left", 26)
+	rmar.add_theme_constant_override("margin_right", 26)
 	rmar.add_theme_constant_override("margin_top", 20)
 	rmar.add_theme_constant_override("margin_bottom", 20)
 	rpanel.add_child(rmar)
 
 	var rvb := VBoxContainer.new()
-	rvb.add_theme_constant_override("separation", 12)
+	rvb.add_theme_constant_override("separation", 10)
 	rmar.add_child(rvb)
+
+	var badge_wrap := HBoxContainer.new()
+	badge_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
+	rvb.add_child(badge_wrap)
+
+	var rbadge_panel := PanelContainer.new()
+	var rb_sb := StyleBoxFlat.new()
+	rb_sb.bg_color = Color(0.24, 0.17, 0.12, 0.96)
+	rb_sb.border_color = Color(0.92, 0.78, 0.44)
+	rb_sb.set_border_width_all(1)
+	rb_sb.set_corner_radius_all(6)
+	rb_sb.content_margin_left = 12
+	rb_sb.content_margin_right = 12
+	rb_sb.content_margin_top = 2
+	rb_sb.content_margin_bottom = 2
+	rbadge_panel.add_theme_stylebox_override("panel", rb_sb)
+	badge_wrap.add_child(rbadge_panel)
+
+	result_badge_lbl = Label.new()
+	result_badge_lbl.add_theme_font_size_override("font_size", 11)
+	result_badge_lbl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.44))
+	rbadge_panel.add_child(result_badge_lbl)
 
 	result_title = Label.new()
 	result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -669,18 +784,56 @@ func _setup_hud() -> void:
 	result_title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
 	rvb.add_child(result_title)
 
+	var star_tray := PanelContainer.new()
+	var st_sb := StyleBoxFlat.new()
+	st_sb.bg_color = Color(0.09, 0.06, 0.05, 0.75)
+	st_sb.border_color = Color(0.68, 0.58, 0.42, 0.45)
+	st_sb.set_border_width_all(1)
+	st_sb.set_corner_radius_all(10)
+	st_sb.content_margin_left = 18
+	st_sb.content_margin_right = 18
+	st_sb.content_margin_top = 6
+	st_sb.content_margin_bottom = 6
+	star_tray.add_theme_stylebox_override("panel", st_sb)
+	rvb.add_child(star_tray)
+
+	var star_hb := HBoxContainer.new()
+	star_hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	star_hb.add_theme_constant_override("separation", 16)
+	star_tray.add_child(star_hb)
+
+	result_star_labels.clear()
+	for k in 3:
+		var rsl := Label.new()
+		rsl.text = "☆"
+		rsl.add_theme_font_size_override("font_size", 40)
+		rsl.add_theme_color_override("font_color", Color(0.46, 0.40, 0.34, 0.70))
+		rsl.add_theme_color_override("font_outline_color", Color(0.08, 0.05, 0.04, 0.90))
+		rsl.add_theme_constant_override("outline_size", 4)
+		star_hb.add_child(rsl)
+		result_star_labels.append(rsl)
+
 	result_stars = Label.new()
-	result_stars.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_stars.add_theme_font_size_override("font_size", 36)
-	result_stars.add_theme_color_override("font_color", Color(0.96, 0.82, 0.36))
+	result_stars.visible = false
 	rvb.add_child(result_stars)
+
+	var body_card := PanelContainer.new()
+	var bc_sb := StyleBoxFlat.new()
+	bc_sb.bg_color = Color(0.11, 0.08, 0.07, 0.80)
+	bc_sb.set_corner_radius_all(8)
+	bc_sb.content_margin_left = 14
+	bc_sb.content_margin_right = 14
+	bc_sb.content_margin_top = 10
+	bc_sb.content_margin_bottom = 10
+	body_card.add_theme_stylebox_override("panel", bc_sb)
+	rvb.add_child(body_card)
 
 	result_body = Label.new()
 	result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_body.add_theme_font_size_override("font_size", 14)
-	result_body.add_theme_color_override("font_color", Color(0.90, 0.86, 0.78))
+	result_body.add_theme_color_override("font_color", Color(0.92, 0.88, 0.78))
 	result_body.autowrap_mode = TextServer.AUTOWRAP_WORD
-	rvb.add_child(result_body)
+	body_card.add_child(result_body)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -713,9 +866,10 @@ func _make_hud_btn(txt: String, is_primary: bool) -> Button:
 
 func _style_hud_btn(b: Button, is_primary: bool) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.82, 0.22, 0.17) if is_primary else Color(0.22, 0.17, 0.15, 0.96)
-	sb.border_color = Color(0.96, 0.86, 0.66) if is_primary else Color(0.72, 0.64, 0.50, 0.80)
+	sb.bg_color = Color(0.82, 0.22, 0.17) if is_primary else Color(0.21, 0.16, 0.14, 0.96)
+	sb.border_color = Color(0.98, 0.88, 0.62) if is_primary else Color(0.74, 0.65, 0.50, 0.82)
 	sb.set_border_width_all(2)
+	sb.border_width_bottom = 3
 	sb.set_corner_radius_all(8)
 	sb.content_margin_left = 10
 	sb.content_margin_right = 10
@@ -790,8 +944,8 @@ func _load_stage(stage_id: String) -> void:
 	if is_instance_valid(slingshot_visual):
 		slingshot_visual.position = Vector3(sling_x, sling_base_y, 0.0)
 
-	stage_min_x = sling_x - 2.6
-	stage_max_x = sling_x + 14.0
+	stage_min_x = sling_x - 3.0
+	stage_max_x = sling_x + 22.0
 	stage_max_y = maxf(sling_base_y + 3.5, 4.5)
 
 	capy_queue.clear()
@@ -1489,9 +1643,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			if event.pressed:
 				custom_orbit_active = true
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			cam_zoom_offset = clampf(cam_zoom_offset - 1.2, -5.0, 9.0)
+			cam_zoom_offset = clampf(cam_zoom_offset - 1.4, -10.0, 12.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			cam_zoom_offset = clampf(cam_zoom_offset + 1.2, -5.0, 9.0)
+			cam_zoom_offset = clampf(cam_zoom_offset + 1.4, -10.0, 12.0)
 		elif event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				if is_flying and not skill_used:
@@ -1665,7 +1819,7 @@ func _process(delta: float) -> void:
 			settle_timer += delta
 		else:
 			settle_timer = 0.0
-		if flight_timer > 6.2 or settle_timer > 1.45:
+		if flight_timer > 7.5 or settle_timer > 1.45:
 			is_flying = false
 			if not capy_queue.is_empty():
 				_load_next_capy_onto_slingshot()
@@ -1736,12 +1890,15 @@ func _finish_stage_victory() -> void:
 
 	SaveManager.record_stage_clear(current_stage_id, score, stars)
 
+	if result_badge_lbl:
+		result_badge_lbl.text = "MENANG!" if stars >= 1 else "SELESAI"
 	result_title.text = "STAGE %s SELESAI!" % current_stage_id
-	var st_txt := ""
-	for k in 3:
-		st_txt += "★ " if k < stars else "☆ "
-	result_stars.text = st_txt.strip_edges()
-	result_body.text = "Skor Akhir: %d\n(Termasuk Bonus Sisa %d Kapibara: +%d)\nTarget 3 Bintang: %d" % [score, unused_capys, bonus, s3]
+	for k in result_star_labels.size():
+		var rsl: Label = result_star_labels[k]
+		var earned: bool = k < stars
+		rsl.text = "★" if earned else "☆"
+		rsl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30) if earned else Color(0.46, 0.40, 0.34, 0.70))
+	result_body.text = "Skor Akhir: %d\nBonus Sisa %d Kapibara: +%d  •  Target 3★: %d" % [score, unused_capys, bonus, s3]
 	var has_next: bool = (SaveManager.get_next_stage_id(current_stage_id) != "")
 	btn_next_stage.visible = has_next
 	_style_hud_btn(btn_next_stage, true)
@@ -1750,8 +1907,12 @@ func _finish_stage_victory() -> void:
 
 func _finish_stage_defeat() -> void:
 	stage_ended = true
+	if result_badge_lbl:
+		result_badge_lbl.text = "COBA LAGI"
 	result_title.text = "BELUM BERHASIL"
-	result_stars.text = "☆ ☆ ☆"
+	for rsl in result_star_labels:
+		rsl.text = "☆"
+		rsl.add_theme_color_override("font_color", Color(0.46, 0.40, 0.34, 0.70))
 	result_body.text = "Masih ada %d Klan Buaya bertahan.\nCoba sudut bidikan atau aktifkan skill kapibara di udara!" % enemies.size()
 	btn_next_stage.visible = false
 	_style_hud_btn(btn_retry, true)
@@ -1766,7 +1927,22 @@ func _go_next_stage() -> void:
 
 func _refresh_score_hud() -> void:
 	var best: int = SaveManager.get_stage_best_score(current_stage_id)
-	lbl_score.text = "Skor: %d  |  Buaya: %d  |  Rekor: %d" % [score, enemies.size(), best]
+	var star_arr: Array = stage_data.get("stars", [15000, 25000, 35000])
+	var s1: int = int(star_arr[0])
+	var s2: int = int(star_arr[1])
+	var s3: int = maxi(int(star_arr[2]), 1)
+	if is_instance_valid(lbl_enemy_pill):
+		lbl_enemy_pill.text = "Buaya: %d" % enemies.size()
+	lbl_score.text = "Skor: %d   •   Rekor: %d" % [score, best]
+	if is_instance_valid(score_star_bar):
+		score_star_bar.max_value = float(s3)
+		score_star_bar.value = minf(float(score), float(s3))
+	var thresh: Array[int] = [s1, s2, s3]
+	for k in mini(hud_star_pips.size(), 3):
+		var sp: Label = hud_star_pips[k]
+		var reached: bool = score >= thresh[k]
+		sp.text = "★" if reached else "☆"
+		sp.add_theme_color_override("font_color", Color(1.0, 0.85, 0.34) if reached else Color(0.52, 0.46, 0.38, 0.78))
 	if is_instance_valid(combo_panel) and is_instance_valid(lbl_combo):
 		if combo_count >= 2:
 			var mult: float = 1.5
@@ -1779,14 +1955,50 @@ func _refresh_score_hud() -> void:
 		else:
 			combo_panel.visible = false
 
+func _make_squad_pill(ctype: String, is_active: bool) -> PanelContainer:
+	var pill := PanelContainer.new()
+	var bg := Color(0.78, 0.22, 0.16, 0.95)
+	var tag := "CHILL"
+	if ctype == "dash":
+		bg = Color(0.84, 0.56, 0.14, 0.95)
+		tag = "DASH"
+	elif ctype == "mini":
+		bg = Color(0.24, 0.52, 0.74, 0.95)
+		tag = "MINI"
+	if not is_active:
+		bg.a = 0.65
+	var st := StyleBoxFlat.new()
+	st.bg_color = bg
+	st.border_color = Color(1.0, 0.90, 0.52) if is_active else Color(0.74, 0.66, 0.54, 0.55)
+	st.set_border_width_all(2 if is_active else 1)
+	st.set_corner_radius_all(6)
+	st.content_margin_left = 7
+	st.content_margin_right = 7
+	st.content_margin_top = 1
+	st.content_margin_bottom = 1
+	pill.add_theme_stylebox_override("panel", st)
+	var lb := Label.new()
+	lb.text = tag
+	lb.add_theme_font_size_override("font_size", 10)
+	lb.add_theme_color_override("font_color", Color(1.0, 0.98, 0.92))
+	pill.add_child(lb)
+	return pill
+
 func _refresh_queue_hud() -> void:
+	if is_instance_valid(hud_squad_row):
+		for c in hud_squad_row.get_children():
+			c.queue_free()
+		if is_instance_valid(active_capy):
+			hud_squad_row.add_child(_make_squad_pill(active_capy_type, true))
+		for q_type in capy_queue:
+			hud_squad_row.add_child(_make_squad_pill(str(q_type), false))
 	if is_instance_valid(active_capy):
 		var spec: Dictionary = CAPY_SPECS.get(active_capy_type, CAPY_SPECS["chill"])
-		lbl_queue_info.text = "Aktif: %s  •  Skill (Klik/Spasi): %s  •  Sisa: %d  •  [A/D] Geser" % [
-			str(spec["name"]), str(spec["skill_desc"]), capy_queue.size()
+		lbl_queue_info.text = "%s  •  Skill (Klik/Spasi): %s  •  [A/D] Geser" % [
+			str(spec["name"]), str(spec["skill_desc"])
 		]
 	else:
-		lbl_queue_info.text = "Seluruh kapibara sudah diluncurkan — menunggu benteng tumbang..."
+		lbl_queue_info.text = "Seluruh kapibara diluncurkan — menunggu benteng tumbang..."
 
 func _set_camera_view(view_idx: int) -> void:
 	current_view = view_idx
@@ -1846,7 +2058,7 @@ func _update_trajectory_preview() -> void:
 		return
 	var start_p := active_capy.position if is_instance_valid(active_capy) else Vector3(launch_x, launch_y, 0.0)
 	for i in traj_dots.size():
-		var t := float(i + 1) * 0.075
+		var t := float(i + 1) * 0.072
 		var p := start_p + vel * t + Vector3(0.0, -0.5 * GRAVITY * t * t, 0.0)
 		traj_dots[i].position = p
 		traj_dots[i].visible = p.y > 0.05
@@ -1943,9 +2155,9 @@ func _update_camera(delta: float) -> void:
 			cam.position = target + Vector3(-0.95, 0.45, 2.25)
 			cam.look_at(target, Vector3.UP)
 			return
-	var span_x: float = maxf(stage_max_x - stage_min_x, 20.0)
+	var span_x: float = maxf(stage_max_x - stage_min_x, 24.0)
 	var mid_x: float = (stage_min_x + stage_max_x) * 0.5
-	var mid_y: float = clampf(stage_max_y * 0.44, 2.3, 4.6)
+	var mid_y: float = clampf(stage_max_y * 0.44, 2.3, 4.7)
 
 	# Smooth horizontal camera pan (A/D or Left/Right arrow keys, clamped to stage bounds)
 	var pan_dir: float = 0.0
@@ -1954,10 +2166,10 @@ func _update_camera(delta: float) -> void:
 			pan_dir -= 1.0
 		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 			pan_dir += 1.0
-	var max_pan_left: float = minf((stage_min_x + 3.0) - mid_x, -4.0)
-	var max_pan_right: float = maxf((stage_max_x - 3.0) - mid_x, 4.0)
+	var max_pan_left: float = minf((stage_min_x + 4.0) - mid_x, -5.0)
+	var max_pan_right: float = maxf((stage_max_x - 4.0) - mid_x, 5.0)
 	if pan_dir != 0.0:
-		cam_pan_target_x = clampf(cam_pan_target_x + pan_dir * 16.0 * delta, max_pan_left, max_pan_right)
+		cam_pan_target_x = clampf(cam_pan_target_x + pan_dir * 20.0 * delta, max_pan_left, max_pan_right)
 	elif is_aiming or is_flying:
 		cam_pan_target_x = lerpf(cam_pan_target_x, 0.0, clampf(delta * 4.5, 0.0, 1.0))
 	cam_pan_x = lerpf(cam_pan_x, cam_pan_target_x, clampf(delta * 10.0, 0.0, 1.0))
@@ -1968,29 +2180,29 @@ func _update_camera(delta: float) -> void:
 	if custom_orbit_active:
 		desired_fov = 45.0
 		var center := Vector3(mid_x + 1.0 + cam_pan_x, mid_y, 0.0)
-		var dist: float = maxf(span_x * 0.78, 18.0) + cam_zoom_offset
+		var dist: float = maxf(span_x * 0.78, 22.0) + cam_zoom_offset
 		desired_pos = center + Vector3(-sin(orbit_yaw) * cos(orbit_pitch) * dist, sin(orbit_pitch) * dist + 1.2, cos(orbit_yaw) * cos(orbit_pitch) * dist)
 		look_target = center
 	else:
 		match current_view:
 			CameraView.SIDE_25D:
 				desired_fov = 34.0
-				var z_fit_x: float = (span_x * 0.56) / (tan(deg_to_rad(17.0)) * 1.72)
+				var z_fit_x: float = (span_x * 0.54) / (tan(deg_to_rad(17.0)) * 1.72)
 				var z_fit_y: float = ((stage_max_y + 1.8) * 0.62) / tan(deg_to_rad(17.0))
-				var cam_z: float = maxf(maxf(z_fit_x, z_fit_y), 23.0) + cam_zoom_offset
+				var cam_z: float = maxf(maxf(z_fit_x, z_fit_y), 25.0) + cam_zoom_offset
 				var fx: float = mid_x + cam_pan_x
 				if is_flying and is_instance_valid(active_capy):
-					fx = lerpf(mid_x, clampf(active_capy.position.x, mid_x - 2.0, stage_max_x - 3.0), 0.35) + cam_pan_x
+					fx = lerpf(mid_x, clampf(active_capy.position.x, stage_min_x + 4.0, stage_max_x - 3.0), 0.38) + cam_pan_x
 				desired_pos = Vector3(fx, mid_y + 0.55, cam_z)
 				look_target = Vector3(fx, mid_y, 0.0)
 			CameraView.ANGLED_25D:
 				desired_fov = 42.0
-				var cam_z: float = maxf(span_x * 0.74, 18.5) + cam_zoom_offset
+				var cam_z: float = maxf(span_x * 0.74, 22.0) + cam_zoom_offset
 				var fx: float = mid_x + cam_pan_x
 				if is_flying and is_instance_valid(active_capy):
-					fx = lerpf(mid_x, clampf(active_capy.position.x, mid_x - 2.0, stage_max_x - 3.0), 0.40) + cam_pan_x
-				desired_pos = Vector3(fx - 5.2, mid_y + 2.8, cam_z)
-				look_target = Vector3(fx + 1.2, mid_y - 0.1, 0.0)
+					fx = lerpf(mid_x, clampf(active_capy.position.x, stage_min_x + 4.0, stage_max_x - 3.0), 0.42) + cam_pan_x
+				desired_pos = Vector3(fx - 5.8, mid_y + 3.0, cam_z)
+				look_target = Vector3(fx + 1.4, mid_y - 0.1, 0.0)
 			CameraView.BEHIND_3D:
 				desired_fov = 54.0
 				desired_pos = Vector3(sling_x - 4.4 - cam_zoom_offset * 0.4, sling_base_y + 4.1, 0.6)

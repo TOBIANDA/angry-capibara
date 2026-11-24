@@ -5,7 +5,7 @@
   "name": "Pagoda Agung Bambu",
   "tip": "Pagoda 4 tingkat di puncak bukit! Bidik pilar dasar atau jatuhkan Zen Bump tepat di atap.",
   "slingshot_pos": [
-    -11.0,
+    -15.4,
     0.4
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -11.6,
+        -16.0,
         0.26
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

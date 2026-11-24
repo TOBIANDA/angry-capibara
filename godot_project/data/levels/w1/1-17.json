@@ -5,7 +5,7 @@
   "name": "Reaksi TNT & Boulder",
   "tip": "Ledakkan TNT di tebing kiri agar Boulder Batu meluncur kencang memicu TNT kedua di benteng kanan!",
   "slingshot_pos": [
-    -11.4,
+    -16.0,
     2.0
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -12.2,
+        -16.8,
         0.86
       ],
       "size": [
-        5.6,
+        7.0,
         1.72,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -12.0,
+        -16.6,
         1.86
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

@@ -5,7 +5,7 @@
   "name": "Domino Tiga Menara",
   "tip": "Hantam puncak menara depan agar efek domino menjatuhkan menara di tangga bukit belakang!",
   "slingshot_pos": [
-    -10.5,
+    -15.0,
     0.6
   ],
   "queue": [
@@ -16,11 +16,11 @@
   "terrain": [
     {
       "pos": [
-        -11.3,
+        -15.8,
         0.16
       ],
       "size": [
-        5.6,
+        7.0,
         0.32,
         2.3
       ],
@@ -29,11 +29,11 @@
     },
     {
       "pos": [
-        -11.1,
+        -15.6,
         0.46
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

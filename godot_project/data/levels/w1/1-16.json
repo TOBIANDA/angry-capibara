@@ -5,7 +5,7 @@
   "name": "Gudang Mesiu Yuzu",
   "tip": "Tong Yuzu TNT merah-emas meledak radius 5m! Bidik ruang tengah untuk meruntuhkan seluruh gudang.",
   "slingshot_pos": [
-    -11.0,
+    -15.8,
     0.8
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -11.8,
+        -16.6,
         0.26
       ],
       "size": [
-        5.6,
+        7.0,
         0.52,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -11.6,
+        -16.4,
         0.66
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

@@ -5,7 +5,7 @@
   "name": "Gua Tebing & Drum Taiko",
   "tip": "Pantulkan kapibara lewat Drum Taiko merah di tanah untuk menyapu buaya di dalam gua tebing!",
   "slingshot_pos": [
-    -10.5,
+    -15.2,
     1.0
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -11.3,
+        -16.0,
         0.36
       ],
       "size": [
-        5.6,
+        7.0,
         0.72,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -11.1,
+        -15.8,
         0.86
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],

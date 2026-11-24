@@ -5,7 +5,7 @@
   "name": "Labirin Pantul Taiko",
   "tip": "Tembok batu depan terlalu tinggi! Pantulkan kapibara di Drum Taiko atau melambung tinggi lalu Split.",
   "slingshot_pos": [
-    -11.0,
+    -15.6,
     1.2
   ],
   "queue": [
@@ -17,11 +17,11 @@
   "terrain": [
     {
       "pos": [
-        -11.8,
+        -16.4,
         0.46
       ],
       "size": [
-        5.6,
+        7.0,
         0.92,
         2.3
       ],
@@ -30,11 +30,11 @@
     },
     {
       "pos": [
-        -11.6,
+        -16.2,
         1.06
       ],
       "size": [
-        4.4,
+        5.8,
         0.28,
         1.7
       ],
