@@ -46,6 +46,101 @@ glm::mat4 TRS(glm::vec3 t, glm::vec3 rotDeg = glm::vec3(0.0f), glm::vec3 s = glm
 	return m;
 }
 
+// =========================================================================
+// Helper Geometri Mulut 3D Kontur Moncong (Snout-Hugging Parametric Shells)
+// Menempel rapat mengikuti kelengkungan elipsoid moncong -> nol tonjolan bola/lump!
+// =========================================================================
+inline void EvalSnoutSurface(
+	const glm::vec3& snoutPos, float hs, float theta, float phi, float offset,
+	glm::vec3& outPos, glm::vec3& outNrm) {
+	const float rx = 0.106f * hs;
+	const float ry = 0.112f * hs;
+	const float rz = 0.148f * hs;
+	const float cp = std::cos(phi), sp = std::sin(phi);
+	const float ct = std::cos(theta), st = std::sin(theta);
+
+	glm::vec3 localP(rx * cp * ct, ry * sp, rz * cp * st);
+	glm::vec3 localN = glm::normalize(glm::vec3(
+		(cp * ct) / std::max(rx, 1e-4f),
+		sp / std::max(ry, 1e-4f),
+		(cp * st) / std::max(rz, 1e-4f)));
+
+	// Rotasi -5 derajat sumbu Z menyamai TRS moncong
+	const float rad = glm::radians(-5.0f);
+	const float c = std::cos(rad), s = std::sin(rad);
+	glm::vec3 rotP(localP.x * c - localP.y * s, localP.x * s + localP.y * c, localP.z);
+	glm::vec3 rotN = glm::normalize(glm::vec3(localN.x * c - localN.y * s, localN.x * s + localN.y * c, localN.z));
+
+	outPos = snoutPos + rotP + rotN * offset;
+	outNrm = rotN;
+}
+
+// Membuat patch mulut lengkung solid 2-sisi tipis yang memeluk permukaan moncong 100% mulus
+template <typename BotFn, typename TopFn>
+SubMesh BuildSnoutMouthPatch(
+	const glm::vec3& snoutPos, float hs,
+	float thetaMin, float thetaMax,
+	BotFn phiBotFn, TopFn phiTopFn,
+	float offset, int nu = 16, int nv = 6) {
+	SubMesh m;
+	const int cols = nu + 1;
+	const int rows = nv + 1;
+	m.vertices.reserve(static_cast<size_t>(cols * rows));
+	for (int iv = 0; iv <= nv; ++iv) {
+		float v = static_cast<float>(iv) / static_cast<float>(nv);
+		for (int iu = 0; iu <= nu; ++iu) {
+			float u = static_cast<float>(iu) / static_cast<float>(nu);
+			float th = thetaMin + (thetaMax - thetaMin) * u;
+			float pb = phiBotFn(u);
+			float pt = phiTopFn(u);
+			float ph = pb + (pt - pb) * v;
+			glm::vec3 pos, nrm;
+			EvalSnoutSurface(snoutPos, hs, th, ph, offset, pos, nrm);
+			m.vertices.push_back({ pos, nrm, glm::vec2(u, v) });
+		}
+	}
+	for (int iv = 0; iv < nv; ++iv) {
+		for (int iu = 0; iu < nu; ++iu) {
+			uint32_t a = static_cast<uint32_t>(iv * cols + iu);
+			uint32_t b = a + 1;
+			uint32_t c = static_cast<uint32_t>((iv + 1) * cols + iu);
+			uint32_t d = c + 1;
+			// Winding menghadap luar (+X/+N) — pastikan normal selaras dengan outNrm
+			m.indices.push_back(a); m.indices.push_back(c); m.indices.push_back(b);
+			m.indices.push_back(b); m.indices.push_back(c); m.indices.push_back(d);
+		}
+	}
+	return m;
+}
+
+// Membuat garis bibir kurva 3D menempel rapat pada permukaan moncong (untuk cemberut/frown tegas!)
+template <typename PhiFn>
+SubMesh BuildSnoutLipCurve(
+	const glm::vec3& snoutPos, float hs,
+	float thetaMin, float thetaMax,
+	PhiFn phiFn, float radius, float offset, int steps = 14) {
+	SubMesh out;
+	std::vector<glm::vec3> pts(steps + 1);
+	for (int i = 0; i <= steps; ++i) {
+		float u = static_cast<float>(i) / static_cast<float>(steps);
+		float th = thetaMin + (thetaMax - thetaMin) * u;
+		glm::vec3 pos, nrm;
+		EvalSnoutSurface(snoutPos, hs, th, phiFn(u), offset, pos, nrm);
+		pts[i] = pos;
+	}
+	// Gabungkan sebagai rantai segmen bezier pendek agar radius konsisten & mulus di moncong
+	for (int i = 0; i < steps; ++i) {
+		glm::vec3 p0 = pts[i];
+		glm::vec3 p3 = pts[i + 1];
+		glm::vec3 p1 = glm::mix(p0, p3, 0.33f);
+		glm::vec3 p2 = glm::mix(p0, p3, 0.67f);
+		float uMid = (i + 0.5f) / static_cast<float>(steps);
+		float taper = 0.72f + 0.28f * std::sin(uMid * 3.1415926f);
+		AppendTransformedMesh(out, BuildBezierTube({{ p0, p1, p2, p3 }}, radius * taper, radius * taper, 3, 7, true), glm::mat4(1.0f));
+	}
+	return out;
+}
+
 // Kubah mata anime: UV diproyeksikan langsung dari bidang Z-Y depan agar tekstur iris 256x256 tampil tajam 1:1
 // mirrorU = true untuk mata kiri (-Z) sehingga sisi dalam dekat hidung selalu x < 0!
 SubMesh BuildAnimeEyeLens(float rx, float ry, float rz, bool mirrorU) {
@@ -235,126 +330,128 @@ void BuildAnimeCapyCore(
 	}
 	asset.parts.push_back(std::move(inkPart));
 
-	// 7. MULUT ANIME EKSPRESIF (pas di permukaan moncong kapibara ringkas 2.5D)
-	const glm::vec3 mCenter = snoutPos + glm::vec3(0.0f, -0.042f * headScale, 0.0f);
-	const float mx0 = 0.104f * headScale;
-	const float mx1 = 0.096f * headScale;
-	const float mx2 = 0.084f * headScale;
-	SubMesh mouthCav;  mouthCav.objectName = "anime_mouth";  mouthCav.materialName = "mat_mouth_dark";
+	// 7. MULUT ANIME 2.5D EKSPRESIF (Contour-Hugging Snout Shells — menempel sempurna & terbaca tajam!)
+	const float hs = headScale;
+	SubMesh mouthCav;   mouthCav.objectName = "anime_mouth";   mouthCav.materialName = "mat_mouth_dark";
 	SubMesh tonguePart; tonguePart.objectName = "anime_tongue"; tonguePart.materialName = "mat_tongue";
 	SubMesh teethPart;  teethPart.objectName = "anime_teeth";  teethPart.materialName = "mat_white";
+	SubMesh lipRimPart; lipRimPart.objectName = "anime_lip_rim"; lipRimPart.materialName = "mat_ink";
 
 	switch (mouthStyle) {
-	case AnimeMouth::GrumpySmirk: {
-		// Garis bibir cemberut marah khas kapibara (garis tengah 'Y' + sudut turun tajam)
-		std::array<glm::vec3, 4> cleft = {{
-			mCenter + glm::vec3(mx0 + 0.008f,  0.032f * headScale, 0.0f),
-			mCenter + glm::vec3(mx0 + 0.005f,  0.022f * headScale, 0.0f),
-			mCenter + glm::vec3(mx0 + 0.002f,  0.012f * headScale, 0.0f),
-			mCenter + glm::vec3(mx0,           0.004f * headScale, 0.0f)
-		}};
-		std::array<glm::vec3, 4> fL = {{
-			mCenter + glm::vec3(mx0,  0.005f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1,  0.002f * headScale, 0.024f * headScale),
-			mCenter + glm::vec3(mx2, -0.008f * headScale, 0.048f * headScale),
-			mCenter + glm::vec3(mx2 - 0.010f * headScale, -0.020f * headScale, 0.068f * headScale)
-		}};
-		std::array<glm::vec3, 4> fR = {{
-			mCenter + glm::vec3(mx0,  0.005f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1,  0.002f * headScale,-0.024f * headScale),
-			mCenter + glm::vec3(mx2, -0.008f * headScale,-0.048f * headScale),
-			mCenter + glm::vec3(mx2 - 0.010f * headScale, -0.020f * headScale,-0.068f * headScale)
-		}};
-		AppendTransformedMesh(mouthCav, BuildBezierTube(cleft, 0.009f * headScale, 0.009f * headScale), glm::mat4(1.0f));
-		AppendTransformedMesh(mouthCav, BuildBezierTube(fL,    0.011f * headScale, 0.009f * headScale), glm::mat4(1.0f));
-		AppendTransformedMesh(mouthCav, BuildBezierTube(fR,    0.011f * headScale, 0.009f * headScale), glm::mat4(1.0f));
+	case AnimeMouth::HeroRoar: {
+		// CHILL CAPI: Mulut mengaum lebar dramatis memeluk lengkung moncong + taring atas/bawah + lidah pink!
+		auto botC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.68f + 0.26f * d * d; };
+		auto topC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.06f - 0.24f * d * d; };
+		// Bingkai bibir gelap tegas
+		AppendTransformedMesh(lipRimPart, BuildSnoutMouthPatch(snoutPos, hs, -0.58f, 0.58f,
+			[&](float u) { return botC(u) - 0.055f; }, [&](float u) { return topC(u) + 0.055f; }, 0.0030f * hs, 18, 6), glm::mat4(1.0f));
+		// Rongga mulut gelap bagian dalam
+		AppendTransformedMesh(mouthCav, BuildSnoutMouthPatch(snoutPos, hs, -0.51f, 0.51f, botC, topC, 0.0052f * hs, 18, 6), glm::mat4(1.0f));
+		// Lidah merah muda melengkung di dasar mulut
+		AppendTransformedMesh(tonguePart, BuildSnoutMouthPatch(snoutPos, hs, -0.34f, 0.34f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.64f + 0.14f * d * d; },
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.38f - 0.14f * d * d; }, 0.0074f * hs, 14, 5), glm::mat4(1.0f));
+		// Barisan gigi atas putih bersih + 2 taring atas + 2 taring bawah (identik Key-Art 2D!)
+		AppendTransformedMesh(teethPart, BuildSnoutMouthPatch(snoutPos, hs, -0.40f, 0.40f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.18f - 0.12f * d * d; },
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.06f - 0.18f * d * d; }, 0.0086f * hs, 14, 3), glm::mat4(1.0f));
+		AppendTransformedMesh(teethPart, BuildSnoutMouthPatch(snoutPos, hs, -0.34f, 0.34f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.66f + 0.18f * d * d; },
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.56f + 0.10f * d * d; }, 0.0086f * hs, 12, 3), glm::mat4(1.0f));
+		// 4 taring runcing menempel rapat pada sudut barisan gigi
+		for (float sgn : { -1.0f, 1.0f }) {
+			glm::vec3 upP, upN, loP, loN;
+			EvalSnoutSurface(snoutPos, hs, sgn * 0.31f, -0.22f, 0.009f * hs, upP, upN);
+			EvalSnoutSurface(snoutPos, hs, sgn * 0.27f, -0.56f, 0.009f * hs, loP, loN);
+			AppendTransformedMesh(teethPart, BuildCone(0.014f * hs, 0.032f * hs, 8), TRS(upP, glm::vec3(0, 0, 180)));
+			AppendTransformedMesh(teethPart, BuildCone(0.012f * hs, 0.026f * hs, 8), TRS(loP, glm::vec3(0, 0, 0)));
+		}
 		break;
 	}
 	case AnimeMouth::OpenShout: {
-		// Mulut teriak anime rata mengikuti permukaan moncong (tidak menonjol keluar seperti balon)
-		AppendTransformedMesh(mouthCav, BuildEllipsoid(0.022f * headScale, 0.038f * headScale, 0.056f * headScale, 10, 14),
-			TRS(mCenter + glm::vec3(mx0 - 0.004f * headScale, -0.006f * headScale, 0.0f)));
-		AppendTransformedMesh(tonguePart, BuildEllipsoid(0.014f * headScale, 0.018f * headScale, 0.036f * headScale, 8, 10),
-			TRS(mCenter + glm::vec3(mx0 - 0.001f * headScale, -0.018f * headScale, 0.0f)));
+		// DASH CAPI: Mulut teriak energi tinggi melengkung rapat mengikuti moncong (NOL benjolan bola!)
+		auto botC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.64f + 0.28f * d * d; };
+		auto topC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.08f - 0.22f * d * d; };
+		AppendTransformedMesh(lipRimPart, BuildSnoutMouthPatch(snoutPos, hs, -0.50f, 0.50f,
+			[&](float u) { return botC(u) - 0.055f; }, [&](float u) { return topC(u) + 0.055f; }, 0.0030f * hs, 16, 6), glm::mat4(1.0f));
+		AppendTransformedMesh(mouthCav, BuildSnoutMouthPatch(snoutPos, hs, -0.44f, 0.44f, botC, topC, 0.0052f * hs, 16, 6), glm::mat4(1.0f));
+		// Gigi atas putih cerah + lidah pink
+		AppendTransformedMesh(teethPart, BuildSnoutMouthPatch(snoutPos, hs, -0.35f, 0.35f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.21f - 0.10f * d * d; },
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.09f - 0.16f * d * d; }, 0.0082f * hs, 12, 3), glm::mat4(1.0f));
+		AppendTransformedMesh(tonguePart, BuildSnoutMouthPatch(snoutPos, hs, -0.28f, 0.28f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.60f + 0.14f * d * d; },
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.39f - 0.12f * d * d; }, 0.0074f * hs, 12, 4), glm::mat4(1.0f));
 		break;
 	}
 	case AnimeMouth::CatSmile: {
-		// Bibir ':3' / omega kapibara mungil menempel halus di moncong
-		std::array<glm::vec3, 4> wL = {{
-			mCenter + glm::vec3(mx0, -0.002f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1, -0.014f * headScale, 0.020f * headScale),
-			mCenter + glm::vec3(mx2, -0.012f * headScale, 0.042f * headScale),
-			mCenter + glm::vec3(mx2 - 0.008f * headScale, 0.004f * headScale, 0.060f * headScale)
-		}};
-		std::array<glm::vec3, 4> wR = {{
-			mCenter + glm::vec3(mx0, -0.002f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1, -0.014f * headScale,-0.020f * headScale),
-			mCenter + glm::vec3(mx2, -0.012f * headScale,-0.042f * headScale),
-			mCenter + glm::vec3(mx2 - 0.008f * headScale, 0.004f * headScale,-0.060f * headScale)
-		}};
-		AppendTransformedMesh(mouthCav, BuildBezierTube(wL, 0.010f * headScale, 0.008f * headScale), glm::mat4(1.0f));
-		AppendTransformedMesh(mouthCav, BuildBezierTube(wR, 0.010f * headScale, 0.008f * headScale), glm::mat4(1.0f));
-		break;
-	}
-	case AnimeMouth::FierceGrin: {
-		// Garis mulut terkatup geram / dingin tanpa kotak gigi menonjol
-		std::array<glm::vec3, 4> gL = {{
-			mCenter + glm::vec3(mx0,  0.004f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1,  0.003f * headScale, 0.024f * headScale),
-			mCenter + glm::vec3(mx2, -0.004f * headScale, 0.048f * headScale),
-			mCenter + glm::vec3(mx2 - 0.010f * headScale, -0.012f * headScale, 0.066f * headScale)
-		}};
-		std::array<glm::vec3, 4> gR = {{
-			mCenter + glm::vec3(mx0,  0.004f * headScale, 0.0f),
-			mCenter + glm::vec3(mx1,  0.003f * headScale,-0.024f * headScale),
-			mCenter + glm::vec3(mx2, -0.004f * headScale,-0.048f * headScale),
-			mCenter + glm::vec3(mx2 - 0.010f * headScale, -0.012f * headScale,-0.066f * headScale)
-		}};
-		AppendTransformedMesh(mouthCav, BuildBezierTube(gL, 0.011f * headScale, 0.009f * headScale), glm::mat4(1.0f));
-		AppendTransformedMesh(mouthCav, BuildBezierTube(gR, 0.011f * headScale, 0.009f * headScale), glm::mat4(1.0f));
+		// TRIO MINI-CAPI: Senyum nyengir putih lebar tengil melengkung ke atas (persis Trio Mini 2D!)
+		auto botC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.52f + 0.36f * d * d; };
+		auto topC = [](float u) { float d = (u - 0.5f) * 2.0f; return -0.24f + 0.10f * d * d; };
+		AppendTransformedMesh(lipRimPart, BuildSnoutMouthPatch(snoutPos, hs, -0.58f, 0.58f,
+			[&](float u) { return botC(u) - 0.055f; }, [&](float u) { return topC(u) + 0.055f; }, 0.0032f * hs, 16, 5), glm::mat4(1.0f));
+		AppendTransformedMesh(teethPart, BuildSnoutMouthPatch(snoutPos, hs, -0.51f, 0.51f, botC, topC, 0.0064f * hs, 16, 5), glm::mat4(1.0f));
 		break;
 	}
 	case AnimeMouth::SmugSide: {
-		// Senyum sinis asimetris menempel rapat di moncong (naik di satu sisi)
-		std::array<glm::vec3, 4> sCurve = {{
-			mCenter + glm::vec3(mx2 - 0.006f * headScale, -0.008f * headScale, -0.056f * headScale),
-			mCenter + glm::vec3(mx1, -0.004f * headScale, -0.018f * headScale),
-			mCenter + glm::vec3(mx1,  0.004f * headScale,  0.024f * headScale),
-			mCenter + glm::vec3(mx2 - 0.006f * headScale,  0.018f * headScale,  0.064f * headScale)
-		}};
-		AppendTransformedMesh(mouthCav, BuildBezierTube(sCurve, 0.010f * headScale, 0.010f * headScale), glm::mat4(1.0f));
+		// SEED-BLASTER: Nyengir koboi sinis putih asimetris naik tajam di pipi kanan (persis 2D!)
+		auto botC = [](float u) {
+			float tilt = (u - 0.35f) * 0.36f;
+			float arch = (u - 0.5f) * (u - 0.5f) * 0.65f;
+			return -0.50f + tilt + arch;
+		};
+		auto topC = [](float u) {
+			float tilt = (u - 0.35f) * 0.36f;
+			float arch = (u - 0.5f) * (u - 0.5f) * 0.25f;
+			return -0.24f + tilt + arch;
+		};
+		AppendTransformedMesh(lipRimPart, BuildSnoutMouthPatch(snoutPos, hs, -0.34f, 0.64f,
+			[&](float u) { return botC(u) - 0.052f; }, [&](float u) { return topC(u) + 0.052f; }, 0.0032f * hs, 16, 5), glm::mat4(1.0f));
+		AppendTransformedMesh(teethPart, BuildSnoutMouthPatch(snoutPos, hs, -0.28f, 0.58f, botC, topC, 0.0064f * hs, 16, 5), glm::mat4(1.0f));
+		break;
+	}
+	case AnimeMouth::GrumpySmirk: {
+		// YUZU BOMB: Cemberut turun berat tebal menempel moncong + celah hidung khas kapibara
+		AppendTransformedMesh(lipRimPart, BuildSnoutLipCurve(snoutPos, hs, -0.52f, 0.52f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.24f - 0.24f * d * d; },
+			0.013f * hs, 0.0045f * hs, 14), glm::mat4(1.0f));
+		// Garis belah bibir atas vertikal menuju pangkal hidung
+		glm::vec3 pTop, nTop, pBot, nBot;
+		EvalSnoutSurface(snoutPos, hs, 0.0f,  0.04f, 0.004f * hs, pTop, nTop);
+		EvalSnoutSurface(snoutPos, hs, 0.0f, -0.24f, 0.004f * hs, pBot, nBot);
+		AppendTransformedMesh(lipRimPart, BuildBezierTube({{ pTop, glm::mix(pTop, pBot, 0.33f), glm::mix(pTop, pBot, 0.67f), pBot }},
+			0.009f * hs, 0.010f * hs, 6, 7, true), glm::mat4(1.0f));
+		break;
+	}
+	case AnimeMouth::FierceGrin: {
+		// BAMBU-KATANA: Garis bibir datar-tegas serius + bayangan bibir bawah tajam
+		AppendTransformedMesh(lipRimPart, BuildSnoutLipCurve(snoutPos, hs, -0.52f, 0.52f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.28f - 0.14f * d * d; },
+			0.013f * hs, 0.0048f * hs, 14), glm::mat4(1.0f));
+		// Garis dagu pendek halus di bawah bibir
+		AppendTransformedMesh(mouthCav, BuildSnoutLipCurve(snoutPos, hs, -0.20f, 0.20f,
+			[](float) { return -0.46f; },
+			0.007f * hs, 0.0038f * hs, 8), glm::mat4(1.0f));
 		break;
 	}
 	case AnimeMouth::HeavyFangs: {
-		// Rahang bawah & taring besar khas Heavy Onsen ("yang merah besar")
-		AppendTransformedMesh(mouthCav, BuildEllipsoid(0.032f * headScale, 0.036f * headScale, 0.092f * headScale, 10, 14),
-			TRS(mCenter + glm::vec3(mx0 - 0.010f * headScale, -0.016f * headScale, 0.0f)));
-		AppendTransformedMesh(teethPart, BuildCone(0.022f * headScale, 0.058f * headScale, 10),
-			TRS(mCenter + glm::vec3(mx1 + 0.002f * headScale,  0.004f * headScale,  0.064f * headScale), glm::vec3(0, 0, -18)));
-		AppendTransformedMesh(teethPart, BuildCone(0.022f * headScale, 0.058f * headScale, 10),
-			TRS(mCenter + glm::vec3(mx1 + 0.002f * headScale,  0.004f * headScale, -0.064f * headScale), glm::vec3(0, 0, -18)));
-		break;
-	}
-	case AnimeMouth::HeroRoar: {
-		// Mulut menggeram/mengaum rata mengikuti kontur moncong (TIDAK menonjol keluar seperti bola!)
-		// Rongga mulut gelap tipis menempel permukaan moncong + gigi taring geram tegas
-		AppendTransformedMesh(mouthCav, BuildEllipsoid(0.014f * headScale, 0.042f * headScale, 0.078f * headScale, 12, 16),
-			TRS(mCenter + glm::vec3(mx0 - 0.008f * headScale, -0.004f * headScale, 0.0f)));
-		AppendTransformedMesh(tonguePart, BuildEllipsoid(0.011f * headScale, 0.018f * headScale, 0.050f * headScale, 10, 12),
-			TRS(mCenter + glm::vec3(mx0 - 0.006f * headScale, -0.022f * headScale, 0.0f)));
-		// Barisan gigi geram atas yang tegas + 2 taring sudut tajam
-		AppendTransformedMesh(teethPart, BuildBox(0.010f * headScale, 0.014f * headScale, 0.092f * headScale),
-			TRS(mCenter + glm::vec3(mx0 - 0.003f * headScale,  0.022f * headScale, 0.0f)));
-		AppendTransformedMesh(teethPart, BuildCone(0.012f * headScale, 0.026f * headScale, 8),
-			TRS(mCenter + glm::vec3(mx1 - 0.001f * headScale,  0.014f * headScale,  0.046f * headScale), glm::vec3(0, 0, 180)));
-		AppendTransformedMesh(teethPart, BuildCone(0.012f * headScale, 0.026f * headScale, 8),
-			TRS(mCenter + glm::vec3(mx1 - 0.001f * headScale,  0.014f * headScale, -0.046f * headScale), glm::vec3(0, 0, 180)));
+		// HEAVY ONSEN: Mulut sumo cemberut rapi + 2 taring gading kokoh tepat di bawah kumis putih!
+		AppendTransformedMesh(lipRimPart, BuildSnoutLipCurve(snoutPos, hs, -0.54f, 0.54f,
+			[](float u) { float d = (u - 0.5f) * 2.0f; return -0.32f - 0.16f * d * d; },
+			0.015f * hs, 0.0045f * hs, 14), glm::mat4(1.0f));
+		for (float sgn : { -1.0f, 1.0f }) {
+			glm::vec3 tp, tn;
+			EvalSnoutSurface(snoutPos, hs, sgn * 0.36f, -0.44f, 0.016f * hs, tp, tn);
+			AppendTransformedMesh(teethPart, BuildCone(0.022f * hs, 0.068f * hs, 10),
+				TRS(tp, glm::vec3(sgn * -10.0f, 0.0f, 168.0f)));
+		}
 		break;
 	}
 	}
-	asset.parts.push_back(std::move(mouthCav));
+	if (!lipRimPart.vertices.empty()) asset.parts.push_back(std::move(lipRimPart));
+	if (!mouthCav.vertices.empty())   asset.parts.push_back(std::move(mouthCav));
 	if (!tonguePart.vertices.empty()) asset.parts.push_back(std::move(tonguePart));
-	if (!teethPart.vertices.empty()) asset.parts.push_back(std::move(teethPart));
+	if (!teethPart.vertices.empty())  asset.parts.push_back(std::move(teethPart));
 
 	// 8. Simbol urat marah anime merah di pelipis (opsional!)
 	if (hasAngerMark) {
@@ -385,11 +482,11 @@ ModelAsset BuildCapybaraAnimeW12(CapyVariant variant) {
 	ModelAsset asset;
 
 	switch (variant) {
-	// 1. CHILL CAPI: Warna Merah #2 + Bentuk Kapibara Anime + Syal Merah + Urat Marah
+	// 1. CHILL CAPI: Merah Crimson Pekat + Mulut Mengaum Heroik + Syal + Jambul + Urat Marah
 	case CapyVariant::Chill: {
 		asset.modelName = "anime_capy_chill";
-		BuildAnimeCapyCore(asset, "mat_fur_red", "tex_capy_red.bmp", "tex_anime_eye_chill.bmp",
-			glm::vec3(1.0f, 1.0f, 1.0f), 1.08f, 1.15f, AnimeBrow::AngryV, AnimeMouth::GrumpySmirk, true);
+		BuildAnimeCapyCore(asset, "mat_fur_crimson", "tex_capy_crimson.bmp", "tex_anime_eye_chill.bmp",
+			glm::vec3(1.0f, 1.0f, 1.0f), 1.08f, 1.15f, AnimeBrow::AngryV, AnimeMouth::HeroRoar, true);
 
 		AddUniqueMaterial(asset, MakeMat("mat_scarf_red", "tex_anime_scarf_red.bmp"));
 		SubMesh scarf;
@@ -400,10 +497,10 @@ ModelAsset BuildCapybaraAnimeW12(CapyVariant variant) {
 		AppendTransformedMesh(scarf, BuildBezierTube(tail, 0.048f, 0.022f), glm::mat4(1.0f));
 		asset.parts.push_back(std::move(scarf));
 
-		// Jambul bulu merah runcing kecil di puncak kepala (serasi dengan Key-Art 2D!)
+		// Jambul bulu merah crimson runcing kecil di puncak kepala
 		SubMesh tuft;
 		tuft.objectName = "acc_chill_tuft";
-		tuft.materialName = "mat_fur_red";
+		tuft.materialName = "mat_fur_crimson";
 		AppendTransformedMesh(tuft, BuildCone(0.042f, 0.115f, 8), TRS(glm::vec3(0.18f, 0.355f, 0.0f), glm::vec3(0, 0, 22)));
 		AppendTransformedMesh(tuft, BuildCone(0.032f, 0.090f, 8), TRS(glm::vec3(0.14f, 0.345f, 0.035f), glm::vec3(12, 0, 36)));
 		AppendTransformedMesh(tuft, BuildCone(0.032f, 0.090f, 8), TRS(glm::vec3(0.14f, 0.345f,-0.035f), glm::vec3(-12, 0, 36)));
@@ -472,11 +569,11 @@ ModelAsset BuildCapybaraAnimeW12(CapyVariant variant) {
 		break;
 	}
 
-	// 4. YUZU BOMB CAPI: Kapibara Espresso Bulat Gemuk + Mata Oranye Garang + Jeruk Yuzu + Sumbu Api
+	// 4. YUZU BOMB CAPI: Kapibara Espresso Bulat Gemuk + Mulut Cemberut Berat + Jeruk Yuzu + Sumbu Api
 	case CapyVariant::YuzuBomb: {
 		asset.modelName = "anime_capy_yuzu_bomb";
 		BuildAnimeCapyCore(asset, "mat_fur_espresso", "tex_anime_fur_espresso.bmp", "tex_anime_eye_bomb.bmp",
-			glm::vec3(1.02f, 1.12f, 1.15f), 1.12f, 1.18f, AnimeBrow::FierceSlope, AnimeMouth::FierceGrin, true);
+			glm::vec3(1.02f, 1.12f, 1.15f), 1.12f, 1.18f, AnimeBrow::FierceSlope, AnimeMouth::GrumpySmirk, true);
 
 		AddUniqueMaterial(asset, MakeMat("mat_yuzu", "tex_yuzu.bmp", glm::vec3(1.0f), glm::vec3(0.35f, 0.18f, 0.0f)));
 		AddUniqueMaterial(asset, MakeMat("mat_spark", "tex_fuse_spark.bmp", glm::vec3(1.0f), glm::vec3(0.85f, 0.45f, 0.05f)));
@@ -606,10 +703,11 @@ ModelAsset BuildCapybaraAnimeW12(CapyVariant variant) {
 		SubMesh mustache;
 		mustache.objectName = "acc_heavy_mustache";
 		mustache.materialName = "mat_white";
-		std::array<glm::vec3, 4> stL = {{ {0.53f,0.06f,0.04f}, {0.54f,0.04f,0.16f}, {0.50f,-0.02f,0.28f}, {0.43f,0.02f,0.35f} }};
-		std::array<glm::vec3, 4> stR = {{ {0.53f,0.06f,-0.04f}, {0.54f,0.04f,-0.16f}, {0.50f,-0.02f,-0.28f}, {0.43f,0.02f,-0.35f} }};
-		AppendTransformedMesh(mustache, BuildBezierTube(stL, 0.038f, 0.012f), glm::mat4(1.0f));
-		AppendTransformedMesh(mustache, BuildBezierTube(stR, 0.038f, 0.012f), glm::mat4(1.0f));
+		// Kumis handlebar putih menempel rapi tepat di bawah lubang hidung Heavy Onsen (melengkung gagah!)
+		std::array<glm::vec3, 4> stL = {{ {0.575f, 0.110f,  0.025f}, {0.585f, 0.088f,  0.140f}, {0.535f, 0.035f,  0.255f}, {0.465f, 0.082f,  0.325f} }};
+		std::array<glm::vec3, 4> stR = {{ {0.575f, 0.110f, -0.025f}, {0.585f, 0.088f, -0.140f}, {0.535f, 0.035f, -0.255f}, {0.465f, 0.082f, -0.325f} }};
+		AppendTransformedMesh(mustache, BuildBezierTube(stL, 0.040f, 0.012f, 14, 10, true), glm::mat4(1.0f));
+		AppendTransformedMesh(mustache, BuildBezierTube(stR, 0.040f, 0.012f, 14, 10, true), glm::mat4(1.0f));
 		asset.parts.push_back(std::move(mustache));
 
 		SubMesh towel;

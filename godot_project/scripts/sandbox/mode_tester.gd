@@ -82,12 +82,12 @@ func _ready() -> void:
 	tex_wood = load("res://assets/generated/textures/tex_wood.bmp")
 	tex_bamboo = load("res://assets/generated/textures/tex_bamboo.bmp")
 	tex_stone = load("res://assets/generated/textures/tex_stone.bmp")
-	tex_moss = load("res://assets/generated/textures/tex_moss_top.bmp")
+	tex_moss = load("res://assets/generated/textures/tex_moss_painterly.bmp")
 	tex_cliff = load("res://assets/generated/textures/tex_cliff_rock.bmp")
 	mesh_croco = load("res://assets/generated/models/enemy_croco_minion.obj")
 	mesh_slingshot = load("res://assets/generated/models/prop_slingshot_bamboo.obj")
-	shader_toon = load("res://shaders/toon_25d.gdshader")
-	shader_outline = load("res://shaders/anime_outline.gdshader")
+	shader_toon = load("res://shaders/rovio_25d.gdshader")
+	shader_outline = null
 
 	_setup_environment()
 	_setup_ground()
@@ -106,24 +106,24 @@ func _setup_environment() -> void:
 	var env := Environment.new()
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	# Palet langit senja Bamboo-Onsen yang serasi 100% dengan Key-Art Home 2D!
-	sky_mat.sky_top_color = Color(0.09, 0.30, 0.42)
-	sky_mat.sky_horizon_color = Color(0.96, 0.68, 0.34)
-	sky_mat.ground_bottom_color = Color(0.14, 0.28, 0.24)
-	sky_mat.ground_horizon_color = Color(0.86, 0.64, 0.36)
-	sky_mat.sky_curve = 0.22
+	# Palet langit Woodblock/Ghibli Anti-Slop (DESIGN.md — serasi 100% dengan Home 2D!)
+	sky_mat.sky_top_color = Color(0.22, 0.52, 0.72)
+	sky_mat.sky_horizon_color = Color(0.95, 0.90, 0.76)
+	sky_mat.ground_bottom_color = Color(0.24, 0.39, 0.28)
+	sky_mat.ground_horizon_color = Color(0.84, 0.84, 0.72)
+	sky_mat.sky_curve = 0.08
 	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.56, 0.50)
-	env.ambient_light_energy = 0.32
-	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.04
+	env.ambient_light_color = Color(0.74, 0.72, 0.68)
+	env.ambient_light_energy = 0.34
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.00
 	env.glow_enabled = true
-	env.glow_intensity = 0.35
-	env.glow_bloom = 0.14
-	env.glow_hdr_threshold = 1.05
+	env.glow_intensity = 0.22
+	env.glow_bloom = 0.08
+	env.glow_hdr_threshold = 1.18
 
 	world_env = WorldEnvironment.new()
 	world_env.environment = env
@@ -131,10 +131,16 @@ func _setup_environment() -> void:
 
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-32.0, 28.0, 0.0)
-	sun.light_energy = 0.86
-	sun.light_color = Color(1.0, 0.94, 0.82)
+	sun.light_energy = 0.84
+	sun.light_color = Color(1.0, 0.96, 0.88)
 	sun.shadow_enabled = true
 	add_child(sun)
+
+	var rim_sun := DirectionalLight3D.new()
+	rim_sun.rotation_degrees = Vector3(-16.0, -152.0, 0.0)
+	rim_sun.light_energy = 0.28
+	rim_sun.light_color = Color(0.98, 0.92, 0.76)
+	add_child(rim_sun)
 
 	cam = Camera3D.new()
 	cam.near = 0.1
@@ -142,19 +148,17 @@ func _setup_environment() -> void:
 	add_child(cam)
 	cam.make_current()
 
-func _make_25d_mat(tex: Texture2D, tint: Color = Color.WHITE, uv_sc: Vector2 = Vector2.ONE, with_outline: bool = true, outline_w: float = 0.015) -> ShaderMaterial:
+func _make_25d_mat(tex: Texture2D, tint: Color = Color.WHITE, uv_sc: Vector2 = Vector2.ONE, rim_str: float = 0.18, sheen_str: float = 0.10) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader_toon
 	if tex:
 		mat.set_shader_parameter("albedo_tex", tex)
 	mat.set_shader_parameter("tint_color", tint)
 	mat.set_shader_parameter("uv_scale", uv_sc)
-	if with_outline and shader_outline:
-		var om := ShaderMaterial.new()
-		om.shader = shader_outline
-		om.set_shader_parameter("outline_width", outline_w)
-		om.set_shader_parameter("outline_color", Color(0.08, 0.05, 0.06, 1.0))
-		mat.next_pass = om
+	mat.set_shader_parameter("rim_strength", rim_str)
+	mat.set_shader_parameter("sheen_strength", sheen_str)
+	mat.set_shader_parameter("shadow_tint", Vector3(0.46, 0.42, 0.48))
+	mat.set_shader_parameter("rim_color", Vector3(0.98, 0.92, 0.76))
 	return mat
 
 func _setup_ground() -> void:
@@ -166,37 +170,36 @@ func _setup_ground() -> void:
 	ground.position = Vector3(1.0, -1.0, 0.0)
 	ground.add_child(col)
 
-	# Lapisan rumput lumut tenang bergaya ilustrasi 2.5D agar karakter merah & benteng kontras tajam
+	# Lapisan rumput lumut gouache halus (matcha-olive alami sesuai DESIGN.md, nol bintik statis!)
 	var moss_top := MeshInstance3D.new()
 	var mt := BoxMesh.new()
 	mt.size = Vector3(36.0, 0.42, 10.5)
 	moss_top.mesh = mt
 	moss_top.position = Vector3(0.0, 0.79, 0.0)
-	var moss_mat := _make_25d_mat(tex_moss, Color(0.56, 0.70, 0.46), Vector2(6.0, 2.0), true, 0.024)
-	moss_mat.set_shader_parameter("rim_strength", 0.06)
+	var moss_mat := _make_25d_mat(tex_moss, Color(0.68, 0.80, 0.56), Vector2(5.0, 1.8), 0.10, 0.05)
+	moss_mat.set_shader_parameter("shadow_tint", Vector3(0.36, 0.46, 0.38))
 	moss_top.material_override = moss_mat
 	ground.add_child(moss_top)
 
-	# Dinding tebing batu vulkanik gelap di bawah rumput
+	# Dinding tebing tanah-batu hangat di bawah rumput
 	var cliff := MeshInstance3D.new()
 	var cm := BoxMesh.new()
 	cm.size = Vector3(35.4, 3.6, 10.0)
 	cliff.mesh = cm
 	cliff.position = Vector3(0.0, -1.20, 0.0)
-	var cliff_mat := _make_25d_mat(tex_cliff, Color(0.74, 0.68, 0.64), Vector2(6.0, 1.2), true, 0.028)
-	cliff_mat.set_shader_parameter("rim_strength", 0.05)
+	var cliff_mat := _make_25d_mat(tex_cliff, Color(0.68, 0.62, 0.56), Vector2(6.0, 1.2), 0.06, 0.04)
 	cliff.material_override = cliff_mat
 	ground.add_child(cliff)
 	add_child(ground)
 
-	# Penanda lintasan tanah hangat halus di Z=0
+	# Penanda lintasan jalan setapak tanah hangat halus di Z=0 (bukan garis hitam!)
 	var lane := MeshInstance3D.new()
 	var lm := BoxMesh.new()
-	lm.size = Vector3(22.0, 0.025, 0.34)
+	lm.size = Vector3(22.0, 0.025, 0.42)
 	lane.mesh = lm
 	lane.position = Vector3(2.0, 0.015, 0.0)
-	var lane_mat := _make_25d_mat(tex_cliff, Color(0.52, 0.44, 0.34), Vector2(10.0, 1.0), false)
-	lane_mat.set_shader_parameter("rim_strength", 0.0)
+	var lane_mat := _make_25d_mat(null, Color(0.76, 0.68, 0.52), Vector2.ONE, 0.0, 0.02)
+	lane_mat.set_shader_parameter("shadow_tint", Vector3(0.56, 0.48, 0.38))
 	lane.material_override = lane_mat
 	add_child(lane)
 
@@ -205,7 +208,7 @@ func _setup_bamboo_onsen_scenery() -> void:
 	scenery.name = "BambooOnsenBackdrop"
 	add_child(scenery)
 
-	# 1. Matahari senja keemasan + sinar sunburst halus di belakang benteng
+	# 1. Matahari washi-emas lembut + sinar woodblock halus di belakang benteng
 	sun_rays_node = Node3D.new()
 	sun_rays_node.position = Vector3(1.5, 4.8, -22.0)
 	scenery.add_child(sun_rays_node)
@@ -217,10 +220,10 @@ func _setup_bamboo_onsen_scenery() -> void:
 	sun_disk.mesh = sdm
 	var sd_mat := StandardMaterial3D.new()
 	sd_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sd_mat.albedo_color = Color(1.0, 0.93, 0.65)
+	sd_mat.albedo_color = Color(0.99, 0.96, 0.86)
 	sd_mat.emission_enabled = true
-	sd_mat.emission = Color(1.0, 0.85, 0.45)
-	sd_mat.emission_energy_multiplier = 1.15
+	sd_mat.emission = Color(0.96, 0.88, 0.64)
+	sd_mat.emission_energy_multiplier = 0.85
 	sun_disk.material_override = sd_mat
 	sun_disk.scale = Vector3(1.0, 1.0, 0.1)
 	sun_rays_node.add_child(sun_disk)
@@ -228,25 +231,25 @@ func _setup_bamboo_onsen_scenery() -> void:
 	var ray_mat := StandardMaterial3D.new()
 	ray_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ray_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	ray_mat.albedo_color = Color(1.0, 0.90, 0.55, 0.14)
-	for i in 10:
+	ray_mat.albedo_color = Color(0.98, 0.94, 0.80, 0.16)
+	for i in 12:
 		var ray := MeshInstance3D.new()
 		var pm := PrismMesh.new()
 		pm.size = Vector3(2.2, 22.0, 0.05)
 		ray.mesh = pm
 		ray.material_override = ray_mat
-		var ang := (float(i) / 10.0) * TAU
+		var ang := (float(i) / 12.0) * TAU
 		ray.rotation.z = ang
 		ray.position = Vector3(-sin(ang), cos(ang), -0.4) * 9.0
 		sun_rays_node.add_child(ray)
 
-	# 2. Pegunungan bambu tropis berkabut berlapis (menggunakan pahatan home_stage_hill.obj!)
+	# 2. Pegunungan bambu berkabut palet woodblock-pine (DESIGN.md)
 	var hill_mesh: Mesh = load("res://assets/generated/models/home_stage_hill.obj")
 	var mountain_layers := [
-		[Vector3(-12.5, -1.5, -14.0), Vector3(2.3, 3.8, 1.6), Color(0.24, 0.52, 0.36)],
-		[Vector3(  2.0, -2.0, -18.5), Vector3(3.4, 4.4, 1.8), Color(0.20, 0.44, 0.38)],
-		[Vector3( 15.5, -1.4, -14.5), Vector3(2.5, 4.0, 1.6), Color(0.22, 0.48, 0.34)],
-		[Vector3( -5.0, -1.8, -11.5), Vector3(1.6, 2.2, 1.3), Color(0.28, 0.56, 0.32)]
+		[Vector3(-12.5, -1.5, -14.0), Vector3(2.3, 3.8, 1.6), Color(0.36, 0.54, 0.44)],
+		[Vector3(  2.0, -2.0, -18.5), Vector3(3.4, 4.4, 1.8), Color(0.45, 0.62, 0.57)],
+		[Vector3( 15.5, -1.4, -14.5), Vector3(2.5, 4.0, 1.6), Color(0.34, 0.52, 0.42)],
+		[Vector3( -5.0, -1.8, -11.5), Vector3(1.6, 2.2, 1.3), Color(0.41, 0.58, 0.40)]
 	]
 	for ml in mountain_layers:
 		var m := MeshInstance3D.new()
@@ -259,58 +262,16 @@ func _setup_bamboo_onsen_scenery() -> void:
 		m.material_override = mmat
 		scenery.add_child(m)
 
-	# 3. Rumah Onsen Kayu Jepang berkabut di tebing kiri belakang (palet redup atmosferik serasi Key-Art 2D!)
-	var onsen := Node3D.new()
+	# 3. Rumah Onsen Kayu Jepang pahatan VS C++ (prop_onsen_house.obj!)
+	var onsen := MeshInstance3D.new()
+	onsen.mesh = load("res://assets/generated/models/prop_onsen_house.obj")
 	onsen.position = Vector3(-5.8, 0.85, -10.8)
-	onsen.rotation_degrees = Vector3(0.0, 14.0, 0.0)
+	onsen.rotation_degrees = Vector3(0.0, 16.0, 0.0)
+	onsen.scale = Vector3.ONE * 1.18
+	_apply_anime_toon_materials(onsen)
 	scenery.add_child(onsen)
 
-	var onsen_wall_mat := StandardMaterial3D.new()
-	onsen_wall_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	onsen_wall_mat.albedo_color = Color(0.46, 0.42, 0.34)
-	var wall := MeshInstance3D.new()
-	var wm := BoxMesh.new()
-	wm.size = Vector3(3.3, 2.0, 2.3)
-	wall.mesh = wm
-	wall.position = Vector3(0.0, 1.0, 0.0)
-	wall.material_override = onsen_wall_mat
-	onsen.add_child(wall)
-
-	var onsen_roof_mat := StandardMaterial3D.new()
-	onsen_roof_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	onsen_roof_mat.albedo_color = Color(0.26, 0.30, 0.28)
-	var roof := MeshInstance3D.new()
-	var rm := PrismMesh.new()
-	rm.size = Vector3(4.4, 1.15, 3.0)
-	roof.mesh = rm
-	roof.position = Vector3(0.0, 2.55, 0.0)
-	roof.material_override = onsen_roof_mat
-	onsen.add_child(roof)
-
-	# Beranda kayu & jendela shoji hangat bercahaya
-	var porch := MeshInstance3D.new()
-	var pm2 := BoxMesh.new()
-	pm2.size = Vector3(3.7, 0.28, 2.8)
-	porch.mesh = pm2
-	porch.position = Vector3(0.0, 0.14, 0.1)
-	porch.material_override = onsen_roof_mat
-	onsen.add_child(porch)
-
-	var win := MeshInstance3D.new()
-	var winm := BoxMesh.new()
-	winm.size = Vector3(1.15, 0.85, 0.08)
-	win.mesh = winm
-	win.position = Vector3(0.0, 1.02, 1.18)
-	var win_mat := StandardMaterial3D.new()
-	win_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	win_mat.albedo_color = Color(1.0, 0.90, 0.52)
-	win_mat.emission_enabled = true
-	win_mat.emission = Color(1.0, 0.80, 0.32)
-	win_mat.emission_energy_multiplier = 1.1
-	win.material_override = win_mat
-	onsen.add_child(win)
-
-	# 4. Gerbang Torii Merah + Kolam Air Panas Onsen Beruap di sisi kanan belakang!
+	# 4. Gerbang Torii Vermilion + Kolam Air Panas Onsen Beruap di sisi kanan belakang!
 	var torii := MeshInstance3D.new()
 	torii.mesh = load("res://assets/generated/models/prop_torii_gate.obj")
 	torii.position = Vector3(11.4, 0.55, -8.8)
@@ -328,78 +289,61 @@ func _setup_bamboo_onsen_scenery() -> void:
 	pond.position = Vector3(10.5, -0.05, -7.8)
 	var pmat := StandardMaterial3D.new()
 	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	pmat.albedo_color = Color(0.42, 0.86, 0.78)
-	pmat.emission_enabled = true
-	pmat.emission = Color(0.32, 0.78, 0.70)
-	pmat.emission_energy_multiplier = 0.55
+	pmat.albedo_color = Color(0.52, 0.78, 0.74)
 	pond.material_override = pmat
 	scenery.add_child(pond)
 
-	# Kepulan uap onsen lembut
+	# Kepulan uap onsen lembut (prop_cloud_fluffy.obj)
+	var cloud_mesh: Mesh = load("res://assets/generated/models/prop_cloud_fluffy.obj")
 	var st_mat := StandardMaterial3D.new()
 	st_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	st_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	st_mat.albedo_color = Color(1.0, 0.98, 0.92, 0.24)
-	for i in 7:
+	st_mat.albedo_color = Color(0.98, 0.96, 0.90, 0.22)
+	for i in 6:
 		var puff := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = 0.65
-		sm.height = 1.15
-		puff.mesh = sm
+		puff.mesh = cloud_mesh
 		puff.material_override = st_mat
-		var base := Vector3(8.5 + float(i) * 0.75, 0.45, -7.6 + sin(float(i)) * 0.9)
+		var base := Vector3(8.8 + float(i) * 0.75, 0.55, -7.6 + sin(float(i)) * 0.8)
 		puff.position = base
 		scenery.add_child(puff)
 		steam_puffs.append({ "node": puff, "base": base, "phase": float(i) * 0.9 })
 
-	# 5. Rumpun Bambu Raksasa membingkai kiri & kanan arena
-	var bamboo_mat := _make_25d_mat(tex_bamboo, Color(1.0, 1.0, 1.0), Vector2(1.0, 3.0), true, 0.022)
-	for b_cfg in [
-		[Vector3(-10.5, 3.4, -5.8), 7.4, -6.0],
-		[Vector3(-11.4, 3.0, -4.6), 6.6,  5.0],
-		[Vector3(-9.7,  2.8, -6.5), 6.2, -3.0],
-		[Vector3( 13.6, 3.6, -6.2), 7.8,  7.0],
-		[Vector3( 14.5, 3.1, -5.0), 6.8, -5.0]
+	# 5. Rumpun Bambu pahatan VS C++ membingkai kiri & kanan arena (prop_bamboo_grove.obj)
+	var grove_mesh: Mesh = load("res://assets/generated/models/prop_bamboo_grove.obj")
+	for bg_cfg in [
+		[Vector3(-10.8, 0.1, -5.8), Vector3(0.0, 14.0, -3.0), 1.85],
+		[Vector3( 13.8, 0.1, -6.2), Vector3(0.0, -158.0, 3.0), 1.90]
 	]:
-		var stalk := MeshInstance3D.new()
-		var sc := CylinderMesh.new()
-		sc.top_radius = 0.16
-		sc.bottom_radius = 0.22
-		sc.height = b_cfg[1]
-		stalk.mesh = sc
-		stalk.position = b_cfg[0]
-		stalk.rotation_degrees = Vector3(0.0, 0.0, b_cfg[2])
-		stalk.material_override = bamboo_mat
-		scenery.add_child(stalk)
+		var grove := MeshInstance3D.new()
+		grove.mesh = grove_mesh
+		grove.position = bg_cfg[0]
+		grove.rotation_degrees = bg_cfg[1]
+		grove.scale = Vector3.ONE * float(bg_cfg[2])
+		_apply_anime_toon_materials(grove)
+		scenery.add_child(grove)
 
-	# 6. Awan senja hangat & daun bambu melayang
-	var cloud_mat := StandardMaterial3D.new()
-	cloud_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	cloud_mat.albedo_color = Color(0.98, 0.74, 0.52)
+	# 6. Awan Ghibli gading-lavender pahatan VS C++ (nol awan oranye AI!)
 	for cp in [Vector3(-11.0, 7.6, -15.5), Vector3(11.5, 7.8, -16.0), Vector3(-2.5, 9.2, -18.5)]:
-		var cg := Node3D.new()
-		cg.position = cp
-		for off in [Vector3(0, 0, 0), Vector3(-1.3, -0.2, 0), Vector3(1.4, -0.25, 0)]:
-			var p := MeshInstance3D.new()
-			var sm := SphereMesh.new()
-			sm.radius = 1.15 if off == Vector3.ZERO else 0.85
-			sm.height = sm.radius * 1.35
-			p.mesh = sm
-			p.position = off
-			p.material_override = cloud_mat
-			cg.add_child(p)
-		scenery.add_child(cg)
+		var cl := MeshInstance3D.new()
+		cl.mesh = cloud_mesh
+		cl.position = cp
+		cl.scale = Vector3(2.4, 1.7, 1.3)
+		var cmat := _make_25d_mat(null, Color(0.98, 0.96, 0.92), Vector2.ONE, 0.18, 0.04)
+		cmat.set_shader_parameter("shadow_tint", Vector3(0.68, 0.72, 0.78))
+		cmat.set_shader_parameter("rim_color", Vector3(1.0, 0.99, 0.96))
+		cl.material_override = cmat
+		scenery.add_child(cl)
 
 	var leaf_mat := StandardMaterial3D.new()
 	leaf_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	leaf_mat.albedo_color = Color(0.48, 0.84, 0.28)
-	for i in 10:
+	leaf_mat.albedo_color = Color(0.56, 0.70, 0.36)
+	for i in 8:
 		var lf := MeshInstance3D.new()
 		var bm := BoxMesh.new()
-		bm.size = Vector3(0.24, 0.025, 0.09)
+		bm.size = Vector3(0.22, 0.022, 0.08)
 		lf.mesh = bm
 		lf.material_override = leaf_mat
-		var st := Vector3(-10.0 + float(i) * 2.4, 2.2 + fmod(float(i) * 1.7, 5.2), -2.8 + sin(float(i)) * 2.0)
+		var st := Vector3(-10.0 + float(i) * 2.8, 2.4 + fmod(float(i) * 1.7, 5.0), -2.8 + sin(float(i)) * 2.0)
 		lf.position = st
 		scenery.add_child(lf)
 		bg_leaves.append({ "node": lf, "base": st, "phase": float(i) * 1.1 })
@@ -454,11 +398,12 @@ func _setup_ui() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 
+	# HUD Anti-Slop Warm Lacquer Espresso + border kertas washi (DESIGN.md — serasi 100% dengan Home!)
 	var hud_style := StyleBoxFlat.new()
-	hud_style.bg_color = Color(0.08, 0.11, 0.14, 0.78)
-	hud_style.border_color = Color(0.96, 0.76, 0.30, 0.80)
+	hud_style.bg_color = Color(0.15, 0.11, 0.10, 0.90)
+	hud_style.border_color = Color(0.80, 0.72, 0.56, 0.85)
 	hud_style.set_border_width_all(2)
-	hud_style.set_corner_radius_all(12)
+	hud_style.set_corner_radius_all(10)
 
 	# Baris atas tipis untuk kontrol kamera & tombol aksi (tidak menutupi langit senja!)
 	var top_panel := PanelContainer.new()
@@ -641,14 +586,18 @@ func _spawn_block(pos: Vector3, size: Vector3, mat_kind: String, mass_val: float
 	mi.mesh = bm
 
 	var block_tex: Texture2D = tex_wood
+	var block_tint: Color = Color(0.92, 0.84, 0.76)
 	match mat_kind:
 		"wood":
 			block_tex = tex_wood
+			block_tint = Color(0.88, 0.78, 0.68)
 		"bamboo":
 			block_tex = tex_bamboo
+			block_tint = Color(0.84, 0.90, 0.74)
 		"stone":
 			block_tex = tex_stone
-	mi.material_override = _make_25d_mat(block_tex, Color.WHITE, Vector2.ONE, true, 0.016)
+			block_tint = Color(0.92, 0.90, 0.86)
+	mi.material_override = _make_25d_mat(block_tex, block_tint, Vector2.ONE, 0.16, 0.10)
 	rb.add_child(mi)
 
 	arena_root.add_child(rb)
@@ -718,24 +667,34 @@ func _toggle_art_style() -> void:
 		_spawn_capy_on_slingshot()
 
 func _apply_anime_toon_materials(mi: MeshInstance3D) -> void:
-	if not mi.mesh or not shader_toon or not shader_outline:
+	if not mi.mesh or not shader_toon:
 		return
-	var outline_mat := ShaderMaterial.new()
-	outline_mat.shader = shader_outline
 	for s_idx in mi.mesh.get_surface_count():
 		var orig := mi.mesh.surface_get_material(s_idx)
 		var mat_name: String = orig.resource_name if orig else ""
-		var toon_mat := ShaderMaterial.new()
-		toon_mat.shader = shader_toon
-		if not (mat_name in ["mat_mouth_dark", "mat_tongue", "mat_white", "mat_anime_eye", "mat_croco_eye", "mat_ink", "mat_anger"]):
-			toon_mat.next_pass = outline_mat
+		var rovio_mat := ShaderMaterial.new()
+		rovio_mat.shader = shader_toon
+
+		var local_rim: float = 0.24
+		var local_sheen: float = 0.14
+		if mat_name in ["mat_ink", "mat_mouth_dark", "mat_anime_eye", "mat_croco_eye"]:
+			local_rim = 0.04
+			local_sheen = 0.24 if "eye" in mat_name else 0.03
+		elif mat_name in ["mat_white", "mat_tongue", "mat_anger", "mat_spark", "mat_shoji_glow"]:
+			local_rim = 0.05
+			local_sheen = 0.18
+
+		rovio_mat.set_shader_parameter("rim_color", Vector3(0.98, 0.92, 0.76))
+		rovio_mat.set_shader_parameter("shadow_tint", Vector3(0.46, 0.40, 0.48))
+		rovio_mat.set_shader_parameter("rim_strength", local_rim)
+		rovio_mat.set_shader_parameter("sheen_strength", local_sheen)
 		if orig is BaseMaterial3D:
 			if orig.albedo_texture:
-				toon_mat.set_shader_parameter("albedo_tex", orig.albedo_texture)
-			toon_mat.set_shader_parameter("tint_color", orig.albedo_color)
+				rovio_mat.set_shader_parameter("albedo_tex", orig.albedo_texture)
+			rovio_mat.set_shader_parameter("tint_color", orig.albedo_color)
 			if orig.emission_enabled:
-				toon_mat.set_shader_parameter("emission_color", orig.emission)
-		mi.set_surface_override_material(s_idx, toon_mat)
+				rovio_mat.set_shader_parameter("emission_color", Vector3(orig.emission.r, orig.emission.g, orig.emission.b))
+		mi.set_surface_override_material(s_idx, rovio_mat)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -903,7 +862,7 @@ func _process(delta: float) -> void:
 		var ph: float = float(sp["phase"])
 		var cycle: float = fmod(anim_time * 0.45 + ph, 2.2)
 		node.position = base + Vector3(sin(anim_time + ph) * 0.35, cycle * 1.15, 0.0)
-		var sc: float = sin((cycle / 2.2) * PI) * 1.25
+		var sc: float = sin((cycle / 2.2) * PI) * 0.55
 		node.scale = Vector3.ONE * maxf(sc, 0.05)
 	for lf in bg_leaves:
 		var node: MeshInstance3D = lf["node"]
