@@ -5,6 +5,7 @@ extends Control
 # dengan latar 2D parallax Visual Studio C++ yang serasi dengan Home Screen.
 
 const HOME_SCENE := "res://scenes/ui/home_screen.tscn"
+const WORLD_MAP_SCENE := "res://scenes/ui/world_select_map.tscn"
 const RUNNER_SCENE := "res://scenes/gameplay/level_runner.tscn"
 const SANDBOX_SCENE := "res://scenes/sandbox/mode_tester.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
@@ -100,8 +101,8 @@ func _setup_ui() -> void:
 	hdr.add_theme_constant_override("separation", 12)
 	root_vb.add_child(hdr)
 
-	var btn_home := _make_btn("← HOME", false, Vector2(104, 42), 14)
-	btn_home.pressed.connect(func(): get_tree().change_scene_to_file(HOME_SCENE))
+	var btn_home := _make_btn("← PETA WORLD", false, Vector2(130, 42), 13)
+	btn_home.pressed.connect(func(): get_tree().change_scene_to_file(WORLD_MAP_SCENE))
 	hdr.add_child(btn_home)
 
 	var title_vb := VBoxContainer.new()
@@ -528,4 +529,4 @@ func _unhandled_input(event: InputEvent) -> void:
 			mouse_px = (event.position / vp - Vector2(0.5, 0.5)) * 2.0
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
-			get_tree().change_scene_to_file(HOME_SCENE)
+			get_tree().change_scene_to_file(WORLD_MAP_SCENE)

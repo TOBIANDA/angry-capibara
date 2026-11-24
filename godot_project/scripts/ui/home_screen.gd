@@ -7,7 +7,7 @@ extends Control
 #   yang dipotong transparan per grup (Dash terbang, Trio Mini bertumpuk, & 5 Hero Squad)
 #   lengkap dengan animasi bernafas, hover, klik dialog per karakter, & Logo Opsi 2.
 
-const WORLD1_SELECT_PATH := "res://scenes/ui/world1_select.tscn"
+const WORLD_SELECT_MAP_PATH := "res://scenes/ui/world_select_map.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
 # Data dialog 7 karakter kapibara (bisa diklik langsung di layar atau tekan tombol 1-7)
@@ -398,7 +398,7 @@ func _setup_arcade_ui() -> void:
 	var sec_bg := Color(0.17, 0.13, 0.11, 0.94)
 	var sec_fg := Color(0.96, 0.93, 0.86)
 	var btn_worlds := _make_glossy_button("4 WORLD", sec_bg, sec_fg, 13, Vector2(96, 38), 10, false)
-	btn_worlds.pressed.connect(_show_worlds_modal)
+	btn_worlds.pressed.connect(_go_to_tester)
 	corner_menu.add_child(btn_worlds)
 
 	var btn_credits := _make_glossy_button("CREDITS", sec_bg, sec_fg, 13, Vector2(92, 38), 10, false)
@@ -665,7 +665,7 @@ func _trigger_dialog_and_hop(dialog_idx: int, group_idx: int) -> void:
 	speech_timer = 3.8
 
 func _go_to_tester() -> void:
-	get_tree().change_scene_to_file(WORLD1_SELECT_PATH)
+	get_tree().change_scene_to_file(WORLD_SELECT_MAP_PATH)
 
 func _show_worlds_modal() -> void:
 	modal_title.text = "4 WORLD ANGRY CAPIBARA (80 STAGE)"

@@ -1589,6 +1589,588 @@ void HarmonizeExternal2DCapybaras(const std::string& dir) {
 	}
 }
 
+// =========================================================================
+// 4 FLOATING WORLD ISLAND ILLUSTRATIONS (400x400 RGBA — World Select Map)
+// =========================================================================
+
+void PaintFloatingIslandRock(
+	Canvas2D& cv,
+	const Color4& rockTop, const Color4& rockMid, const Color4& rockBot, const Color4& rockRim,
+	const Color4& capTop, const Color4& capMid, const Color4& capBot, const Color4& capRim,
+	int seed,
+	bool drawPebbles = true) {
+
+	// Tapered sculpted floating cliff underside
+	std::vector<Vec2> rockPts = {
+		{  74.0f, 224.0f },
+		{ 126.0f, 216.0f },
+		{ 274.0f, 216.0f },
+		{ 326.0f, 224.0f },
+		{ 312.0f, 266.0f },
+		{ 278.0f, 306.0f },
+		{ 244.0f, 326.0f },
+		{ 204.0f, 354.0f },
+		{ 166.0f, 328.0f },
+		{ 128.0f, 304.0f },
+		{  92.0f, 268.0f }
+	};
+	BBox rBox{ 56, 206, 344, 370 };
+	VolumetricStyle rSt;
+	rSt.topCol = rockTop;
+	rSt.midCol = rockMid;
+	rSt.botCol = rockBot;
+	rSt.rimCol = rockRim;
+	rSt.lightDir = normalize(Vec2(-0.45f, -0.89f));
+	rSt.rimWidth = 7.0f;
+	rSt.rimStrength = 0.42f;
+	rSt.aoDepth = 24.0f;
+	rSt.aoStrength = 0.36f;
+	rSt.specStrength = 0.08f;
+	rSt.brushAmp = 0.095f;
+	rSt.brushAngle = 0.22f;
+	rSt.brushAlong = 30.0f;
+	rSt.brushAcross = 10.0f;
+	rSt.seed = seed;
+	cv.PaintVolumetricSDF(rBox, [&](const Vec2& p) { return sdPolygon(p, rockPts, 10.0f); }, rSt, 1.4f);
+
+	// Subtle carved cliff facet shadow lines
+	BBox fBox{ 90, 238, 310, 346 };
+	cv.FillSDF(fBox, [&](const Vec2& p) {
+		float d = sdQuadBezierStroke(p, Vec2(138, 244), Vec2(154, 282), Vec2(174, 320), 2.8f, 1.0f, 10);
+		d = std::min(d, sdQuadBezierStroke(p, Vec2(256, 246), Vec2(242, 286), Vec2(218, 328), 2.8f, 1.0f, 10));
+		d = std::min(d, sdQuadBezierStroke(p, Vec2(198, 250), Vec2(202, 294), Vec2(204, 336), 2.2f, 0.9f, 10));
+		return d;
+	}, [&](const Vec2&, float) { return Color4(rockBot.r * 0.65f, rockBot.g * 0.65f, rockBot.b * 0.65f, 0.48f); }, 1.2f);
+
+	if (drawPebbles) {
+		// Floating miniature rock shards drifting below the island
+		auto paintShard = [&](Vec2 c, float rx, float ry, float rot) {
+			BBox pb{ c.x - rx - 8, c.y - ry - 8, c.x + rx + 8, c.y + ry + 8 };
+			cv.PaintVolumetricSDF(pb, [&](const Vec2& p) { return sdEllipse(p, c, rx, ry, rot); }, rSt, 1.2f);
+		};
+		paintShard(Vec2(124.0f, 356.0f), 14.0f, 8.5f, 0.25f);
+		paintShard(Vec2(276.0f, 348.0f), 11.5f, 7.0f, -0.30f);
+		paintShard(Vec2(236.0f, 368.0f), 7.5f, 5.0f, 0.15f);
+	}
+
+	// Lush plateau cap draped over the rock lip
+	auto capSdf = [&](const Vec2& p) {
+		float d = sdEllipse(p, Vec2(200.0f, 220.0f), 134.0f, 24.0f);
+		d = smin(d, sdEllipse(p, Vec2(104.0f, 232.0f), 32.0f, 14.0f, 0.14f), 10.0f);
+		d = smin(d, sdEllipse(p, Vec2(296.0f, 232.0f), 32.0f, 14.0f, -0.14f), 10.0f);
+		d = smin(d, sdEllipse(p, Vec2(200.0f, 236.0f), 58.0f, 13.0f), 12.0f);
+		return d;
+	};
+	BBox cBox{ 56, 186, 344, 260 };
+	cv.PaintDropShadow(cBox, capSdf, Vec2(0.0f, 5.0f), 7.0f, Color4(0.10f, 0.08f, 0.08f, 0.40f));
+	VolumetricStyle cSt;
+	cSt.topCol = capTop;
+	cSt.midCol = capMid;
+	cSt.botCol = capBot;
+	cSt.rimCol = capRim;
+	cSt.lightDir = normalize(Vec2(-0.35f, -0.94f));
+	cSt.rimWidth = 6.5f;
+	cSt.rimStrength = 0.56f;
+	cSt.aoDepth = 14.0f;
+	cSt.aoStrength = 0.24f;
+	cSt.specStrength = 0.12f;
+	cSt.brushAmp = 0.065f;
+	cSt.brushAngle = -0.10f;
+	cSt.brushAlong = 28.0f;
+	cSt.brushAcross = 8.0f;
+	cSt.seed = seed + 17;
+	cv.PaintVolumetricSDF(cBox, capSdf, cSt, 1.3f);
+}
+
+void BuildWorldIsland01_OnsenBamboo(const std::string& dir) {
+	Canvas2D cv(400, 400);
+
+	// 1. Floating mossy cliff base
+	PaintFloatingIslandRock(
+		cv,
+		rgbHex(0x8D7762), rgbHex(0x5E4C3E), rgbHex(0x362B25), rgbHex(0xBBA48B),
+		rgbHex(0x9EC05E), rgbHex(0x638B3C), rgbHex(0x365426), rgbHex(0xDCE89A),
+		4101);
+
+	// 2. Bamboo grove on the left
+	PaintBambooStalk(cv, Vec2(102, 214), Vec2(96, 146), Vec2(88, 86), 6.2f, 4111);
+	PaintBambooStalk(cv, Vec2(122, 212), Vec2(126, 152), Vec2(134, 96), 5.2f, 4112);
+	PaintBambooLeaf(cv, Vec2(92, 118),  2.65f, 38, 5.2f, rgbHex(0xB4D268), rgbHex(0x4E7830));
+	PaintBambooLeaf(cv, Vec2(96, 102), -0.45f, 34, 4.6f, rgbHex(0xC2DC78), rgbHex(0x568234));
+	PaintBambooLeaf(cv, Vec2(128, 126), -0.22f, 36, 4.8f, rgbHex(0xA6C65E), rgbHex(0x466E2A));
+	PaintBambooLeaf(cv, Vec2(126, 142),  2.85f, 30, 4.4f, rgbHex(0x96B852), rgbHex(0x3F6426));
+
+	// 3. Warm wooden Onsen house (center-left)
+	{
+		BBox wBox{ 134, 134, 246, 216 };
+		VolumetricStyle wallSt;
+		wallSt.topCol = rgbHex(0xE0A862);
+		wallSt.midCol = rgbHex(0xB6773A);
+		wallSt.botCol = rgbHex(0x744622);
+		wallSt.rimCol = rgbHex(0xF8DCA4);
+		wallSt.rimWidth = 4.0f;
+		wallSt.rimStrength = 0.45f;
+		wallSt.seed = 4121;
+		cv.PaintVolumetricSDF(wBox, [&](const Vec2& p) { return sdRoundBox(p, Vec2(190, 178), 42.0f, 30.0f, 4.0f); }, wallSt, 1.2f);
+
+		// Glowing paper shoji window + espresso wood lattice
+		BBox winB{ 162, 160, 218, 200 };
+		cv.FillSDF(winB, [&](const Vec2& p) { return sdRoundBox(p, Vec2(190, 180), 20.0f, 14.0f, 2.5f); },
+			[](const Vec2& p, float) {
+				float ny = clampf((p.y - 166.0f) / 28.0f, 0.0f, 1.0f);
+				return lerpColor(rgbHex(0xFFF6D2), rgbHex(0xF2C86E), ny);
+			}, 1.0f);
+		cv.FillSDF(winB, [&](const Vec2& p) {
+			float d = sdCapsule(p, Vec2(190, 166), Vec2(190, 194), 1.4f);
+			d = std::min(d, sdCapsule(p, Vec2(170, 180), Vec2(210, 180), 1.4f));
+			d = std::min(d, sdCapsule(p, Vec2(180, 166), Vec2(180, 194), 1.0f));
+			d = std::min(d, sdCapsule(p, Vec2(200, 166), Vec2(200, 194), 1.0f));
+			return d;
+		}, [](const Vec2&, float) { return rgbHex(0x3A2218); }, 0.9f);
+
+		// Sweeping slate-indigo pagoda roof
+		std::vector<Vec2> roofPts = {
+			{ 132, 154 }, { 164, 122 }, { 216, 122 }, { 248, 154 },
+			{ 238, 160 }, { 142, 160 }
+		};
+		BBox rfBox{ 124, 112, 256, 168 };
+		VolumetricStyle rfSt;
+		rfSt.topCol = rgbHex(0x5A7288);
+		rfSt.midCol = rgbHex(0x36485A);
+		rfSt.botCol = rgbHex(0x1E2834);
+		rfSt.rimCol = rgbHex(0xB8D0E2);
+		rfSt.rimWidth = 4.5f;
+		rfSt.rimStrength = 0.52f;
+		rfSt.seed = 4122;
+		cv.PaintDropShadow(rfBox, [&](const Vec2& p) { return sdPolygon(p, roofPts, 3.0f); }, Vec2(0, 4), 5.0f, Color4(0.12f, 0.07f, 0.06f, 0.42f));
+		cv.PaintVolumetricSDF(rfBox, [&](const Vec2& p) { return sdPolygon(p, roofPts, 3.0f); }, rfSt, 1.2f);
+
+		// Golden ridge bar on roof peak
+		cv.FillSDF(BBox{ 156, 114, 224, 128 },
+			[&](const Vec2& p) { return sdCapsule(p, Vec2(162, 121), Vec2(218, 121), 3.2f); },
+			[](const Vec2&, float) { return rgbHex(0xE8B94A); }, 1.0f);
+	}
+
+	// 4. Crimson Torii gate on the right
+	{
+		BBox tBox{ 242, 126, 330, 218 };
+		VolumetricStyle trSt;
+		trSt.topCol = rgbHex(0xE2503E);
+		trSt.midCol = rgbHex(0xBC3226);
+		trSt.botCol = rgbHex(0x7C1D18);
+		trSt.rimCol = rgbHex(0xF8A488);
+		trSt.rimWidth = 3.5f;
+		trSt.rimStrength = 0.48f;
+		trSt.seed = 4131;
+		auto toriiSdf = [&](const Vec2& p) {
+			float d = sdCapsule(p, Vec2(264, 208), Vec2(268, 146), 4.6f);
+			d = std::min(d, sdCapsule(p, Vec2(308, 208), Vec2(304, 146), 4.6f));
+			d = std::min(d, sdCapsule(p, Vec2(254, 160), Vec2(318, 160), 3.6f));
+			d = std::min(d, sdQuadBezierStroke(p, Vec2(246, 142), Vec2(286, 149), Vec2(326, 142), 4.8f, 4.8f, 12));
+			return d;
+		};
+		cv.PaintVolumetricSDF(tBox, toriiSdf, trSt, 1.1f);
+		// Dark top cap on Torii kasagi
+		cv.FillSDF(tBox,
+			[&](const Vec2& p) { return sdQuadBezierStroke(p, Vec2(245, 138), Vec2(286, 145), Vec2(327, 138), 2.4f, 2.4f, 12); },
+			[](const Vec2&, float) { return rgbHex(0x282022); }, 1.0f);
+	}
+
+	// 5. Jade Onsen hot-spring pool + gentle steam wisps
+	{
+		BBox pBox{ 146, 198, 250, 228 };
+		cv.FillSDF(pBox, [&](const Vec2& p) { return sdEllipse(p, Vec2(198, 214), 44.0f, 10.0f); },
+			[](const Vec2& p, float d) {
+				float rim = 1.0f - smoothstep(0.0f, 4.5f, -d);
+				return lerpColor(rgbHex(0x5EB6AC), rgbHex(0xB8EAE0), rim * 0.65f);
+			}, 1.2f);
+
+		BBox sBox{ 140, 62, 260, 204 };
+		auto steamSdf = [&](const Vec2& p) {
+			float d = sdQuadBezierRibbon(p, Vec2(174, 122), Vec2(164, 96), Vec2(180, 74), 2.0f, 6.5f, 1.5f, 12);
+			d = std::min(d, sdQuadBezierRibbon(p, Vec2(204, 118), Vec2(218, 92), Vec2(202, 68), 2.0f, 7.2f, 1.5f, 12));
+			d = std::min(d, sdQuadBezierRibbon(p, Vec2(232, 128), Vec2(242, 106), Vec2(228, 86), 1.6f, 5.0f, 1.2f, 12));
+			return d;
+		};
+		cv.FillSDF(sBox, steamSdf, [](const Vec2& p, float) {
+			float fade = clampf((p.y - 64.0f) / 64.0f, 0.0f, 1.0f);
+			return Color4(0.99f, 0.97f, 0.92f, 0.56f * fade);
+		}, 3.5f);
+	}
+
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 4199);
+	cv.SavePNG(dir + "/world_island_01.png");
+	std::cout << "  -> Exported home2d/world_island_01.png (400x400)\n";
+}
+
+void BuildWorldIsland02_YuzuCanyon(const std::string& dir) {
+	Canvas2D cv(400, 400);
+
+	// 1. Terracotta / burnt-ochre canyon cliff + warm golden-sage mesa cap
+	PaintFloatingIslandRock(
+		cv,
+		rgbHex(0xD48248), rgbHex(0x9E512A), rgbHex(0x5C2B1A), rgbHex(0xF0BA7A),
+		rgbHex(0xD2B056), rgbHex(0x967A34), rgbHex(0x5A4820), rgbHex(0xF4DE8E),
+		4201);
+
+	// Horizontal canyon strata stripes on cliff face
+	cv.FillSDF(BBox{ 96, 250, 304, 320 }, [&](const Vec2& p) {
+		float d = sdCapsule(p, Vec2(106, 266), Vec2(292, 264), 4.2f);
+		d = std::min(d, sdCapsule(p, Vec2(132, 294), Vec2(268, 292), 3.6f));
+		return d;
+	}, [](const Vec2&, float) { return Color4(0.45f, 0.20f, 0.11f, 0.34f); }, 2.0f);
+
+	// 2. Sculpted Sandstone Canyon Arch (center-right background)
+	{
+		BBox aBox{ 162, 108, 294, 222 };
+		VolumetricStyle archSt;
+		archSt.topCol = rgbHex(0xDF9658);
+		archSt.midCol = rgbHex(0xAE5E32);
+		archSt.botCol = rgbHex(0x6C341E);
+		archSt.rimCol = rgbHex(0xF8CE92);
+		archSt.rimWidth = 5.0f;
+		archSt.rimStrength = 0.50f;
+		archSt.seed = 4211;
+		auto archSdf = [&](const Vec2& p) {
+			float outer = sdEllipse(p, Vec2(226, 206), 58.0f, 82.0f);
+			float inner = sdEllipse(p, Vec2(226, 212), 32.0f, 54.0f);
+			float d = std::max(outer, -inner);
+			d = std::max(d, p.y - 212.0f);
+			return d;
+		};
+		cv.PaintVolumetricSDF(aBox, archSdf, archSt, 1.3f);
+	}
+
+	// 3. Golden Yuzu Orchard Trees (left & center-left)
+	auto paintYuzuTree = [&](Vec2 base, float sc, int seed) {
+		BBox tBox{ base.x - 54 * sc, base.y - 110 * sc, base.x + 54 * sc, base.y + 12 };
+		VolumetricStyle trunkSt;
+		trunkSt.topCol = rgbHex(0x8C5E3A);
+		trunkSt.midCol = rgbHex(0x603C24);
+		trunkSt.botCol = rgbHex(0x3A2214);
+		trunkSt.rimCol = rgbHex(0xBA8E5E);
+		trunkSt.seed = seed;
+		cv.PaintVolumetricSDF(tBox, [&](const Vec2& p) {
+			float d = sdQuadBezierStroke(p, base, base + Vec2(-4 * sc, -26 * sc), base + Vec2(2 * sc, -54 * sc), 7.5f * sc, 4.5f * sc, 10);
+			return d;
+		}, trunkSt, 1.1f);
+
+		VolumetricStyle leafSt;
+		leafSt.topCol = rgbHex(0x88B248);
+		leafSt.midCol = rgbHex(0x4E7A30);
+		leafSt.botCol = rgbHex(0x28461E);
+		leafSt.rimCol = rgbHex(0xCCE07E);
+		leafSt.rimWidth = 5.5f * sc;
+		leafSt.rimStrength = 0.54f;
+		leafSt.seed = seed + 1;
+		auto crownSdf = [&](const Vec2& p) {
+			Vec2 c = base + Vec2(0.0f, -68.0f * sc);
+			float d = sdCircle(p, c, 28.0f * sc);
+			d = smin(d, sdCircle(p, c + Vec2(-20 * sc, 8 * sc), 20.0f * sc), 9.0f * sc);
+			d = smin(d, sdCircle(p, c + Vec2(20 * sc, 6 * sc), 21.0f * sc), 9.0f * sc);
+			d = smin(d, sdCircle(p, c + Vec2(0, -16 * sc), 19.0f * sc), 9.0f * sc);
+			return d;
+		};
+		cv.PaintVolumetricSDF(tBox, crownSdf, leafSt, 1.3f);
+
+		// Bright golden Yuzu citrus orbs nestled in foliage
+		VolumetricStyle yzSt;
+		yzSt.topCol = rgbHex(0xFFF06A);
+		yzSt.midCol = rgbHex(0xF2B422);
+		yzSt.botCol = rgbHex(0xB67210);
+		yzSt.rimCol = rgbHex(0xFFFFD6);
+		yzSt.rimWidth = 2.5f;
+		yzSt.specStrength = 0.35f;
+		yzSt.seed = seed + 2;
+		const Vec2 offsets[] = { {-16, -64}, {12, -74}, {0, -54}, {20, -58}, {-6, -82} };
+		for (int i = 0; i < 5; ++i) {
+			Vec2 op = base + offsets[i] * sc;
+			float r = 6.2f * sc;
+			cv.PaintVolumetricSDF(BBox{ op.x - r - 4, op.y - r - 4, op.x + r + 4, op.y + r + 4 },
+				[&](const Vec2& p) { return sdCircle(p, op, r); }, yzSt, 1.0f);
+		}
+	};
+	paintYuzuTree(Vec2(118.0f, 212.0f), 1.05f, 4221);
+	paintYuzuTree(Vec2(174.0f, 214.0f), 0.78f, 4225);
+
+	// 4. Croc Turret Tower silhouette (right crest)
+	{
+		BBox tuBox{ 244, 114, 336, 218 };
+		VolumetricStyle ironSt;
+		ironSt.topCol = rgbHex(0x646C74);
+		ironSt.midCol = rgbHex(0x3D434A);
+		ironSt.botCol = rgbHex(0x20242A);
+		ironSt.rimCol = rgbHex(0xA8B4C0);
+		ironSt.rimWidth = 3.8f;
+		ironSt.rimStrength = 0.48f;
+		ironSt.seed = 4231;
+
+		auto towerSdf = [&](const Vec2& p) {
+			float d = sdRoundBox(p, Vec2(288, 178), 22.0f, 32.0f, 3.0f);
+			// Crenellations
+			d = std::min(d, sdRoundBox(p, Vec2(272, 144), 6.0f, 7.0f, 1.5f));
+			d = std::min(d, sdRoundBox(p, Vec2(288, 144), 6.0f, 7.0f, 1.5f));
+			d = std::min(d, sdRoundBox(p, Vec2(304, 144), 6.0f, 7.0f, 1.5f));
+			// Tilted iron cannon barrel pointing left
+			d = std::min(d, sdTaperedCapsule(p, Vec2(280, 162), Vec2(248, 152), 7.5f, 5.2f));
+			return d;
+		};
+		cv.PaintVolumetricSDF(tuBox, towerSdf, ironSt, 1.1f);
+
+		// Crimson turret pennant banner
+		cv.FillSDF(BBox{ 284, 110, 326, 144 },
+			[&](const Vec2& p) {
+				float pole = sdCapsule(p, Vec2(292, 140), Vec2(292, 114), 1.6f);
+				std::vector<Vec2> flg = { {293, 115}, {322, 122}, {293, 130} };
+				return std::min(pole, sdPolygon(p, flg, 1.0f));
+			},
+			[](const Vec2& p, float) { return (p.x < 294.5f) ? rgbHex(0x3A2A22) : rgbHex(0xD63B2E); }, 1.0f);
+	}
+
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 4299);
+	cv.SavePNG(dir + "/world_island_02.png");
+	std::cout << "  -> Exported home2d/world_island_02.png (400x400)\n";
+}
+
+void BuildWorldIsland03_IceCrystal(const std::string& dir) {
+	Canvas2D cv(400, 400);
+
+	// 1. Back soft cloud cushion behind island rim
+	PaintPuffyCloud(cv, Vec2(200.0f, 300.0f), 0.92f, 4301);
+
+	// 2. Glacial slate cliff + crisp sunlit snow cap
+	PaintFloatingIslandRock(
+		cv,
+		rgbHex(0x7898B8), rgbHex(0x476484), rgbHex(0x23344A), rgbHex(0xC2DCF0),
+		rgbHex(0xF6FCFF), rgbHex(0xCFE6F6), rgbHex(0x8BB2CE), rgbHex(0xFFFFFF),
+		4305, false);
+
+	// 3. Glowing Cyan-Jade Crystal Spires (left, rear crown, and right)
+	auto paintCrystal = [&](Vec2 base, float w, float h, float rot, int seed) {
+		std::vector<Vec2> pts = {
+			rotatePt(base + Vec2(-w * 0.55f, 4.0f), base, rot),
+			rotatePt(base + Vec2(-w * 0.48f, -h * 0.72f), base, rot),
+			rotatePt(base + Vec2(0.0f, -h), base, rot),
+			rotatePt(base + Vec2(w * 0.48f, -h * 0.72f), base, rot),
+			rotatePt(base + Vec2(w * 0.55f, 4.0f), base, rot)
+		};
+		BBox box{ base.x - h - 20, base.y - h - 20, base.x + h + 20, base.y + 30 };
+		VolumetricStyle crSt;
+		crSt.topCol = rgbHex(0xC4FBFF);
+		crSt.midCol = rgbHex(0x4EC8E4);
+		crSt.botCol = rgbHex(0x1E6C94);
+		crSt.rimCol = rgbHex(0xFFFFFF);
+		crSt.rimWidth = 5.0f;
+		crSt.rimStrength = 0.74f;
+		crSt.specStrength = 0.42f;
+		crSt.aoDepth = 12.0f;
+		crSt.aoStrength = 0.18f;
+		crSt.brushAmp = 0.04f;
+		crSt.seed = seed;
+		cv.PaintVolumetricSDF(box, [&](const Vec2& p) { return sdPolygon(p, pts, 2.2f); }, crSt, 1.1f);
+
+		// Crisp inner facet highlight line
+		Vec2 tip = rotatePt(base + Vec2(0.0f, -h * 0.94f), base, rot);
+		Vec2 mid = rotatePt(base + Vec2(-w * 0.08f, -h * 0.10f), base, rot);
+		cv.FillSDF(box, [&](const Vec2& p) { return sdCapsule(p, tip, mid, 1.5f); },
+			[](const Vec2&, float) { return Color4(0.95f, 1.0f, 1.0f, 0.70f); }, 0.9f);
+	};
+
+	paintCrystal(Vec2(114, 208), 26, 86, -0.26f, 4311);
+	paintCrystal(Vec2(142, 206), 20, 62, -0.08f, 4312);
+	paintCrystal(Vec2(204, 186), 30, 98,  0.04f, 4313);
+	paintCrystal(Vec2(276, 206), 28, 90,  0.22f, 4314);
+	paintCrystal(Vec2(298, 212), 18, 56,  0.40f, 4315);
+
+	// 4. Arched Ice Cave Mouth (center foreground)
+	{
+		BBox cBox{ 146, 152, 254, 224 };
+		// Outer frost arch
+		VolumetricStyle archSt;
+		archSt.topCol = rgbHex(0xE8F6FF);
+		archSt.midCol = rgbHex(0x94C4DE);
+		archSt.botCol = rgbHex(0x4C7A9E);
+		archSt.rimCol = rgbHex(0xFFFFFF);
+		archSt.rimWidth = 4.5f;
+		archSt.rimStrength = 0.62f;
+		archSt.seed = 4321;
+		cv.PaintVolumetricSDF(cBox, [&](const Vec2& p) {
+			float d = sdEllipse(p, Vec2(200, 214), 44.0f, 46.0f);
+			return std::max(d, p.y - 216.0f);
+		}, archSt, 1.2f);
+
+		// Deep glowing cyan-indigo cave interior
+		cv.FillSDF(cBox, [&](const Vec2& p) {
+			float d = sdEllipse(p, Vec2(200, 216), 31.0f, 34.0f);
+			return std::max(d, p.y - 216.0f);
+		}, [](const Vec2& p, float) {
+			float dist = length(p - Vec2(200, 208)) / 36.0f;
+			return lerpColor(rgbHex(0x389EC2), rgbHex(0x14243A), smoothstep(0.15f, 0.95f, dist));
+		}, 1.2f);
+
+		// Hanging icicles along cave lip
+		const Vec2 icPos[] = { {182, 184}, {194, 181}, {208, 182}, {219, 186} };
+		const float icLen[] = { 13.0f, 17.0f, 14.0f, 11.0f };
+		for (int i = 0; i < 4; ++i) {
+			Vec2 a = icPos[i];
+			Vec2 b = a + Vec2(0.0f, icLen[i]);
+			cv.FillSDF(BBox{ a.x - 8, a.y - 4, a.x + 8, b.y + 6 },
+				[&](const Vec2& p) { return sdTaperedCapsule(p, a, b, 3.0f, 0.7f); },
+				[](const Vec2&, float) { return rgbHex(0xDDF8FF); }, 0.9f);
+		}
+	}
+
+	// 5. Foreground soft cloud wisps hugging the floating base
+	PaintPuffyCloud(cv, Vec2(128.0f, 324.0f), 0.56f, 4331);
+	PaintPuffyCloud(cv, Vec2(274.0f, 320.0f), 0.52f, 4332);
+
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 4399);
+	cv.SavePNG(dir + "/world_island_03.png");
+	std::cout << "  -> Exported home2d/world_island_03.png (400x400)\n";
+}
+
+void BuildWorldIsland04_CrocCitadel(const std::string& dir) {
+	Canvas2D cv(400, 400);
+
+	// Helper: tilted glowing golden Low-G orbital ring (back half & front half)
+	const Vec2 ringCtr(200.0f, 240.0f);
+	const float ringRot = -0.20f;
+	auto paintRingHalf = [&](bool frontHalf) {
+		BBox box{ 14, 146, 386, 336 };
+		cv.FillSDF(box, [&](const Vec2& p) {
+			Vec2 q = rotatePt(p, ringCtr, -ringRot) - ringCtr;
+			if (frontHalf && q.y < -4.0f) return 100.0f;
+			if (!frontHalf && q.y > 4.0f) return 100.0f;
+			float dOuter = sdEllipse(p, ringCtr, 174.0f, 52.0f, ringRot);
+			float dInner = sdEllipse(p, ringCtr, 156.0f, 40.0f, ringRot);
+			return std::max(dOuter, -dInner);
+		}, [&](const Vec2& p, float d) {
+			float core = 1.0f - smoothstep(0.0f, 6.0f, std::fabs(d + 4.5f));
+			Color4 c = lerpColor(rgbHex(0xD68E1E), rgbHex(0xFFF29A), core * 0.85f);
+			c.a = frontHalf ? 0.94f : 0.72f;
+			return c;
+		}, 2.2f);
+	};
+
+	// 1. Back half of golden Low-G ring
+	paintRingHalf(false);
+
+	// 2. Dark-indigo obsidian floating rock + royal-indigo stone terrace
+	PaintFloatingIslandRock(
+		cv,
+		rgbHex(0x4C4E78), rgbHex(0x2C2C4C), rgbHex(0x17162B), rgbHex(0x9698C8),
+		rgbHex(0x5A5C88), rgbHex(0x36365A), rgbHex(0x1E1E38), rgbHex(0xD8B45A),
+		4401, true);
+
+	// Glowing golden core veins in obsidian underside
+	cv.FillSDF(BBox{ 118, 250, 282, 344 }, [&](const Vec2& p) {
+		float d = sdQuadBezierStroke(p, Vec2(146, 258), Vec2(170, 294), Vec2(198, 336), 2.2f, 1.0f, 10);
+		d = std::min(d, sdQuadBezierStroke(p, Vec2(252, 260), Vec2(232, 296), Vec2(206, 334), 2.2f, 1.0f, 10));
+		return d;
+	}, [](const Vec2&, float) { return Color4(0.98f, 0.78f, 0.24f, 0.76f); }, 1.4f);
+
+	// 3. Royal Croc Citadel Keep & Flanking Towers
+	{
+		BBox kBox{ 104, 72, 296, 222 };
+		VolumetricStyle wallSt;
+		wallSt.topCol = rgbHex(0x4B4E7A);
+		wallSt.midCol = rgbHex(0x2B2C4A);
+		wallSt.botCol = rgbHex(0x17172C);
+		wallSt.rimCol = rgbHex(0xE8C264);
+		wallSt.rimWidth = 4.2f;
+		wallSt.rimStrength = 0.56f;
+		wallSt.seed = 4411;
+
+		auto keepSdf = [&](const Vec2& p) {
+			float d = sdRoundBox(p, Vec2(200, 174), 56.0f, 38.0f, 4.0f);
+			d = std::min(d, sdRoundBox(p, Vec2(134, 168), 16.0f, 42.0f, 3.0f));
+			d = std::min(d, sdRoundBox(p, Vec2(266, 168), 16.0f, 42.0f, 3.0f));
+			// Upper throne tier
+			d = std::min(d, sdRoundBox(p, Vec2(200, 128), 34.0f, 22.0f, 3.0f));
+			return d;
+		};
+		cv.PaintVolumetricSDF(kBox, keepSdf, wallSt, 1.2f);
+
+		// Glowing amber arched citadel gate + twin tower slit windows
+		cv.FillSDF(kBox, [&](const Vec2& p) {
+			float g = std::max(sdEllipse(p, Vec2(200, 208), 18.0f, 26.0f), p.y - 210.0f);
+			float w1 = sdRoundBox(p, Vec2(134, 160), 4.0f, 9.0f, 2.0f);
+			float w2 = sdRoundBox(p, Vec2(266, 160), 4.0f, 9.0f, 2.0f);
+			return std::min({ g, w1, w2 });
+		}, [](const Vec2& p, float) {
+			float ny = clampf((p.y - 150.0f) / 60.0f, 0.0f, 1.0f);
+			return lerpColor(rgbHex(0xFFF2A6), rgbHex(0xE89220), ny);
+		}, 1.1f);
+
+		// Sweeping Horned Palace Roofs (lower & upper tier)
+		VolumetricStyle roofSt;
+		roofSt.topCol = rgbHex(0x3C3F68);
+		roofSt.midCol = rgbHex(0x22233E);
+		roofSt.botCol = rgbHex(0x121224);
+		roofSt.rimCol = rgbHex(0xF6D472);
+		roofSt.rimWidth = 4.5f;
+		roofSt.rimStrength = 0.65f;
+		roofSt.seed = 4412;
+
+		auto hornedRoof = [&](Vec2 c, float halfW, float h) {
+			std::vector<Vec2> pts = {
+				{ c.x - halfW - 14.0f, c.y - 6.0f },
+				{ c.x - halfW * 0.60f, c.y + 4.0f },
+				{ c.x - halfW * 0.42f, c.y - h },
+				{ c.x + halfW * 0.42f, c.y - h },
+				{ c.x + halfW * 0.60f, c.y + 4.0f },
+				{ c.x + halfW + 14.0f, c.y - 6.0f },
+				{ c.x + halfW * 0.72f, c.y + 12.0f },
+				{ c.x - halfW * 0.72f, c.y + 12.0f }
+			};
+			cv.PaintVolumetricSDF(kBox, [&](const Vec2& p) { return sdPolygon(p, pts, 2.5f); }, roofSt, 1.1f);
+		};
+		hornedRoof(Vec2(200, 138), 64.0f, 18.0f);
+		hornedRoof(Vec2(200, 108), 44.0f, 16.0f);
+
+		// Pointed spire caps on flanking towers
+		std::vector<Vec2> capL = { {114, 128}, {134, 102}, {154, 128} };
+		std::vector<Vec2> capR = { {246, 128}, {266, 102}, {286, 128} };
+		cv.PaintVolumetricSDF(kBox, [&](const Vec2& p) { return std::min(sdPolygon(p, capL, 1.5f), sdPolygon(p, capR, 1.5f)); }, roofSt, 1.1f);
+
+		// Gleaming Golden Crown Emblem at apex
+		VolumetricStyle gSt;
+		gSt.topCol = rgbHex(0xFFF69A);
+		gSt.midCol = rgbHex(0xF0B828);
+		gSt.botCol = rgbHex(0x9E6410);
+		gSt.rimCol = rgbHex(0xFFFFDE);
+		gSt.rimWidth = 2.8f;
+		gSt.specStrength = 0.45f;
+		gSt.seed = 4415;
+		std::vector<Vec2> crownPts = {
+			{ 184, 92 }, { 180, 74 }, { 192, 83 }, { 200, 68 },
+			{ 208, 83 }, { 220, 74 }, { 216, 92 }
+		};
+		cv.PaintVolumetricSDF(BBox{ 170, 60, 230, 102 }, [&](const Vec2& p) { return sdPolygon(p, crownPts, 1.2f); }, gSt, 1.0f);
+	}
+
+	// 4. Front half of glowing golden Low-G ring + orbiting golden motes
+	paintRingHalf(true);
+	const Vec2 motes[] = { {46, 266}, {352, 212}, {102, 294}, {314, 276} };
+	for (int i = 0; i < 4; ++i) {
+		Vec2 m = motes[i];
+		cv.FillSDF(BBox{ m.x - 8, m.y - 8, m.x + 8, m.y + 8 },
+			[&](const Vec2& p) { return sdCircle(p, m, 3.8f); },
+			[](const Vec2&, float) { return rgbHex(0xFFF29C); }, 1.2f);
+	}
+
+	cv.ApplyAntiSlopMasterGrade(0.92f, 0.06f, 0.015f, 0.010f, 4499);
+	cv.SavePNG(dir + "/world_island_04.png");
+	std::cout << "  -> Exported home2d/world_island_04.png (400x400)\n";
+}
+
+void BuildAll4WorldIslands(const std::string& dir) {
+	BuildWorldIsland01_OnsenBamboo(dir);
+	BuildWorldIsland02_YuzuCanyon(dir);
+	BuildWorldIsland03_IceCrystal(dir);
+	BuildWorldIsland04_CrocCitadel(dir);
+}
+
 } // namespace
 
 bool GenerateAllHome2DLayers(const std::string& outDir) {
@@ -1610,6 +2192,7 @@ bool GenerateAllHome2DLayers(const std::string& outDir) {
 	BuildLayer07_ForegroundHill(outDir);
 	BuildLayer08_BambooFrame(outDir);
 	BuildAll7CapybaraSprites(outDir);
+	BuildAll4WorldIslands(outDir);
 	HarmonizeExternal2DCapybaras(outDir);
 	std::cout << "[AssetForge 2D] All transparent 2D PNG layers & Anti-Slop LUT harmonized sprites exported cleanly!\n";
 	return true;
