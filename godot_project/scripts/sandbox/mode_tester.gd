@@ -8,14 +8,17 @@ const GRAVITY := 18.0
 const MAX_PULL_DIST := 2.9
 const LAUNCH_POWER := 8.8
 
+const WORLD1_SELECT_SCENE := "res://scenes/ui/world1_select.tscn"
+const HOME_SCENE := "res://scenes/ui/home_screen.tscn"
+
 const CAPY_ROSTER := [
-	{ "id": "chill",        "name": "1. Chill Capi",        "mesh": "res://assets/generated/models/capy_chill.obj",        "anime_mesh": "res://assets/generated/models/anime_capy_chill.obj",        "mass": 2.0, "radius": 0.36, "skill": "Zen Bump (getar ke bawah)" },
-	{ "id": "dash",         "name": "2. Dash Capi",         "mesh": "res://assets/generated/models/capy_dash.obj",         "anime_mesh": "res://assets/generated/models/anime_capy_dash.obj",         "mass": 1.8, "radius": 0.35, "skill": "Turbo Dash 2.2x" },
-	{ "id": "mini",         "name": "3. Trio Mini-Capi",    "mesh": "res://assets/generated/models/capy_mini.obj",         "anime_mesh": "res://assets/generated/models/anime_capy_mini.obj",         "mass": 1.0, "radius": 0.25, "skill": "Preview Model Trio Mini" },
-	{ "id": "yuzu_bomb",    "name": "4. Yuzu Bomb Capi",    "mesh": "res://assets/generated/models/capy_yuzu_bomb.obj",    "anime_mesh": "res://assets/generated/models/anime_capy_yuzu_bomb.obj",    "mass": 2.5, "radius": 0.40, "skill": "Ledakan Area Yuzu (r=4.5m)" },
-	{ "id": "seed_blaster", "name": "5. Seed-Blaster Capi", "mesh": "res://assets/generated/models/capy_seed_blaster.obj", "anime_mesh": "res://assets/generated/models/anime_capy_seed_blaster.obj", "mass": 2.0, "radius": 0.37, "skill": "Preview Model Seed-Blaster" },
-	{ "id": "bambu_saber",  "name": "6. Bambu-Katana Capi", "mesh": "res://assets/generated/models/capy_bambu_saber.obj",  "anime_mesh": "res://assets/generated/models/anime_capy_katana.obj",       "mass": 2.1, "radius": 0.37, "skill": "Tebasan Katana 360° (r=3.0m)" },
-	{ "id": "heavy_onsen",  "name": "7. Heavy Onsen Capi",  "mesh": "res://assets/generated/models/capy_heavy_onsen.obj",  "anime_mesh": "res://assets/generated/models/anime_capy_heavy_onsen.obj",  "mass": 4.8, "radius": 0.48, "skill": "Pasif: Massa Jumbo Penembus" },
+	{ "id": "chill",        "short": "CHILL",  "name": "1. Chill Capi",        "portrait": "res://assets/generated/home2d/char_01_chill_roar.png",   "mesh": "res://assets/generated/models/capy_chill.obj",        "anime_mesh": "res://assets/generated/models/anime_capy_chill.obj",        "mass": 2.0, "radius": 0.36, "skill": "Zen Bump (getar ke bawah)" },
+	{ "id": "dash",         "short": "DASH",   "name": "2. Dash Capi",         "portrait": "res://assets/generated/home2d/char_06_dash_leap.png",    "mesh": "res://assets/generated/models/capy_dash.obj",         "anime_mesh": "res://assets/generated/models/anime_capy_dash.obj",         "mass": 1.8, "radius": 0.35, "skill": "Turbo Dash 2.2x" },
+	{ "id": "mini",         "short": "MINI",   "name": "3. Trio Mini-Capi",    "portrait": "res://assets/generated/home2d/char_07_mini_capi.png",    "mesh": "res://assets/generated/models/capy_mini.obj",         "anime_mesh": "res://assets/generated/models/anime_capy_mini.obj",         "mass": 1.0, "radius": 0.25, "skill": "Preview Model Trio Mini" },
+	{ "id": "yuzu_bomb",    "short": "YUZU",   "name": "4. Yuzu Bomb Capi",    "portrait": "res://assets/generated/home2d/char_02_yuzu_bomb.png",    "mesh": "res://assets/generated/models/capy_yuzu_bomb.obj",    "anime_mesh": "res://assets/generated/models/anime_capy_yuzu_bomb.obj",    "mass": 2.5, "radius": 0.40, "skill": "Ledakan Area Yuzu (r=4.5m)" },
+	{ "id": "seed_blaster", "short": "SEED",   "name": "5. Seed-Blaster Capi", "portrait": "res://assets/generated/home2d/char_04_seed_blaster.png", "mesh": "res://assets/generated/models/capy_seed_blaster.obj", "anime_mesh": "res://assets/generated/models/anime_capy_seed_blaster.obj", "mass": 2.0, "radius": 0.37, "skill": "Preview Model Seed-Blaster" },
+	{ "id": "bambu_saber",  "short": "KATANA", "name": "6. Bambu-Katana Capi", "portrait": "res://assets/generated/home2d/char_05_bambu_katana.png", "mesh": "res://assets/generated/models/capy_bambu_saber.obj",  "anime_mesh": "res://assets/generated/models/anime_capy_katana.obj",       "mass": 2.1, "radius": 0.37, "skill": "Tebasan Katana 360° (r=3.0m)" },
+	{ "id": "heavy_onsen",  "short": "HEAVY",  "name": "7. Heavy Onsen Capi",  "portrait": "res://assets/generated/home2d/char_03_heavy_onsen.png",  "mesh": "res://assets/generated/models/capy_heavy_onsen.obj",  "anime_mesh": "res://assets/generated/models/anime_capy_heavy_onsen.obj",  "mass": 4.8, "radius": 0.48, "skill": "Pasif: Massa Jumbo Penembus" },
 ]
 
 var current_view: int = CameraView.ANGLED_25D
@@ -59,6 +62,8 @@ var lbl_mode_desc: Label
 var lbl_capy_info: Label
 var btn_views: Array[Button] = []
 var btn_capys: Array[Button] = []
+var capy_tile_labels: Array[Label] = []
+var capy_tile_portraits: Array[TextureRect] = []
 
 # Cached textures & scenery animation
 var tex_wood: Texture2D
@@ -398,129 +403,162 @@ func _setup_ui() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 
-	# HUD Anti-Slop Warm Lacquer Espresso + border kertas washi (DESIGN.md — serasi 100% dengan Home!)
-	var hud_style := StyleBoxFlat.new()
-	hud_style.bg_color = Color(0.15, 0.11, 0.10, 0.90)
-	hud_style.border_color = Color(0.80, 0.72, 0.56, 0.85)
-	hud_style.set_border_width_all(2)
-	hud_style.set_corner_radius_all(10)
+	# 1) TOP-LEFT: Bamboo Woodblock Back Button + Reset + Camera Tabs + Art Style Toggle
+	var tl_row := HBoxContainer.new()
+	tl_row.position = Vector2(24, 16)
+	tl_row.add_theme_constant_override("separation", 10)
+	canvas.add_child(tl_row)
 
-	# Baris atas tipis untuk kontrol kamera & tombol aksi (tidak menutupi langit senja!)
-	var top_panel := PanelContainer.new()
-	top_panel.position = Vector2(14, 12)
-	top_panel.add_theme_stylebox_override("panel", hud_style)
-	canvas.add_child(top_panel)
+	var btn_back := CraftUI.make_back_btn("PETA")
+	btn_back.pressed.connect(func(): SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE))
+	tl_row.add_child(btn_back)
 
-	var tmar := MarginContainer.new()
-	tmar.add_theme_constant_override("margin_left", 10)
-	tmar.add_theme_constant_override("margin_right", 10)
-	tmar.add_theme_constant_override("margin_top", 6)
-	tmar.add_theme_constant_override("margin_bottom", 6)
-	top_panel.add_child(tmar)
+	var btn_reset := CraftUI.make_icon_stamp("icon_retry", "wood_sq_amber", Vector2(46, 46), 1.6, "R")
+	btn_reset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn_reset.pressed.connect(_request_reset_arena)
+	tl_row.add_child(btn_reset)
 
-	var mode_row := HBoxContainer.new()
-	mode_row.add_theme_constant_override("separation", 6)
-	tmar.add_child(mode_row)
-
-	var home_btn := Button.new()
-	home_btn.text = "[H] Home"
-	home_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/ui/home_screen.tscn"))
-	mode_row.add_child(home_btn)
-
-	var view_names := [
-		"[1] 2.5D Samping",
-		"[2] 2.5D Serong",
-		"[3] 3D Katapel"
-	]
+	btn_views.clear()
+	var view_names := ["1 • 2.5D", "2 • SERONG", "3 • 3D"]
+	var view_tilts := [-1.2, 0.8, -0.8]
 	for i in 3:
-		var b := Button.new()
-		b.text = view_names[i]
+		var b := CraftUI.make_wood_btn(view_names[i], "wood_btn_cedar_dark", Vector2(92, 42), 13, view_tilts[i])
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		b.toggle_mode = true
 		var idx := i
 		b.pressed.connect(func(): _set_camera_view(idx))
-		mode_row.add_child(b)
+		tl_row.add_child(b)
 		btn_views.append(b)
 
-	var reset_btn := Button.new()
-	reset_btn.text = "[R] Reset"
-	reset_btn.pressed.connect(_reset_arena)
-	mode_row.add_child(reset_btn)
-
-	btn_style_toggle = Button.new()
-	btn_style_toggle.text = "[V] ANIME 2.5D"
+	btn_style_toggle = CraftUI.make_wood_btn("ANIME 2.5D", "wood_btn_sky", Vector2(124, 42), 13, 1.0)
+	btn_style_toggle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn_style_toggle.pressed.connect(_toggle_art_style)
-	mode_row.add_child(btn_style_toggle)
+	tl_row.add_child(btn_style_toggle)
 
-	# Dock pemilihan 7 Kapibara rapi di bagian bawah layar!
-	var bot_panel := PanelContainer.new()
-	bot_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	bot_panel.offset_left = 14
-	bot_panel.offset_right = 920
-	bot_panel.offset_top = -76
-	bot_panel.offset_bottom = -12
-	bot_panel.add_theme_stylebox_override("panel", hud_style)
-	canvas.add_child(bot_panel)
+	# 2) TOP-RIGHT: Bare Stroked Mode Header + Camera Hint
+	var tr_vb := VBoxContainer.new()
+	tr_vb.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	tr_vb.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	tr_vb.offset_left = -560
+	tr_vb.offset_right = -24
+	tr_vb.offset_top = 14
+	tr_vb.offset_bottom = 78
+	tr_vb.add_theme_constant_override("separation", 2)
+	tr_vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(tr_vb)
 
-	var bmar := MarginContainer.new()
-	bmar.add_theme_constant_override("margin_left", 10)
-	bmar.add_theme_constant_override("margin_right", 10)
-	bmar.add_theme_constant_override("margin_top", 6)
-	bmar.add_theme_constant_override("margin_bottom", 6)
-	bot_panel.add_child(bmar)
+	var sb_title := CraftUI.make_stroked_label("MODE SANDBOX • 7 KAPIBARA", 22, CraftUI.GOLD_TEXT, 5, true)
+	sb_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tr_vb.add_child(sb_title)
 
-	var bvb := VBoxContainer.new()
-	bvb.add_theme_constant_override("separation", 4)
-	bmar.add_child(bvb)
+	lbl_mode_desc = CraftUI.make_stroked_label("", 12, CraftUI.CREAM_TEXT, 4, false)
+	lbl_mode_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tr_vb.add_child(lbl_mode_desc)
 
-	var capy_row := HBoxContainer.new()
-	capy_row.add_theme_constant_override("separation", 5)
-	bvb.add_child(capy_row)
+	# 3) BOTTOM CENTERED: Active Capy Info + 7-Hero Woodblock Picker Rail
+	lbl_capy_info = CraftUI.make_stroked_label("", 15, CraftUI.GOLD_TEXT, 5, false)
+	lbl_capy_info.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	lbl_capy_info.offset_left = -480
+	lbl_capy_info.offset_right = 480
+	lbl_capy_info.offset_top = -126
+	lbl_capy_info.offset_bottom = -98
+	lbl_capy_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_capy_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(lbl_capy_info)
 
+	var rail := HBoxContainer.new()
+	rail.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	rail.offset_left = -560
+	rail.offset_right = 560
+	rail.offset_top = -94
+	rail.offset_bottom = -12
+	rail.alignment = BoxContainer.ALIGNMENT_CENTER
+	rail.add_theme_constant_override("separation", 12)
+	canvas.add_child(rail)
+
+	btn_capys.clear()
+	capy_tile_labels.clear()
+	capy_tile_portraits.clear()
 	for i in CAPY_ROSTER.size():
+		var cdata: Dictionary = CAPY_ROSTER[i]
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(138, 78)
+		rail.add_child(slot)
+
 		var b := Button.new()
-		b.text = CAPY_ROSTER[i]["name"]
+		b.position = Vector2(0, 10)
+		b.size = Vector2(138, 66)
+		b.pivot_offset = Vector2(69, 33)
 		b.toggle_mode = true
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 		var idx := i
-		b.pressed.connect(func(): _select_capy(idx))
-		capy_row.add_child(b)
+		b.pressed.connect(func():
+			SoundManager.play_ui_click()
+			_select_capy(idx)
+		)
+		slot.add_child(b)
 		btn_capys.append(b)
 
-	var info_row := HBoxContainer.new()
-	info_row.add_theme_constant_override("separation", 14)
-	bvb.add_child(info_row)
+		var portrait := CraftUI.make_tex_rect(load(str(cdata["portrait"])), Vector2(52, 52))
+		portrait.position = Vector2(43, -10)
+		slot.add_child(portrait)
+		capy_tile_portraits.append(portrait)
 
-	lbl_capy_info = Label.new()
-	lbl_capy_info.add_theme_font_size_override("font_size", 12)
-	lbl_capy_info.modulate = Color(1.0, 0.90, 0.50)
-	info_row.add_child(lbl_capy_info)
-
-	lbl_mode_desc = Label.new()
-	lbl_mode_desc.add_theme_font_size_override("font_size", 11)
-	lbl_mode_desc.modulate = Color(0.84, 0.90, 0.96)
-	info_row.add_child(lbl_mode_desc)
+		var lbl := CraftUI.make_stroked_label("%d. %s" % [i + 1, str(cdata["short"])], 13, CraftUI.CREAM_TEXT, 4, true)
+		lbl.position = Vector2(4, 46)
+		lbl.size = Vector2(130, 24)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(lbl)
+		capy_tile_labels.append(lbl)
 
 func _set_camera_view(view_idx: int) -> void:
 	# PENTING: Hanya memindahkan kamera — TIDAK mereset atau mengubah benteng!
 	current_view = view_idx
 	custom_orbit_active = false
 	cam_zoom_offset = 0.0
+	var view_tilts := [-1.2, 0.8, -0.8]
 	for i in btn_views.size():
-		btn_views[i].set_pressed_no_signal(i == view_idx)
+		var is_act := (i == view_idx)
+		btn_views[i].set_pressed_no_signal(is_act)
+		CraftUI.style_wood_button(
+			btn_views[i],
+			"wood_btn_amber" if is_act else "wood_btn_cedar_dark",
+			13,
+			Vector2(92, 42),
+			view_tilts[i],
+			true,
+			CraftUI.CREAM_TEXT if is_act else Color(0.91, 0.85, 0.76),
+			4
+		)
 
 	match current_view:
 		CameraView.SIDE_25D:
-			lbl_mode_desc.text = "Kamera [1] 2.5D Samping: Tampak samping klasik. Tarik Kiri/Bawah untuk bidik. (Klik-Kanan Drag = putar orbit bebas)"
+			lbl_mode_desc.text = "Kamera [1] 2.5D Samping • Klik-Kanan drag = orbit bebas"
 		CameraView.ANGLED_25D:
-			lbl_mode_desc.text = "Kamera [2] 2.5D Serong: Bangunan 3D terlihat berjejer ke dalam + tetap akurat dibidik dari samping!"
+			lbl_mode_desc.text = "Kamera [2] 2.5D Serong • Bangunan 3D terlihat ke dalam"
 		CameraView.BEHIND_3D:
-			lbl_mode_desc.text = "Kamera [3] 3D Belakang Katapel: Melihat benteng YG SAMA berjejer ke belakang! Drag kiri/kanan bisa geser arah Z."
+			lbl_mode_desc.text = "Kamera [3] 3D Katapel • Sudut belakang peluncur"
 
 func _select_capy(idx: int) -> void:
 	current_capy_idx = clampi(idx, 0, CAPY_ROSTER.size() - 1)
 	for i in btn_capys.size():
-		btn_capys[i].set_pressed_no_signal(i == current_capy_idx)
+		var is_sel := (i == current_capy_idx)
+		var b := btn_capys[i]
+		b.set_pressed_no_signal(is_sel)
+		var tex_name := "tile_wood_frontier" if is_sel else "tile_wood_open"
+		b.rotation_degrees = 0.0 if is_sel else (-1.4 if (i % 2 == 0) else 1.4)
+		b.scale = Vector2(1.06, 1.06) if is_sel else Vector2.ONE
+		b.add_theme_stylebox_override("normal", CraftUI.make_full_style(tex_name, 8.0, 4.0))
+		b.add_theme_stylebox_override("hover", CraftUI.make_full_style(tex_name, 8.0, 4.0, Color(1.08, 1.06, 1.03)))
+		b.add_theme_stylebox_override("pressed", CraftUI.make_full_style(tex_name, 8.0, 6.0, Color(0.86, 0.82, 0.78)))
+		if i < capy_tile_portraits.size():
+			capy_tile_portraits[i].position.y = -15.0 if is_sel else -10.0
+		if i < capy_tile_labels.size():
+			capy_tile_labels[i].add_theme_color_override("font_color", CraftUI.GOLD_TEXT if is_sel else CraftUI.CREAM_TEXT)
 	var data: Dictionary = CAPY_ROSTER[current_capy_idx]
-	lbl_capy_info.text = "Pion Aktif: %s | Massa: %.1f kg | Skill (Klik/Spasi di udara): %s" % [
+	lbl_capy_info.text = "Pion Aktif: %s  |  Massa: %.1f kg  |  Jurus (Klik/Spasi di udara): %s" % [
 		data["name"], data["mass"], data["skill"]
 	]
 	if not is_flying:
@@ -662,7 +700,14 @@ func _spawn_capy_on_slingshot() -> void:
 
 func _toggle_art_style() -> void:
 	use_anime_style = not use_anime_style
-	btn_style_toggle.text = "[V] Style: ANIME 2.5D" if use_anime_style else "[V] Style: ORIGINAL"
+	btn_style_toggle.text = "ANIME 2.5D" if use_anime_style else "ORIGINAL 3D"
+	CraftUI.style_wood_button(
+		btn_style_toggle,
+		"wood_btn_sky" if use_anime_style else "wood_btn_cedar",
+		13,
+		Vector2(124, 42),
+		1.0
+	)
 	if not is_flying:
 		_spawn_capy_on_slingshot()
 
@@ -696,15 +741,39 @@ func _apply_anime_toon_materials(mi: MeshInstance3D) -> void:
 				rovio_mat.set_shader_parameter("emission_color", Vector3(orig.emission.r, orig.emission.g, orig.emission.b))
 		mi.set_surface_override_material(s_idx, rovio_mat)
 
+func _request_reset_arena() -> void:
+	if is_aiming:
+		is_aiming = false
+		pull_vector = Vector3.ZERO
+		_hide_trajectory()
+		if is_instance_valid(active_capy):
+			active_capy.position = Vector3(LAUNCH_X, LAUNCH_Y, 0.0)
+	CraftUI.show_confirm_modal(
+		get_tree(),
+		"RESET ARENA SANDBOX?",
+		"Seluruh balok benteng uji akan dibangun ulang ke posisi awal.\nYakin ingin mereset arena?",
+		"YA, RESET",
+		func(): _reset_arena(),
+		"BATAL",
+		true
+	)
+
+func _exit_tree() -> void:
+	if get_tree():
+		get_tree().paused = false
+
 func _unhandled_input(event: InputEvent) -> void:
+	if CraftUI.is_confirm_open(get_tree()):
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_1: _set_camera_view(CameraView.SIDE_25D)
 			KEY_2: _set_camera_view(CameraView.ANGLED_25D)
 			KEY_3: _set_camera_view(CameraView.BEHIND_3D)
-			KEY_R: _reset_arena()
+			KEY_R: _request_reset_arena()
 			KEY_V: _toggle_art_style()
-			KEY_H: get_tree().change_scene_to_file("res://scenes/ui/home_screen.tscn")
+			KEY_H: SceneLoader.quick_transition_to(HOME_SCENE)
+			KEY_ESCAPE: SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE)
 			KEY_Q: _select_capy((current_capy_idx + CAPY_ROSTER.size() - 1) % CAPY_ROSTER.size())
 			KEY_E: _select_capy((current_capy_idx + 1) % CAPY_ROSTER.size())
 			KEY_SPACE:
@@ -728,6 +797,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					is_aiming = true
 					drag_start_px = event.position
 					pull_vector = Vector3.ZERO
+					SoundManager.play_sfx("sling_stretch", 1.0, -5.0, 0.05)
 			else:
 				if is_aiming:
 					_release_slingshot()
@@ -774,6 +844,7 @@ func _release_slingshot() -> void:
 	is_flying = true
 	flight_timer = 0.0
 	pull_vector = Vector3.ZERO
+	SoundManager.play_sfx("launch", 1.0, -2.0, 0.06)
 
 func _compute_launch_velocity() -> Vector3:
 	return -pull_vector * LAUNCH_POWER
@@ -789,18 +860,22 @@ func _activate_skill() -> void:
 		"chill":
 			active_capy.apply_central_impulse(Vector3(0.0, -10.0, 0.0))
 			_spawn_vfx_sphere(pos, 1.4, Color(0.95, 0.95, 0.75))
+			SoundManager.play_sfx("skill_zen", 1.0, -1.0)
 		"dash":
 			var dir := active_capy.linear_velocity.normalized()
 			if dir.length() < 0.1:
 				dir = Vector3(1, 0, 0)
 			active_capy.linear_velocity = dir * 32.0
 			_spawn_vfx_sphere(pos, 1.1, Color(1.0, 0.85, 0.2))
+			SoundManager.play_sfx("skill_dash", 1.0, -1.5)
 		"yuzu_bomb":
 			_apply_radial_blast(pos, 4.8, 34.0)
 			_spawn_vfx_sphere(pos, 4.2, Color(1.0, 0.55, 0.08))
+			SoundManager.play_sfx("tnt_boom", 1.0, 0.0)
 		"bambu_saber":
 			_apply_radial_blast(pos, 3.2, 22.0)
 			_spawn_vfx_sphere(pos, 3.0, Color(0.25, 1.0, 0.45))
+			SoundManager.play_sfx("skill_dash", 1.25, -1.5)
 
 func _apply_radial_blast(center: Vector3, radius: float, strength: float) -> void:
 	for b in blocks:

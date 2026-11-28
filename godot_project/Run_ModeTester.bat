@@ -21,8 +21,8 @@ for %%G in (godot4.exe godot.exe) do (
 )
 if defined GODOT_BIN goto :launch
 
-REM 3. Cari otomatis di folder umum laptop Windows (Downloads, Desktop, LocalAppData, C:\Godot, folder proyek)
-for %%D in ("%~dp0" "%~dp0.." "%USERPROFILE%\Downloads" "%USERPROFILE%\Desktop" "%LOCALAPPDATA%\Programs" "C:\Godot" "C:\Program Files\Godot") do (
+REM 3. Cari otomatis di folder umum laptop Windows (Downloads, Desktop, LocalAppData, D:\Godot, C:\Godot, folder proyek)
+for %%D in ("%~dp0" "%~dp0.." "%USERPROFILE%\Downloads" "%USERPROFILE%\Desktop" "%LOCALAPPDATA%\Programs" "D:\Godot" "C:\Godot" "C:\Program Files\Godot") do (
     if exist "%%~D" (
         for /f "delims=" %%F in ('dir /b /s /a-d "%%~D\Godot*win64*.exe" 2^>nul') do (
             echo %%~nxF | findstr /i "console" >nul

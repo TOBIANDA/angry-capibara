@@ -8,6 +8,9 @@ extends Control
 #   lengkap dengan animasi bernafas, hover, klik dialog per karakter, & Logo Opsi 2.
 
 const WORLD_SELECT_MAP_PATH := "res://scenes/ui/world_select_map.tscn"
+const HERO_GALLERY_PATH := "res://scenes/ui/hero_gallery.tscn"
+const SETTINGS_PAGE_PATH := "res://scenes/ui/settings_page.tscn"
+const GUIDE_PAGE_PATH := "res://scenes/ui/guide_page.tscn"
 const BASE_SIZE := Vector2(1280.0, 720.0)
 
 # Data dialog 7 karakter kapibara (bisa diklik langsung di layar atau tekan tombol 1-7)
@@ -39,7 +42,7 @@ const LAYERED_GROUPS := [
 	# 1. Trio Mini-Capi bertumpuk 3 di tebing kiri sebelah ketapel bambu
 	{
 		"tex": "res://assets/generated/home2d/capi_2d_trio_mini_graded.png",
-		"pos": Vector2(158.0, 444.0),
+		"pos": Vector2(158.0, 422.0),
 		"size": Vector2(142.0, 304.0),
 		"depth": 0.64,
 		"bob_amp": 4.2,
@@ -52,7 +55,7 @@ const LAYERED_GROUPS := [
 	# 2. Formasi 5 Hero Utama (Seed-Blaster, Yuzu Bomb, Chill Capi, Heavy Onsen, Bambu-Katana)
 	{
 		"tex": "res://assets/generated/home2d/capi_2d_squad_main_graded.png",
-		"pos": Vector2(676.0, 450.0),
+		"pos": Vector2(676.0, 424.0),
 		"size": Vector2(968.0, 396.0),
 		"depth": 0.86,
 		"bob_amp": 3.4,
@@ -76,8 +79,6 @@ var ember_nodes: Array[Dictionary] = []
 var leaf_nodes: Array[Dictionary] = []
 
 var elapsed_time: float = 0.0
-var intro_duration: float = 1.05
-var intro_finished: bool = false
 var mouse_parallax: Vector2 = Vector2.ZERO
 var smooth_parallax: Vector2 = Vector2.ZERO
 
@@ -86,17 +87,15 @@ var capture_done: bool = false
 
 # UI nodes
 var logo_root: Control
-var loading_strip: Control
-var loading_bar: ProgressBar
 var play_button: Button
-var corner_menu: HBoxContainer
+var bottom_dock: HBoxContainer
+var top_left_bar: HBoxContainer
+var top_star_wrap: Control
+var audio_btn: Button
 var speech_bubble: PanelContainer
 var speech_name: Label
 var speech_quote: Label
 var speech_timer: float = 0.0
-var modal_overlay: ColorRect
-var modal_title: Label
-var modal_body: RichTextLabel
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -116,7 +115,8 @@ func _ready() -> void:
 
 	if capture_path != "":
 		elapsed_time = 2.0
-		_finish_intro()
+	else:
+		SceneLoader.play_startup_intro()
 
 func _add_layer_sprite(path: String, base_pos: Vector2, sz: Vector2, depth: float, overscan: float = 1.06) -> TextureRect:
 	var tr := TextureRect.new()
@@ -341,191 +341,110 @@ func _setup_arcade_ui() -> void:
 	logo_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logo_root.add_child(logo_tex)
 
-	var display_font := SystemFont.new()
-	display_font.font_names = PackedStringArray(["Impact", "Arial Black", "Segoe UI Black"])
-	display_font.font_weight = 900
+	# TOP-LEFT: 2 Carved Cedar Utility Stamps (Audio + Pengaturan/Credits)
+	top_left_bar = HBoxContainer.new()
+	top_left_bar.position = Vector2(28, 18)
+	top_left_bar.add_theme_constant_override("separation", 12)
+	ui_root.add_child(top_left_bar)
 
-	# Intro loading bar
-	loading_strip = Control.new()
-	loading_strip.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	loading_strip.offset_left = -180
-	loading_strip.offset_right = 180
-	loading_strip.offset_top = -52
-	loading_strip.offset_bottom = -20
-	ui_root.add_child(loading_strip)
+	audio_btn = CraftUI.make_icon_stamp("icon_speaker_off" if SaveManager.is_muted else "icon_speaker_on", "wood_sq_bamboo", Vector2(52, 50), -2.2)
+	audio_btn.pressed.connect(_toggle_mute)
+	top_left_bar.add_child(audio_btn)
 
-	loading_bar = ProgressBar.new()
-	loading_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
-	loading_bar.min_value = 0.0
-	loading_bar.max_value = 100.0
-	loading_bar.show_percentage = false
-	var lbg := StyleBoxFlat.new()
-	lbg.bg_color = Color(0.08, 0.10, 0.08, 0.86)
-	lbg.border_color = Color(1.0, 0.84, 0.30)
-	lbg.set_border_width_all(3)
-	lbg.set_corner_radius_all(12)
-	var lfill := StyleBoxFlat.new()
-	lfill.bg_color = Color(1.0, 0.56, 0.14)
-	lfill.set_corner_radius_all(9)
-	loading_bar.add_theme_stylebox_override("background", lbg)
-	loading_bar.add_theme_stylebox_override("fill", lfill)
-	loading_strip.add_child(loading_bar)
+	var gear_btn := CraftUI.make_icon_stamp("icon_gear", "wood_sq_cedar", Vector2(52, 50), 1.8)
+	gear_btn.pressed.connect(_open_settings_page)
+	top_left_bar.add_child(gear_btn)
 
-	# Tombol PLAY — 1 Aksen Fokus Tunggal Vermilion Jepang (miqdadbadjuber/anti-slop R-01!)
-	play_button = _make_glossy_button("PLAY", Color(0.80, 0.22, 0.16), Color(0.98, 0.95, 0.89), 34, Vector2(238, 62), 14, true)
-	play_button.add_theme_font_override("font", display_font)
-	play_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	play_button.offset_left = -119
-	play_button.offset_right = 119
-	play_button.offset_top = -82
-	play_button.offset_bottom = -20
-	play_button.visible = false
+	# TOP-RIGHT: Bare Floating Gold Star + Total Stars (Zero pill/box!)
+	var sc := CraftUI.make_star_counter("%d/240" % SaveManager.get_world1_total_stars(), 32.0, 24)
+	top_star_wrap = sc["root"]
+	top_star_wrap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	top_star_wrap.offset_left = -220
+	top_star_wrap.offset_right = -32
+	top_star_wrap.offset_top = 18
+	top_star_wrap.offset_bottom = 58
+	ui_root.add_child(top_star_wrap)
+
+	# BOTTOM-CENTER WOODBLOCK ACTION DOCK (Zero bottom box, zero pills!)
+	bottom_dock = HBoxContainer.new()
+	bottom_dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	bottom_dock.offset_left = -360
+	bottom_dock.offset_right = 360
+	bottom_dock.offset_top = -86
+	bottom_dock.offset_bottom = -14
+	bottom_dock.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom_dock.add_theme_constant_override("separation", 18)
+	bottom_dock.visible = true
+	ui_root.add_child(bottom_dock)
+
+	# Left: HERO Amber Wood Plank with Yuzu Capi cutout bursting above wood edge!
+	var hero_wrap := Control.new()
+	hero_wrap.custom_minimum_size = Vector2(158, 62)
+	bottom_dock.add_child(hero_wrap)
+
+	var btn_hero := CraftUI.make_wood_btn("HERO", "wood_btn_amber", Vector2(154, 58), 21, -1.6)
+	btn_hero.position = Vector2(10, 4)
+	var hero_norm := CraftUI.make_full_style("wood_btn_amber", 14.0, 6.0)
+	hero_norm.content_margin_left = 48.0
+	var hero_hov := CraftUI.make_full_style("wood_btn_amber", 14.0, 6.0, Color(1.08, 1.06, 1.03))
+	hero_hov.content_margin_left = 48.0
+	var hero_prs := CraftUI.make_full_style("wood_btn_amber", 14.0, 8.0, Color(0.86, 0.82, 0.78))
+	hero_prs.content_margin_left = 48.0
+	btn_hero.add_theme_stylebox_override("normal", hero_norm)
+	btn_hero.add_theme_stylebox_override("hover", hero_hov)
+	btn_hero.add_theme_stylebox_override("pressed", hero_prs)
+	btn_hero.pressed.connect(func():
+		SceneLoader.quick_transition_to(HERO_GALLERY_PATH)
+	)
+	hero_wrap.add_child(btn_hero)
+
+	var yuzu_cutout := CraftUI.make_tex_rect(load("res://assets/generated/home2d/char_02_yuzu_bomb.png"), Vector2(64, 64))
+	yuzu_cutout.position = Vector2(-6, -14)
+	hero_wrap.add_child(yuzu_cutout)
+
+	# Center Primary Focal CTA: MAIN!
+	play_button = CraftUI.make_wood_btn("MAIN!", "wood_btn_vermilion", Vector2(226, 72), 32, -0.8, "icon_play_tri", 24)
 	play_button.pressed.connect(_go_to_tester)
-	ui_root.add_child(play_button)
+	bottom_dock.add_child(play_button)
 
-	# Tombol sekunder seragam Warm Lacquer Espresso (nol tombol warna-warni pelangi AI slop!)
-	corner_menu = HBoxContainer.new()
-	corner_menu.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	corner_menu.offset_left = -336
-	corner_menu.offset_right = -20
-	corner_menu.offset_top = -66
-	corner_menu.offset_bottom = -22
-	corner_menu.alignment = BoxContainer.ALIGNMENT_END
-	corner_menu.add_theme_constant_override("separation", 8)
-	corner_menu.visible = false
-	ui_root.add_child(corner_menu)
+	# Right: PETA Bamboo Plank
+	var btn_map := CraftUI.make_wood_btn("PETA", "wood_btn_bamboo", Vector2(152, 58), 21, 1.4, "icon_map", 22)
+	btn_map.pressed.connect(_go_to_tester)
+	bottom_dock.add_child(btn_map)
 
-	var sec_bg := Color(0.17, 0.13, 0.11, 0.94)
-	var sec_fg := Color(0.96, 0.93, 0.86)
-	var btn_worlds := _make_glossy_button("4 WORLD", sec_bg, sec_fg, 13, Vector2(104, 44), 10, false)
-	btn_worlds.pressed.connect(_go_to_tester)
-	corner_menu.add_child(btn_worlds)
+	# Far Right: Panduan Stamp (?)
+	var btn_help := CraftUI.make_wood_btn("?", "wood_btn_sky", Vector2(58, 56), 28, -2.0)
+	btn_help.pressed.connect(_open_guide_page)
+	bottom_dock.add_child(btn_help)
 
-	var btn_credits := _make_glossy_button("CREDITS", sec_bg, sec_fg, 13, Vector2(98, 44), 10, false)
-	btn_credits.pressed.connect(_show_credits_modal)
-	corner_menu.add_child(btn_credits)
-
-	var btn_exit := _make_glossy_button("EXIT", sec_bg, sec_fg, 13, Vector2(78, 44), 10, false)
-	btn_exit.pressed.connect(func(): get_tree().quit())
-	corner_menu.add_child(btn_exit)
-
-	# Balon dialog & modal memakai 9-slice lacquer plate (ui_panel_lacquer.png)
+	# Speech Bubble using Carved Wood Parchment Modal Style
 	speech_bubble = PanelContainer.new()
 	speech_bubble.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	speech_bubble.offset_left = 22
-	speech_bubble.offset_right = 374
-	speech_bubble.offset_top = -94
-	speech_bubble.offset_bottom = -20
+	speech_bubble.offset_left = 24
+	speech_bubble.offset_right = 396
+	speech_bubble.offset_top = -188
+	speech_bubble.offset_bottom = -92
 	speech_bubble.visible = false
-	var sb_style := StyleBoxTexture.new()
-	sb_style.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
-	sb_style.texture_margin_left = 28
-	sb_style.texture_margin_right = 28
-	sb_style.texture_margin_top = 28
-	sb_style.texture_margin_bottom = 28
+	var sb_style := CraftUI.make_modal_panel_style(32.0, 22.0)
 	speech_bubble.add_theme_stylebox_override("panel", sb_style)
 	ui_root.add_child(speech_bubble)
 
-	var sb_mar := MarginContainer.new()
-	sb_mar.add_theme_constant_override("margin_left", 14)
-	sb_mar.add_theme_constant_override("margin_right", 14)
-	sb_mar.add_theme_constant_override("margin_top", 8)
-	sb_mar.add_theme_constant_override("margin_bottom", 8)
-	speech_bubble.add_child(sb_mar)
-
 	var sb_vb := VBoxContainer.new()
 	sb_vb.add_theme_constant_override("separation", 2)
-	sb_mar.add_child(sb_vb)
+	speech_bubble.add_child(sb_vb)
 
 	speech_name = Label.new()
-	speech_name.add_theme_font_size_override("font_size", 15)
-	speech_name.add_theme_color_override("font_color", Color(1.0, 0.86, 0.26))
+	speech_name.add_theme_font_override("font", CraftUI.display_font())
+	speech_name.add_theme_font_size_override("font_size", 14)
+	speech_name.add_theme_color_override("font_color", Color(0.75, 0.19, 0.11))
 	sb_vb.add_child(speech_name)
 
 	speech_quote = Label.new()
+	speech_quote.add_theme_font_override("font", CraftUI.body_font())
 	speech_quote.add_theme_font_size_override("font_size", 13)
-	speech_quote.add_theme_color_override("font_color", Color(0.96, 0.96, 0.98))
+	speech_quote.add_theme_color_override("font_color", CraftUI.INK)
 	speech_quote.autowrap_mode = TextServer.AUTOWRAP_WORD
 	sb_vb.add_child(speech_quote)
-
-	# Modal Overlay (Worlds & Credits)
-	modal_overlay = ColorRect.new()
-	modal_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	modal_overlay.color = Color(0.03, 0.04, 0.07, 0.78)
-	modal_overlay.visible = false
-	ui_root.add_child(modal_overlay)
-
-	var mpanel := PanelContainer.new()
-	mpanel.set_anchors_preset(Control.PRESET_CENTER)
-	mpanel.offset_left = -310
-	mpanel.offset_right = 310
-	mpanel.offset_top = -205
-	mpanel.offset_bottom = 205
-	mpanel.add_theme_stylebox_override("panel", sb_style)
-	modal_overlay.add_child(mpanel)
-
-	var mmar := MarginContainer.new()
-	mmar.add_theme_constant_override("margin_left", 22)
-	mmar.add_theme_constant_override("margin_right", 22)
-	mmar.add_theme_constant_override("margin_top", 18)
-	mmar.add_theme_constant_override("margin_bottom", 18)
-	mpanel.add_child(mmar)
-
-	var mvbox := VBoxContainer.new()
-	mvbox.add_theme_constant_override("separation", 12)
-	mmar.add_child(mvbox)
-
-	modal_title = Label.new()
-	modal_title.add_theme_font_size_override("font_size", 22)
-	modal_title.add_theme_color_override("font_color", Color(1.0, 0.86, 0.28))
-	mvbox.add_child(modal_title)
-
-	modal_body = RichTextLabel.new()
-	modal_body.bbcode_enabled = true
-	modal_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	modal_body.add_theme_font_size_override("normal_font_size", 14)
-	mvbox.add_child(modal_body)
-
-	var close_btn := _make_glossy_button("TUTUP", Color(0.80, 0.22, 0.16), Color(0.98, 0.95, 0.89), 15, Vector2(140, 38), 10, true)
-	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	close_btn.pressed.connect(func(): modal_overlay.visible = false)
-	mvbox.add_child(close_btn)
-
-func _make_glossy_button(text_str: String, _bg: Color, fg: Color, fsize: int, min_sz: Vector2, _radius: int, is_primary: bool = false) -> Button:
-	var b := Button.new()
-	b.text = text_str
-	b.custom_minimum_size = min_sz
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.add_theme_font_size_override("font_size", fsize)
-	b.add_theme_color_override("font_color", fg)
-	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
-	b.add_theme_constant_override("outline_size", 5 if is_primary and fsize >= 24 else 2)
-
-	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
-	var normal := StyleBoxTexture.new()
-	normal.texture = load(tex_path)
-	normal.texture_margin_left = 22
-	normal.texture_margin_right = 22
-	normal.texture_margin_top = 14
-	normal.texture_margin_bottom = 16
-	normal.content_margin_left = 12
-	normal.content_margin_right = 12
-	normal.content_margin_top = 4
-	normal.content_margin_bottom = 6
-
-	var hover: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
-	hover.modulate_color = Color(1.10, 1.07, 1.03)
-
-	var pressed: StyleBoxTexture = normal.duplicate() as StyleBoxTexture
-	pressed.modulate_color = Color(0.84, 0.80, 0.78)
-	pressed.content_margin_top = 6
-	pressed.content_margin_bottom = 4
-
-	b.add_theme_stylebox_override("normal", normal)
-	b.add_theme_stylebox_override("hover", hover)
-	b.add_theme_stylebox_override("pressed", pressed)
-	return b
 
 func _process(delta: float) -> void:
 	elapsed_time += delta
@@ -575,17 +494,11 @@ func _process(delta: float) -> void:
 		n.position = Vector2(b.x + sin(elapsed_time * spd + ph) * 44.0, ny) + px_offset * 1.05
 		n.rotation = sin(elapsed_time * 1.8 + ph) * 0.85
 
-	# 4. Intro loading bar & logo breathing
-	if not intro_finished:
-		var pct := clampf(elapsed_time / intro_duration, 0.0, 1.0)
-		loading_bar.value = pct * 100.0
-		if pct >= 1.0:
-			_finish_intro()
-
+	# 4. Logo & primary CTA breathing
 	if logo_root:
 		logo_root.scale = Vector2.ONE * (1.0 + sin(elapsed_time * 1.9) * 0.016)
 
-	if intro_finished and play_button and not play_button.is_hovered():
+	if play_button and not play_button.is_hovered():
 		var pulse := 1.0 + sin(elapsed_time * 4.0) * 0.030
 		play_button.pivot_offset = play_button.size * 0.5
 		play_button.scale = Vector2(pulse, pulse)
@@ -650,14 +563,12 @@ func _process(delta: float) -> void:
 		img.save_png(capture_path)
 		get_tree().quit()
 
-func _finish_intro() -> void:
-	intro_finished = true
-	if loading_strip:
-		loading_strip.visible = false
-	if play_button:
-		play_button.visible = true
-	if corner_menu:
-		corner_menu.visible = true
+func _toggle_mute() -> void:
+	var muted := SaveManager.toggle_mute()
+	if audio_btn and audio_btn.has_meta("icon_rect"):
+		var ic := audio_btn.get_meta("icon_rect") as TextureRect
+		if ic:
+			ic.texture = CraftUI.tex("icon_speaker_off" if muted else "icon_speaker_on")
 
 func _trigger_dialog_and_hop(dialog_idx: int, group_idx: int) -> void:
 	if group_idx >= 0 and group_idx < groups.size():
@@ -671,17 +582,13 @@ func _trigger_dialog_and_hop(dialog_idx: int, group_idx: int) -> void:
 	speech_timer = 3.8
 
 func _go_to_tester() -> void:
-	get_tree().change_scene_to_file(WORLD_SELECT_MAP_PATH)
+	SceneLoader.quick_transition_to(WORLD_SELECT_MAP_PATH)
 
-func _show_worlds_modal() -> void:
-	modal_title.text = "4 WORLD ANGRY CAPIBARA (80 STAGE)"
-	modal_body.text = "[b]WORLD 1 — Bamboo Island (1-1 s/d 1-20)[/b]\nPulau bambu tropis & benteng kayu para Croco Minion bersama Chill Capi, Dash Capi, dan Trio Mini.\n\n[b]WORLD 2 — Sunset Onsen Dojo (2-1 s/d 2-20)[/b]\nPemandian air panas senja dengan batu pantul Onsen, tong Yuzu TNT, Yuzu Bomb, Seed-Blaster, Bambu-Katana, dan Heavy Onsen.\n\n[b]WORLD 3 — Neon Sky-Fortress (3-1 s/d 3-20)[/b]\nBenteng langit & Croc Turret penembak aktif dengan mekanik pantulan dan perisai.\n\n[b]WORLD 4 — Yuzu Moon Orbit (4-1 s/d 4-20)[/b]\nZona gravitasi rendah luar angkasa melawan benteng baja King Croc Boss."
-	modal_overlay.visible = true
+func _open_guide_page() -> void:
+	SceneLoader.quick_transition_to(GUIDE_PAGE_PATH)
 
-func _show_credits_modal() -> void:
-	modal_title.text = "CREDITS — ANGRY CAPIBARA"
-	modal_body.text = "[b]Ketua Tim & Pengembang Utama:[/b]\nTobias Andra Valentino (NIM: 245150200111076)\n\n[b]Mata Kuliah:[/b]\nKomputer Grafika — Interactive 3D Computer Graphics\n\n[b]Teknologi & Toolchain (100% Offline Visual Studio C++ + Godot):[/b]\n- Latar 2D Berlapis: Visual Studio C++ 2D Vector/SDF Painterly Engine (Parallax 9 layer)\n- Pemodelan 3D Gameplay & Tekstur `.bmp`: Visual Studio C++ OpenGL Asset Forge (FreeGLUT, GLEW, GLM, Bicubic Bezier)\n- Game Engine: Godot Engine 4.7.1.stable (GL Compatibility)\n\n[b]Referensi Utama:[/b]\nAngry Birds Star Wars I & II"
-	modal_overlay.visible = true
+func _open_settings_page() -> void:
+	SceneLoader.quick_transition_to(SETTINGS_PAGE_PATH)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -698,9 +605,4 @@ func _unhandled_input(event: InputEvent) -> void:
 				g_idx = 1
 			_trigger_dialog_and_hop(d_idx, g_idx)
 		elif event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
-			if intro_finished and not modal_overlay.visible:
-				_go_to_tester()
-			elif not intro_finished:
-				_finish_intro()
-		elif event.keycode == KEY_ESCAPE and modal_overlay.visible:
-			modal_overlay.visible = false
+			_go_to_tester()

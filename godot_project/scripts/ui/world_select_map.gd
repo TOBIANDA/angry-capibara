@@ -52,6 +52,7 @@ const WORLDS := [
 
 class JourneyPathOverlay extends Control:
 	var points_list: Array[Vector2] = []
+	var all_unlocked: bool = false
 
 	func _draw() -> void:
 		if points_list.size() < 2:
@@ -70,9 +71,9 @@ class JourneyPathOverlay extends Control:
 				var t1: float = float(s + 1) / float(segs)
 				var a: Vector2 = _quad_bezier(p0, ctrl, p3, t0)
 				var b: Vector2 = _quad_bezier(p0, ctrl, p3, t1)
-				draw_line(a, b, Color(0.16, 0.11, 0.08, 0.45), 6.0, true)
-				var col := Color(0.98, 0.86, 0.48, 0.88) if i == 0 else Color(0.84, 0.76, 0.62, 0.52)
-				draw_line(a, b, col, 3.0, true)
+				draw_line(a, b, Color(0.149, 0.067, 0.031, 0.72), 8.0, true)
+				var col := Color(1.0, 0.84, 0.27, 0.96) if (i == 0 or all_unlocked) else Color(0.84, 0.80, 0.71, 0.80)
+				draw_line(a, b, col, 4.0, true)
 
 	func _quad_bezier(p0: Vector2, p1: Vector2, p2: Vector2, t: float) -> Vector2:
 		var u: float = 1.0 - t
@@ -82,6 +83,9 @@ var bg_layers: Array[Dictionary] = []
 var sunburst_node: TextureRect
 var clouds_node: TextureRect
 var island_nodes: Array[Dictionary] = []
+var world_info_overlay: ColorRect
+var info_title_lbl: Label
+var info_body_lbl: Label
 
 var elapsed: float = 0.0
 var mouse_px: Vector2 = Vector2.ZERO
@@ -93,11 +97,14 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture="):
 			capture_path = arg.substr(10)
+		elif arg == "--unlock-all":
+			SaveManager.unlock_all_preview = true
 
 	clip_contents = true
 	_setup_parallax_bg()
 	_setup_journey_and_islands()
 	_setup_top_bar()
+	_setup_world_info_modal()
 
 func _add_bg_tex(path: String, base_p: Vector2, sz: Vector2, depth: float, alpha: float = 1.0) -> TextureRect:
 	var tr := TextureRect.new()
@@ -122,10 +129,10 @@ func _setup_parallax_bg() -> void:
 	clouds_node = _add_bg_tex("res://assets/generated/home2d/layer_02_clouds.png", Vector2(0.0, 24.0), Vector2(1280.0, 420.0), 0.16)
 	_add_bg_tex("res://assets/generated/home2d/layer_03_mountains_far.png", Vector2(0.0, 80.0), BASE_SIZE, 0.24)
 
-	# Warm atmospheric veil so islands and cards pop cleanly
+	# Light atmospheric tint keeping sky sunny & clear
 	var veil := ColorRect.new()
 	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	veil.color = Color(0.12, 0.09, 0.07, 0.22)
+	veil.color = Color(0.10, 0.08, 0.06, 0.08)
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(veil)
 
@@ -133,15 +140,23 @@ func _setup_journey_and_islands() -> void:
 	var path_layer := JourneyPathOverlay.new()
 	path_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	path_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	path_layer.all_unlocked = SaveManager.unlock_all_preview
 	for w in WORLDS:
 		path_layer.points_list.append(w["pos"])
 	add_child(path_layer)
 
 	var w1_stars: int = SaveManager.get_world1_total_stars()
+	var short_names := {
+		1: "1. LEMBAH ONSEN BAMBU",
+		2: "2. KEBUN YUZU",
+		3: "3. GUA KRISTAL ES",
+		4: "4. ISTANA RAJA BUAYA"
+	}
 
 	for w in WORLDS:
 		var wid: int = int(w["id"])
-		var unlocked: bool = bool(w["unlocked"])
+		var has_levels: bool = SaveManager.world_has_levels(wid)
+		var unlocked: bool = bool(w["unlocked"]) or SaveManager.unlock_all_preview
 		var center: Vector2 = w["pos"]
 
 		var holder := Control.new()
@@ -176,91 +191,82 @@ func _setup_journey_and_islands() -> void:
 		if ResourceLoader.exists(tex_path):
 			tex_rect.texture = load(tex_path)
 		if not unlocked:
-			tex_rect.modulate = Color(0.62, 0.60, 0.62, 0.84)
+			tex_rect.modulate = Color(0.76, 0.74, 0.78, 0.94)
 		island_btn.add_child(tex_rect)
 
-		# Info Plaque below island (9-slice ui_panel_lacquer.png, crisp & compact)
-		var card := PanelContainer.new()
-		card.position = Vector2(12.0, 236.0)
-		card.size = Vector2(256.0, 146.0 if unlocked else 124.0)
-		var card_sb := StyleBoxTexture.new()
-		card_sb.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
-		card_sb.texture_margin_left = 20
-		card_sb.texture_margin_right = 20
-		card_sb.texture_margin_top = 20
-		card_sb.texture_margin_bottom = 20
-		card_sb.content_margin_left = 14
-		card_sb.content_margin_right = 14
-		card_sb.content_margin_top = 12
-		card_sb.content_margin_bottom = 12
-		card_sb.modulate_color = Color(1.0, 1.0, 1.0, 1.0) if unlocked else Color(0.72, 0.68, 0.66, 0.88)
-		card.add_theme_stylebox_override("panel", card_sb)
-		holder.add_child(card)
-
-		var vb := VBoxContainer.new()
-		vb.add_theme_constant_override("separation", 4)
-		card.add_child(vb)
-
-		var top_r := HBoxContainer.new()
-		top_r.add_theme_constant_override("separation", 6)
-		vb.add_child(top_r)
-
-		var pill := PanelContainer.new()
-		var p_sb := StyleBoxFlat.new()
-		p_sb.bg_color = Color(0.78, 0.21, 0.16) if unlocked else Color(0.22, 0.18, 0.16)
-		p_sb.border_color = Color(0.98, 0.88, 0.62) if unlocked else Color(0.52, 0.46, 0.40)
-		p_sb.set_border_width_all(1)
-		p_sb.set_corner_radius_all(5)
-		p_sb.content_margin_left = 7
-		p_sb.content_margin_right = 7
-		p_sb.content_margin_top = 1
-		p_sb.content_margin_bottom = 1
-		pill.add_theme_stylebox_override("panel", p_sb)
-		top_r.add_child(pill)
-
-		var pill_lbl := Label.new()
-		pill_lbl.text = str(w["badge"])
-		pill_lbl.add_theme_font_size_override("font_size", 10)
-		pill_lbl.add_theme_color_override("font_color", Color(1.0, 0.96, 0.86) if unlocked else Color(0.74, 0.68, 0.60))
-		pill.add_child(pill_lbl)
-
-		var spacer := Control.new()
-		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		top_r.add_child(spacer)
-
-		var star_icon := TextureRect.new()
-		star_icon.texture = load("res://assets/generated/home2d/ui_star_gold.png" if unlocked else "res://assets/generated/home2d/ui_star_empty.png")
-		star_icon.custom_minimum_size = Vector2(15, 15)
-		star_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		star_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		top_r.add_child(star_icon)
-
-		var star_lbl := Label.new()
-		var stars_earned: int = w1_stars if wid == 1 else 0
-		star_lbl.text = "%d / 60" % stars_earned
-		star_lbl.add_theme_font_size_override("font_size", 12)
-		star_lbl.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42) if unlocked else Color(0.62, 0.56, 0.50))
-		top_r.add_child(star_lbl)
-
-		var title_lbl := Label.new()
-		title_lbl.text = str(w["title"])
-		title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		title_lbl.add_theme_font_size_override("font_size", 14)
-		title_lbl.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88) if unlocked else Color(0.74, 0.68, 0.62))
-		vb.add_child(title_lbl)
-
-		var sub_lbl := Label.new()
-		sub_lbl.text = str(w["sub"])
-		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sub_lbl.add_theme_font_size_override("font_size", 11)
-		sub_lbl.add_theme_color_override("font_color", Color(0.86, 0.79, 0.66) if unlocked else Color(0.58, 0.52, 0.46))
-		vb.add_child(sub_lbl)
+		# Crown floating above World 4 Castle
+		if wid == 4:
+			var crown_ic := CraftUI.make_tex_rect(CraftUI.tex("icon_crown"), Vector2(36, 36))
+			crown_ic.position = Vector2(122.0, 8.0)
+			holder.add_child(crown_ic)
 
 		if unlocked:
-			var cta := _make_btn("MASUK →", true, Vector2(0, 44), 13)
-			cta.pressed.connect(_enter_world1)
-			vb.add_child(cta)
-			island_btn.pressed.connect(_enter_world1)
+			if wid == 1:
+				# Floating Red Pennant Flag with Chill Capi Emblem above World 1
+				var flag_wrap := Control.new()
+				flag_wrap.position = Vector2(158.0, -14.0)
+				flag_wrap.size = Vector2(76.0, 62.0)
+				flag_wrap.rotation_degrees = 4.0
+				flag_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				holder.add_child(flag_wrap)
+
+				var flag_ic := CraftUI.make_tex_rect(CraftUI.tex("icon_flag_pennant"), Vector2(76, 62))
+				flag_ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+				flag_wrap.add_child(flag_ic)
+
+				var flag_hero := CraftUI.make_tex_rect(load("res://assets/generated/home2d/char_01_chill_roar.png"), Vector2(28, 28))
+				flag_hero.position = Vector2(23.0, 15.0)
+				flag_wrap.add_child(flag_hero)
+
+			# Compact Hanging Cedar Wood Nameplate
+			var sign_panel := PanelContainer.new()
+			sign_panel.position = Vector2(8.0, 232.0)
+			sign_panel.size = Vector2(264.0, 74.0)
+			sign_panel.pivot_offset = Vector2(132.0, 37.0)
+			sign_panel.rotation_degrees = -1.2 if (wid % 2 == 1) else 1.2
+			sign_panel.add_theme_stylebox_override("panel", CraftUI.make_full_style("wood_btn_cedar", 14.0, 8.0))
+			sign_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(sign_panel)
+
+			var s_vb := VBoxContainer.new()
+			s_vb.alignment = BoxContainer.ALIGNMENT_CENTER
+			s_vb.add_theme_constant_override("separation", 1)
+			sign_panel.add_child(s_vb)
+
+			var name_lbl := CraftUI.make_stroked_label(str(short_names.get(wid, w["title"])), 14, CraftUI.CREAM_TEXT, 4, true)
+			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_vb.add_child(name_lbl)
+
+			var star_row := HBoxContainer.new()
+			star_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			star_row.add_theme_constant_override("separation", 4)
+			s_vb.add_child(star_row)
+
+			var st_ic := CraftUI.make_tex_rect(CraftUI.tex("icon_star_gold"), Vector2(16, 16))
+			star_row.add_child(st_ic)
+
+			var st_val := w1_stars if wid == 1 else 0
+			var st_lbl := CraftUI.make_stroked_label("%d / 60" % st_val, 13, CraftUI.GOLD_TEXT, 3, true)
+			star_row.add_child(st_lbl)
+
+			# Action Stamp (MASUK if level JSON exists, CEK WORLD if preview-unlocked without JSON)
+			var cta_txt := "MASUK ▶" if has_levels else "CEK WORLD ▶"
+			var cta_tex := "wood_btn_vermilion" if has_levels else "wood_btn_amber"
+			var cta := CraftUI.make_wood_btn(cta_txt, cta_tex, Vector2(164, 52), 19, 1.6)
+			cta.position = Vector2(58.0, 310.0)
+			cta.size = Vector2(164.0, 52.0)
+
+			var wid_cap := wid
+			var wtitle_cap := str(w["title"])
+			var on_select := func():
+				if has_levels:
+					_enter_world1()
+				else:
+					_show_missing_world_modal(wid_cap, wtitle_cap)
+			cta.pressed.connect(on_select)
+			island_btn.pressed.connect(on_select)
+			holder.add_child(cta)
+
 			island_btn.mouse_entered.connect(func():
 				island_btn.scale = Vector2(1.06, 1.06)
 			)
@@ -268,12 +274,17 @@ func _setup_journey_and_islands() -> void:
 				island_btn.scale = Vector2.ONE
 			)
 		else:
-			var lk_lbl := Label.new()
-			lk_lbl.text = "— SEGERA HADIR —"
-			lk_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lk_lbl.add_theme_font_size_override("font_size", 11)
-			lk_lbl.add_theme_color_override("font_color", Color(0.64, 0.58, 0.50))
-			vb.add_child(lk_lbl)
+			# Chunky Cartoon Brass Padlock over locked island
+			var lock_ic := CraftUI.make_tex_rect(CraftUI.tex("icon_padlock"), Vector2(40, 40))
+			lock_ic.position = Vector2(120.0, 96.0)
+			holder.add_child(lock_ic)
+
+			var locked_lbl := CraftUI.make_stroked_label(str(short_names.get(wid, w["title"])), 18, Color(0.92, 0.88, 0.78), 5, true)
+			locked_lbl.position = Vector2(0.0, 224.0)
+			locked_lbl.size = Vector2(280.0, 34.0)
+			locked_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			locked_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(locked_lbl)
 
 		island_nodes.append({
 			"node": holder,
@@ -285,125 +296,92 @@ func _setup_top_bar() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	margin.offset_bottom = 86
-	margin.add_theme_constant_override("margin_left", 36)
-	margin.add_theme_constant_override("margin_right", 36)
-	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_left", CraftUI.TOP_BAR_MARGIN_X)
+	margin.add_theme_constant_override("margin_right", CraftUI.TOP_BAR_MARGIN_X)
+	margin.add_theme_constant_override("margin_top", CraftUI.TOP_BAR_MARGIN_TOP)
 	add_child(margin)
 
 	var hdr := HBoxContainer.new()
 	hdr.add_theme_constant_override("separation", 14)
 	margin.add_child(hdr)
 
-	var btn_home := _make_btn("← HOME", false, Vector2(110, 44), 14)
-	btn_home.pressed.connect(func(): get_tree().change_scene_to_file(HOME_SCENE))
+	var btn_home := CraftUI.make_back_btn("HOME")
+	btn_home.pressed.connect(_go_home)
 	hdr.add_child(btn_home)
 
-	var title_vb := VBoxContainer.new()
-	title_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_vb.add_theme_constant_override("separation", 1)
-	hdr.add_child(title_vb)
+	var lbl_title := CraftUI.make_stroked_label("KEPULAUAN KAPIBARA", 34, CraftUI.GOLD_TEXT, 7, true)
+	lbl_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_child(lbl_title)
 
-	var lbl_title := Label.new()
-	lbl_title.text = "PETA WILAYAH — KEPULAUAN KAPIBARA"
-	lbl_title.add_theme_font_size_override("font_size", 24)
-	lbl_title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
-	lbl_title.add_theme_color_override("font_outline_color", Color(0.14, 0.09, 0.08))
-	lbl_title.add_theme_constant_override("outline_size", 4)
-	title_vb.add_child(lbl_title)
+	var sc := CraftUI.make_star_counter("%d/240" % SaveManager.get_world1_total_stars(), 30.0, 24)
+	var sc_root: Control = sc["root"]
+	sc_root.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hdr.add_child(sc_root)
 
-	var lbl_sub := Label.new()
-	lbl_sub.text = "Pilih Pulau Pertempuran • 4 Dunia (80 Stage)"
-	lbl_sub.add_theme_font_size_override("font_size", 13)
-	lbl_sub.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
-	lbl_sub.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.07))
-	lbl_sub.add_theme_constant_override("outline_size", 3)
-	title_vb.add_child(lbl_sub)
+func _setup_world_info_modal() -> void:
+	world_info_overlay = ColorRect.new()
+	world_info_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	world_info_overlay.color = Color(0.06, 0.04, 0.03, 0.72)
+	world_info_overlay.visible = false
+	add_child(world_info_overlay)
 
-	# Total Star Counter (9-slice ui_panel_lacquer.png + ui_star_gold.png)
-	var total_stars: int = SaveManager.get_world1_total_stars()
-	var star_panel := PanelContainer.new()
-	var sp_st := StyleBoxTexture.new()
-	sp_st.texture = load("res://assets/generated/home2d/ui_panel_lacquer.png")
-	sp_st.texture_margin_left = 20
-	sp_st.texture_margin_right = 20
-	sp_st.texture_margin_top = 20
-	sp_st.texture_margin_bottom = 20
-	sp_st.content_margin_left = 18
-	sp_st.content_margin_right = 18
-	sp_st.content_margin_top = 12
-	sp_st.content_margin_bottom = 12
-	star_panel.add_theme_stylebox_override("panel", sp_st)
-	hdr.add_child(star_panel)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -310
+	panel.offset_right = 310
+	panel.offset_top = -155
+	panel.offset_bottom = 155
+	panel.add_theme_stylebox_override("panel", CraftUI.make_modal_panel_style())
+	world_info_overlay.add_child(panel)
 
-	var sp_vb := VBoxContainer.new()
-	sp_vb.add_theme_constant_override("separation", 3)
-	star_panel.add_child(sp_vb)
+	var vb := VBoxContainer.new()
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 14)
+	panel.add_child(vb)
 
-	var sp_top := HBoxContainer.new()
-	sp_top.alignment = BoxContainer.ALIGNMENT_CENTER
-	sp_top.add_theme_constant_override("separation", 5)
-	sp_vb.add_child(sp_top)
+	info_title_lbl = CraftUI.make_stroked_label("WORLD 2", 24, CraftUI.GOLD_TEXT, 5, true)
+	info_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(info_title_lbl)
 
-	var st_ic := TextureRect.new()
-	st_ic.texture = load("res://assets/generated/home2d/ui_star_gold.png")
-	st_ic.custom_minimum_size = Vector2(18, 18)
-	st_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	st_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sp_top.add_child(st_ic)
+	info_body_lbl = Label.new()
+	info_body_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_body_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	info_body_lbl.add_theme_font_override("font", CraftUI.body_font())
+	info_body_lbl.add_theme_font_size_override("font_size", 15)
+	info_body_lbl.add_theme_color_override("font_color", CraftUI.INK)
+	vb.add_child(info_body_lbl)
 
-	var lbl_total := Label.new()
-	lbl_total.text = "%d / 240" % total_stars
-	lbl_total.add_theme_font_size_override("font_size", 15)
-	lbl_total.add_theme_color_override("font_color", Color(0.98, 0.85, 0.42))
-	sp_top.add_child(lbl_total)
+	var btns := HBoxContainer.new()
+	btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	btns.add_theme_constant_override("separation", 16)
+	vb.add_child(btns)
 
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(110, 5)
-	bar.max_value = 240.0
-	bar.value = float(total_stars)
-	bar.show_percentage = false
-	var b_bg := StyleBoxFlat.new()
-	b_bg.bg_color = Color(0.08, 0.06, 0.05, 0.90)
-	b_bg.set_corner_radius_all(3)
-	var b_fill := StyleBoxFlat.new()
-	b_fill.bg_color = Color(0.96, 0.80, 0.34)
-	b_fill.set_corner_radius_all(3)
-	bar.add_theme_stylebox_override("background", b_bg)
-	bar.add_theme_stylebox_override("fill", b_fill)
-	sp_vb.add_child(bar)
+	var btn_w1 := CraftUI.make_wood_btn("MAIN WORLD 1", "wood_btn_vermilion", Vector2(186, 46), 17, -0.8)
+	btn_w1.pressed.connect(func():
+		world_info_overlay.visible = false
+		_enter_world1()
+	)
+	btns.add_child(btn_w1)
 
-func _make_btn(txt: String, is_primary: bool, min_sz: Vector2, fsize: int) -> Button:
-	var b := Button.new()
-	b.text = txt
-	b.custom_minimum_size = min_sz
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.add_theme_font_size_override("font_size", fsize)
-	b.add_theme_color_override("font_color", Color(0.98, 0.95, 0.89))
-	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
-	b.add_theme_constant_override("outline_size", 2)
-	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
-	var sb := StyleBoxTexture.new()
-	sb.texture = load(tex_path)
-	sb.texture_margin_left = 20
-	sb.texture_margin_right = 20
-	sb.texture_margin_top = 14
-	sb.texture_margin_bottom = 16
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
-	sb.content_margin_top = 3
-	sb.content_margin_bottom = 5
-	var hv: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
-	hv.modulate_color = Color(1.10, 1.07, 1.03)
-	var pr: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
-	pr.modulate_color = Color(0.84, 0.80, 0.78)
-	b.add_theme_stylebox_override("normal", sb)
-	b.add_theme_stylebox_override("hover", hv)
-	b.add_theme_stylebox_override("pressed", pr)
-	return b
+	var btn_ok := CraftUI.make_wood_btn("TUTUP", "wood_btn_bamboo", Vector2(140, 46), 17, 0.8)
+	btn_ok.pressed.connect(func(): world_info_overlay.visible = false)
+	btns.add_child(btn_ok)
+
+func _show_missing_world_modal(wid: int, wtitle: String) -> void:
+	if is_instance_valid(info_title_lbl):
+		info_title_lbl.text = "WORLD %d • %s" % [wid, wtitle.to_upper()]
+	if is_instance_valid(info_body_lbl):
+		info_body_lbl.text = "Mode 'Semua Terbuka' aktif! Namun folder data level (data/levels/w%d/) belum dibuat.\nSaat ini baru World 1 (20 Stage: 1-1 s/d 1-20) yang memiliki file level JSON." % wid
+	if is_instance_valid(world_info_overlay):
+		world_info_overlay.visible = true
+
+func _go_home() -> void:
+	SceneLoader.quick_transition_to(HOME_SCENE)
 
 func _enter_world1() -> void:
-	get_tree().change_scene_to_file(WORLD1_SELECT_SCENE)
+	SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE)
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -436,4 +414,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			mouse_px = (event.position / vp - Vector2(0.5, 0.5)) * 2.0
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
-			get_tree().change_scene_to_file(HOME_SCENE)
+			if is_instance_valid(world_info_overlay) and world_info_overlay.visible:
+				world_info_overlay.visible = false
+			else:
+				_go_home()

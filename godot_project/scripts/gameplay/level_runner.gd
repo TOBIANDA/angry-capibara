@@ -19,22 +19,34 @@ const CAPY_SPECS := {
 	"chill": {
 		"name": "Chill Capi",
 		"mesh": "res://assets/generated/models/anime_capy_chill.obj",
+		"portrait": "res://assets/generated/home2d/char_01_chill_roar.png",
+		"wood": "wood_sq_vermilion",
+		"accent": Color(1.0, 0.902, 0.349),
 		"mass": 2.0,
 		"radius": 0.36,
+		"skill_short": "ZEN BUMP",
 		"skill_desc": "Zen Bump (getar ke bawah)"
 	},
 	"dash": {
 		"name": "Dash Capi",
 		"mesh": "res://assets/generated/models/anime_capy_dash.obj",
+		"portrait": "res://assets/generated/home2d/char_06_dash_leap.png",
+		"wood": "wood_sq_amber",
+		"accent": Color(1.0, 0.855, 0.32),
 		"mass": 1.8,
 		"radius": 0.35,
+		"skill_short": "TURBO DASH",
 		"skill_desc": "Turbo Dash 2.2x (1.8x ke Kayu)"
 	},
 	"mini": {
 		"name": "Trio Mini-Capi",
 		"mesh": "res://assets/generated/models/anime_capy_mini.obj",
+		"portrait": "res://assets/generated/home2d/char_07_mini_capi.png",
+		"wood": "wood_sq_sky",
+		"accent": Color(0.502, 0.882, 1.0),
 		"mass": 1.0,
 		"radius": 0.25,
+		"skill_short": "TRIPLE SPLIT 3x",
 		"skill_desc": "Triple Split 3x (2.0x ke Es/Kaca)"
 	}
 }
@@ -115,6 +127,8 @@ var stage_ended: bool = false
 var end_delay_timer: float = 0.0
 var pending_victory: bool = false
 var pending_defeat: bool = false
+var floating_texts: Array[Dictionary] = []
+var shake_trauma: float = 0.0
 
 # Camera orbit & pan state
 var orbit_active: bool = false
@@ -126,17 +140,132 @@ var cam_pan_x: float = 0.0
 var cam_pan_target_x: float = 0.0
 var snap_camera: bool = true
 
-# HUD & Overlays
+# HUD & Overlays (Bamboo Woodblock Arcade UX + 3D-Projected Diegetic Cues)
+class DiegeticOverlay extends Control:
+	var runner: Node = null
+
+	func _draw() -> void:
+		if runner == null or runner.stage_ended or not is_instance_valid(runner.cam):
+			return
+		var cam_3d: Camera3D = runner.cam
+		var f_disp: Font = CraftUI.display_font()
+		var ink: Color = CraftUI.INK
+
+		# 1. Diegetic Slingshot Pull + Zen Bump Arc Cue on Stage 1-1 before first aim/shot
+		if runner.current_stage_id == "1-1" and not runner.shot_fired and not runner.is_aiming and is_instance_valid(runner.active_capy):
+			var p_start := Vector3(runner.sling_x + 0.35, runner.sling_base_y + 2.0, 0.0)
+			var p_apex := Vector3(runner.sling_x + 6.4, runner.sling_base_y + 3.6, 0.0)
+			var p_ctrl := Vector3(runner.sling_x + 3.2, runner.sling_base_y + 4.5, 0.0)
+			if not cam_3d.is_position_behind(p_start) and not cam_3d.is_position_behind(p_apex):
+				var s2 := cam_3d.unproject_position(p_start)
+				var a2 := cam_3d.unproject_position(p_apex)
+				var c2 := cam_3d.unproject_position(p_ctrl)
+				var steps := 14
+				for i in steps:
+					var t := float(i) / float(steps - 1)
+					var u := 1.0 - t
+					var pt: Vector2 = u * u * s2 + 2.0 * u * t * c2 + t * t * a2
+					draw_circle(pt, 3.2, Color(1.0, 0.99, 0.94, 0.78))
+				# Pull-back arrow beside slingshot
+				var pull_tip := s2 + Vector2(-48, 22)
+				var pull_base := s2 + Vector2(-12, 6)
+				draw_line(pull_base, pull_tip, Color(1.0, 0.90, 0.35, 0.92), 4.0, true)
+				draw_colored_polygon(PackedVector2Array([
+					pull_tip + Vector2(-6, 3),
+					pull_tip + Vector2(10, -6),
+					pull_tip + Vector2(11, 7)
+				]), Color(1.0, 0.90, 0.35, 0.95))
+				# Zen Bump Sky Prompt at arc apex
+				draw_circle(a2, 10.0, ink)
+				draw_circle(a2, 7.5, Color(1.0, 0.90, 0.35, 0.96))
+				draw_colored_polygon(PackedVector2Array([
+					a2 + Vector2(-7, 14), a2 + Vector2(7, 14), a2 + Vector2(0, 24)
+				]), Color(1.0, 0.90, 0.35, 0.96))
+				draw_string_outline(f_disp, a2 + Vector2(-76, -16), "SPASI = ZEN BUMP!", HORIZONTAL_ALIGNMENT_CENTER, 152, 14, 5, ink)
+				draw_string(f_disp, a2 + Vector2(-76, -16), "SPASI = ZEN BUMP!", HORIZONTAL_ALIGNMENT_CENTER, 152, 14, Color(1.0, 0.99, 0.96))
+
+		# 2. Diegetic Boss & TNT Markers
+		for e in runner.enemies:
+			if bool(e["dead"]):
+				continue
+			if str(e["type"]) == "mini_boss":
+				var rb: RigidBody3D = e["rb"]
+				if is_instance_valid(rb):
+					var wp := rb.global_position + Vector3(0.0, 1.15, 0.0)
+					if not cam_3d.is_position_behind(wp):
+						var bob_y := sin(runner.anim_time * 4.5) * 4.0
+						var sp := cam_3d.unproject_position(wp) + Vector2(0.0, bob_y)
+						draw_colored_polygon(PackedVector2Array([
+							sp + Vector2(-11, -14), sp + Vector2(11, -14), sp + Vector2(0, -1)
+						]), ink)
+						draw_colored_polygon(PackedVector2Array([
+							sp + Vector2(-8, -12), sp + Vector2(8, -12), sp + Vector2(0, -3)
+						]), Color(0.95, 0.27, 0.18))
+						draw_string_outline(f_disp, sp + Vector2(-42, -20), "BOSS!", HORIZONTAL_ALIGNMENT_CENTER, 84, 15, 5, ink)
+						draw_string(f_disp, sp + Vector2(-42, -20), "BOSS!", HORIZONTAL_ALIGNMENT_CENTER, 84, 15, Color(1.0, 0.90, 0.35))
+
+		if not runner.shot_fired:
+			var best_tnt_pos := Vector3.ZERO
+			var found_tnt := false
+			for b in runner.blocks:
+				if bool(b["dead"]) or str(b["type"]) != "tnt":
+					continue
+				var brb: RigidBody3D = b["rb"]
+				if is_instance_valid(brb) and (not found_tnt or brb.global_position.y > best_tnt_pos.y):
+					best_tnt_pos = brb.global_position
+					found_tnt = true
+			if found_tnt:
+				var tp := best_tnt_pos + Vector3(0.0, 0.68, 0.0)
+				if not cam_3d.is_position_behind(tp):
+					var sp_t := cam_3d.unproject_position(tp) + Vector2(0.0, sin(runner.anim_time * 5.0) * 3.0)
+					draw_colored_polygon(PackedVector2Array([
+						sp_t + Vector2(-8, -10), sp_t + Vector2(8, -10), sp_t + Vector2(0, 0)
+					]), Color(1.0, 0.83, 0.15))
+					draw_string_outline(f_disp, sp_t + Vector2(-34, -15), "TNT!", HORIZONTAL_ALIGNMENT_CENTER, 68, 12, 4, ink)
+					draw_string(f_disp, sp_t + Vector2(-34, -15), "TNT!", HORIZONTAL_ALIGNMENT_CENTER, 68, 12, Color(1.0, 0.48, 0.28))
+
+		# 3. Floating Score & Combo Popups (Gameplay Juice)
+		for ft in runner.floating_texts:
+			var wp: Vector3 = ft["pos"]
+			if cam_3d.is_position_behind(wp):
+				continue
+			var sp: Vector2 = cam_3d.unproject_position(wp)
+			var u: float = clampf(float(ft["t"]) / maxf(float(ft["dur"]), 0.01), 0.0, 1.0)
+			var alpha: float = 1.0 if u < 0.65 else clampf(1.0 - (u - 0.65) / 0.35, 0.0, 1.0)
+			var txt: String = str(ft["text"])
+			var fsz: int = int(ft["size"])
+			var base_col: Color = ft["color"]
+			var col := Color(base_col.r, base_col.g, base_col.b, alpha)
+			var ink_a := Color(ink.r, ink.g, ink.b, alpha)
+			draw_string_outline(f_disp, sp + Vector2(-90, -8), txt, HORIZONTAL_ALIGNMENT_CENTER, 180, fsz, 5, ink_a)
+			draw_string(f_disp, sp + Vector2(-90, -8), txt, HORIZONTAL_ALIGNMENT_CENTER, 180, fsz, col)
+
+class PauseInputCatcher extends Control:
+	var on_resume_key: Callable
+
+	func _input(event: InputEvent) -> void:
+		if CraftUI.is_confirm_open(get_tree()):
+			return
+		if visible and event is InputEventKey and event.pressed and not event.echo:
+			if event.keycode == KEY_ESCAPE or event.keycode == KEY_P:
+				get_viewport().set_input_as_handled()
+				if on_resume_key.is_valid():
+					on_resume_key.call()
+
+var diegetic_overlay: DiegeticOverlay
 var lbl_stage_title: Label
 var lbl_enemy_pill: Label
 var lbl_score: Label
 var score_star_bar: ProgressBar
 var hud_star_pips: Array[TextureRect] = []
-var combo_panel: PanelContainer
 var lbl_combo: Label
+var boss_bar_root: Control
+var boss_segments: Array[ColorRect] = []
+var lbl_boss_hp: Label
+var active_hero_wood_bg: ColorRect
+var active_hero_portrait: TextureRect
+var active_skill_lbl: Label
 var hud_squad_row: HBoxContainer
-var lbl_queue_info: Label
-var lbl_tip: Label
 var btn_views: Array[Button] = []
 var result_overlay: ColorRect
 var result_badge_lbl: Label
@@ -147,9 +276,23 @@ var result_body: Label
 var btn_retry: Button
 var btn_next_stage: Button
 
+# In-Game Pause Menu state & controls
+var is_paused: bool = false
+var pause_layer: CanvasLayer
+var pause_overlay: ColorRect
+var pause_stage_lbl: Label
+var pause_stats_lbl: Label
+var pause_audio_icon: TextureRect
+var pause_vol_slider: HSlider
+var pause_vol_pct: Label
+var pause_btn_mute: Button
+var pause_btn_disp: Button
+
 # CLI flags for capture & automated 20-stage stability validation
 var capture_stage_path: String = ""
 var capture_croco_path: String = ""
+var capture_pause_path: String = ""
+var capture_confirm_reset_path: String = ""
 var capture_done: bool = false
 var validate_all_w1: bool = false
 var validate_idx: int = 1
@@ -165,6 +308,10 @@ func _ready() -> void:
 			capture_stage_path = arg.substr(16)
 		elif arg.begins_with("--capture-croco="):
 			capture_croco_path = arg.substr(16)
+		elif arg.begins_with("--capture-pause="):
+			capture_pause_path = arg.substr(16)
+		elif arg.begins_with("--capture-confirm-reset="):
+			capture_confirm_reset_path = arg.substr(24)
 		elif arg == "--validate-w1":
 			validate_all_w1 = true
 			current_stage_id = "1-1"
@@ -186,6 +333,7 @@ func _ready() -> void:
 	_setup_slingshot()
 	_setup_trajectory_dots()
 	_setup_hud()
+	_setup_pause_menu()
 
 	arena_root = Node3D.new()
 	add_child(arena_root)
@@ -525,261 +673,291 @@ func _setup_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 
-	var hud_sb := _make_lacquer_sb()
+	# 0) 3D-Projected Diegetic Cues Layer (behind floating HUD stamps)
+	diegetic_overlay = DiegeticOverlay.new()
+	diegetic_overlay.runner = self
+	diegetic_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	diegetic_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(diegetic_overlay)
 
-	# TOP-LEFT: Navigasi & Kamera (tactile woodblock plaque)
-	var top_l := PanelContainer.new()
-	top_l.position = Vector2(14, 12)
-	top_l.add_theme_stylebox_override("panel", hud_sb)
-	canvas.add_child(top_l)
-
+	# 1) TOP-LEFT: Bare Carved Wood Action Stamps + Angular Camera Angle Tabs
 	var tl_row := HBoxContainer.new()
-	tl_row.add_theme_constant_override("separation", 6)
-	top_l.add_child(tl_row)
+	tl_row.position = Vector2(18, 14)
+	tl_row.add_theme_constant_override("separation", 8)
+	canvas.add_child(tl_row)
 
-	var btn_map := _make_hud_btn("← PETA W1", false)
-	btn_map.pressed.connect(func(): get_tree().change_scene_to_file(WORLD1_SELECT_SCENE))
+	var btn_map := CraftUI.make_icon_stamp("icon_pause", "wood_sq_bamboo", Vector2(46, 44), -2.0)
+	btn_map.pressed.connect(_toggle_pause)
 	tl_row.add_child(btn_map)
 
-	var btn_restart := _make_hud_btn("[R] Ulang", false)
-	btn_restart.pressed.connect(func(): _load_stage(current_stage_id))
+	var btn_restart := CraftUI.make_icon_stamp("icon_retry", "wood_sq_amber", Vector2(46, 44), 1.8, "R")
+	btn_restart.pressed.connect(_request_restart_stage)
 	tl_row.add_child(btn_restart)
 
-	var sep := ColorRect.new()
-	sep.custom_minimum_size = Vector2(2, 22)
-	sep.color = Color(0.76, 0.66, 0.48, 0.35)
-	tl_row.add_child(sep)
+	var cam_spacer := Control.new()
+	cam_spacer.custom_minimum_size = Vector2(4, 1)
+	tl_row.add_child(cam_spacer)
 
+	btn_views.clear()
+	var view_names := ["1 • 2.5D", "2 • SERONG", "3 • 3D"]
+	var view_tilts := [-1.2, 0.8, -0.8]
 	for i in 3:
-		var names := ["[1] 2.5D", "[2] Serong", "[3] 3D"]
-		var b := _make_hud_btn(names[i], false)
+		var b := CraftUI.make_wood_btn(view_names[i], "wood_btn_cedar_dark", Vector2(88, 38), 13, view_tilts[i])
 		b.toggle_mode = true
 		var idx := i
 		b.pressed.connect(func(): _set_camera_view(idx))
 		tl_row.add_child(b)
 		btn_views.append(b)
 
-	# TOP-RIGHT: Stage Title, Enemy Pill, Score & Live 1★/2★/3★ Progress Bar
-	var top_r := PanelContainer.new()
-	top_r.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	top_r.offset_left = -410
-	top_r.offset_right = -14
-	top_r.offset_top = 12
-	top_r.offset_bottom = 98
-	top_r.add_theme_stylebox_override("panel", hud_sb)
-	canvas.add_child(top_r)
+	# 2) TOP-CENTER: Arcade Segmented Boss Meter (visible on Boss stages!)
+	boss_bar_root = Control.new()
+	boss_bar_root.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	boss_bar_root.offset_left = -190
+	boss_bar_root.offset_right = 190
+	boss_bar_root.offset_top = 10
+	boss_bar_root.offset_bottom = 68
+	boss_bar_root.visible = false
+	boss_bar_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(boss_bar_root)
 
-	var tr_vb := VBoxContainer.new()
-	tr_vb.add_theme_constant_override("separation", 4)
-	top_r.add_child(tr_vb)
+	var boss_title := CraftUI.make_stroked_label("BENTENG AGUNG KLAN BUAYA", 17, CraftUI.GOLD_TEXT, 5, true)
+	boss_title.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_bar_root.add_child(boss_title)
 
-	var tr_top := HBoxContainer.new()
-	tr_top.add_theme_constant_override("separation", 8)
-	tr_vb.add_child(tr_top)
+	var boss_track_wrap := Control.new()
+	boss_track_wrap.position = Vector2(54, 26)
+	boss_track_wrap.size = Vector2(268, 22)
+	boss_bar_root.add_child(boss_track_wrap)
 
-	lbl_stage_title = Label.new()
-	lbl_stage_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl_stage_title.add_theme_font_size_override("font_size", 14)
-	lbl_stage_title.add_theme_color_override("font_color", Color(0.98, 0.94, 0.86))
-	tr_top.add_child(lbl_stage_title)
+	var track_bg := ColorRect.new()
+	track_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	track_bg.color = CraftUI.INK
+	boss_track_wrap.add_child(track_bg)
 
-	var enemy_pill := PanelContainer.new()
-	var ep_sb := StyleBoxFlat.new()
-	ep_sb.bg_color = Color(0.18, 0.26, 0.14, 0.95)
-	ep_sb.border_color = Color(0.56, 0.78, 0.42, 0.85)
-	ep_sb.set_border_width_all(1)
-	ep_sb.set_corner_radius_all(6)
-	ep_sb.content_margin_left = 8
-	ep_sb.content_margin_right = 8
-	ep_sb.content_margin_top = 1
-	ep_sb.content_margin_bottom = 1
-	enemy_pill.add_theme_stylebox_override("panel", ep_sb)
-	tr_top.add_child(enemy_pill)
+	var seg_hb := HBoxContainer.new()
+	seg_hb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	seg_hb.offset_left = 3
+	seg_hb.offset_right = -3
+	seg_hb.offset_top = 3
+	seg_hb.offset_bottom = -3
+	seg_hb.add_theme_constant_override("separation", 2)
+	boss_track_wrap.add_child(seg_hb)
 
-	lbl_enemy_pill = Label.new()
-	lbl_enemy_pill.add_theme_font_size_override("font_size", 12)
-	lbl_enemy_pill.add_theme_color_override("font_color", Color(0.86, 0.96, 0.76))
-	enemy_pill.add_child(lbl_enemy_pill)
+	boss_segments.clear()
+	for _k in 5:
+		var seg := ColorRect.new()
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.color = Color(0.91, 0.22, 0.16)
+		seg_hb.add_child(seg)
+		boss_segments.append(seg)
 
-	lbl_score = Label.new()
-	lbl_score.add_theme_font_size_override("font_size", 13)
-	lbl_score.add_theme_color_override("font_color", Color(0.98, 0.85, 0.44))
-	tr_vb.add_child(lbl_score)
+	var boss_ic := CraftUI.make_tex_rect(CraftUI.tex("icon_croc_boss"), Vector2(44, 44))
+	boss_ic.position = Vector2(22, 16)
+	boss_bar_root.add_child(boss_ic)
+
+	lbl_boss_hp = CraftUI.make_stroked_label("5/5", 16, CraftUI.CREAM_TEXT, 4, true)
+	lbl_boss_hp.position = Vector2(328, 25)
+	boss_bar_root.add_child(lbl_boss_hp)
+
+	# 3) TOP-RIGHT: Bare Floating Arcade Score, 3-Star Progress Bar & Croc Target Icon (NO box/pill!)
+	var tr_wrap := HBoxContainer.new()
+	tr_wrap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	tr_wrap.offset_left = -360
+	tr_wrap.offset_right = -24
+	tr_wrap.offset_top = 10
+	tr_wrap.offset_bottom = 86
+	tr_wrap.alignment = BoxContainer.ALIGNMENT_END
+	tr_wrap.add_theme_constant_override("separation", 18)
+	tr_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(tr_wrap)
+
+	var tr_left := VBoxContainer.new()
+	tr_left.add_theme_constant_override("separation", 1)
+	tr_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr_wrap.add_child(tr_left)
+
+	lbl_stage_title = CraftUI.make_stroked_label("W1 1-1 • GERBANG LEMBAH BAMBU", 12, Color(1.0, 0.97, 0.88), 4, false)
+	lbl_stage_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tr_left.add_child(lbl_stage_title)
+
+	lbl_score = CraftUI.make_stroked_label("00,000", 34, CraftUI.GOLD_TEXT, 6, true)
+	lbl_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tr_left.add_child(lbl_score)
 
 	var bar_row := HBoxContainer.new()
-	bar_row.add_theme_constant_override("separation", 8)
-	bar_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	tr_vb.add_child(bar_row)
+	bar_row.alignment = BoxContainer.ALIGNMENT_END
+	bar_row.add_theme_constant_override("separation", 4)
+	tr_left.add_child(bar_row)
 
 	score_star_bar = ProgressBar.new()
-	score_star_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	score_star_bar.custom_minimum_size = Vector2(0, 8)
+	score_star_bar.custom_minimum_size = Vector2(104, 10)
 	score_star_bar.show_percentage = false
 	var ssb_bg := StyleBoxFlat.new()
-	ssb_bg.bg_color = Color(0.08, 0.06, 0.05, 0.92)
-	ssb_bg.border_color = Color(0.46, 0.39, 0.30, 0.60)
-	ssb_bg.set_border_width_all(1)
-	ssb_bg.set_corner_radius_all(4)
+	ssb_bg.bg_color = Color(0.23, 0.11, 0.07)
+	ssb_bg.border_color = CraftUI.INK
+	ssb_bg.set_border_width_all(2)
+	ssb_bg.set_corner_radius_all(3)
 	var ssb_fill := StyleBoxFlat.new()
-	ssb_fill.bg_color = Color(0.96, 0.80, 0.32)
-	ssb_fill.set_corner_radius_all(4)
+	ssb_fill.bg_color = Color(1.0, 0.83, 0.15)
+	ssb_fill.set_corner_radius_all(2)
 	score_star_bar.add_theme_stylebox_override("background", ssb_bg)
 	score_star_bar.add_theme_stylebox_override("fill", ssb_fill)
 	bar_row.add_child(score_star_bar)
 
 	hud_star_pips.clear()
-	var tex_empty_star: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
-	for k in 3:
+	for _k in 3:
 		var sp := TextureRect.new()
-		sp.texture = tex_empty_star
+		sp.texture = CraftUI.tex("icon_star_empty")
 		sp.custom_minimum_size = Vector2(18, 18)
 		sp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		sp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		bar_row.add_child(sp)
 		hud_star_pips.append(sp)
 
-	# COMBO BADGE (visible when combo_count >= 2)
-	combo_panel = PanelContainer.new()
-	combo_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	combo_panel.offset_left = -220
-	combo_panel.offset_right = -14
-	combo_panel.offset_top = 92
-	combo_panel.offset_bottom = 128
-	var combo_sb := StyleBoxTexture.new()
-	combo_sb.texture = load("res://assets/generated/home2d/ui_btn_vermilion.png")
-	combo_sb.texture_margin_left = 24
-	combo_sb.texture_margin_right = 24
-	combo_sb.texture_margin_top = 20
-	combo_sb.texture_margin_bottom = 24
-	combo_panel.add_theme_stylebox_override("panel", combo_sb)
-	combo_panel.visible = false
-	canvas.add_child(combo_panel)
+	var enemy_box := HBoxContainer.new()
+	enemy_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	enemy_box.add_theme_constant_override("separation", 5)
+	tr_wrap.add_child(enemy_box)
 
-	var cm_mar := MarginContainer.new()
-	cm_mar.add_theme_constant_override("margin_left", 10)
-	cm_mar.add_theme_constant_override("margin_right", 10)
-	cm_mar.add_theme_constant_override("margin_top", 4)
-	cm_mar.add_theme_constant_override("margin_bottom", 4)
-	combo_panel.add_child(cm_mar)
+	var croc_ic := TextureRect.new()
+	croc_ic.texture = CraftUI.tex("icon_croc_target")
+	croc_ic.custom_minimum_size = Vector2(34, 34)
+	croc_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	croc_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	enemy_box.add_child(croc_ic)
 
-	lbl_combo = Label.new()
-	lbl_combo.add_theme_font_size_override("font_size", 14)
-	lbl_combo.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84))
-	lbl_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cm_mar.add_child(lbl_combo)
+	lbl_enemy_pill = CraftUI.make_stroked_label("×2", 28, CraftUI.CREAM_TEXT, 6, true)
+	enemy_box.add_child(lbl_enemy_pill)
 
-	# BOTTOM BAR: Color-Coded Squad Queue Pills + Active Skill & Stage Tip
-	var bot := PanelContainer.new()
-	bot.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	bot.offset_left = 14
-	bot.offset_right = 900
-	bot.offset_top = -82
-	bot.offset_bottom = -12
-	bot.add_theme_stylebox_override("panel", hud_sb)
-	canvas.add_child(bot)
+	# Bare Floating Combo Text (NO vermilion pill box!)
+	lbl_combo = CraftUI.make_stroked_label("", 22, Color(1.0, 0.45, 0.25), 5, true)
+	lbl_combo.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	lbl_combo.offset_left = -240
+	lbl_combo.offset_right = -24
+	lbl_combo.offset_top = 88
+	lbl_combo.offset_bottom = 118
+	lbl_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lbl_combo.visible = false
+	canvas.add_child(lbl_combo)
 
-	var b_vb := VBoxContainer.new()
-	b_vb.add_theme_constant_override("separation", 4)
-	bot.add_child(b_vb)
+	# 4) BOTTOM-LEFT: Bare Floating Active Hero Cutout + Skill Name + Keycap + Tilted Queue Cutouts
+	var bl_wrap := HBoxContainer.new()
+	bl_wrap.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	bl_wrap.offset_left = 20
+	bl_wrap.offset_right = 760
+	bl_wrap.offset_top = -80
+	bl_wrap.offset_bottom = -14
+	bl_wrap.add_theme_constant_override("separation", 12)
+	bl_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(bl_wrap)
 
-	var b_top := HBoxContainer.new()
-	b_top.add_theme_constant_override("separation", 10)
-	b_vb.add_child(b_top)
+	var hero_frame := Control.new()
+	hero_frame.custom_minimum_size = Vector2(66, 66)
+	hero_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bl_wrap.add_child(hero_frame)
+
+	active_hero_wood_bg = ColorRect.new()
+	active_hero_wood_bg.position = Vector2(5, 6)
+	active_hero_wood_bg.size = Vector2(56, 56)
+	active_hero_wood_bg.pivot_offset = Vector2(28, 28)
+	active_hero_wood_bg.rotation_degrees = -5.0
+	active_hero_wood_bg.color = CraftUI.INK
+	hero_frame.add_child(active_hero_wood_bg)
+
+	var inner_sq := ColorRect.new()
+	inner_sq.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inner_sq.offset_left = 4
+	inner_sq.offset_right = -4
+	inner_sq.offset_top = 4
+	inner_sq.offset_bottom = -4
+	inner_sq.color = Color(0.92, 0.28, 0.19)
+	active_hero_wood_bg.add_child(inner_sq)
+	active_hero_wood_bg.set_meta("inner_sq", inner_sq)
+
+	active_hero_portrait = TextureRect.new()
+	active_hero_portrait.position = Vector2(0, -4)
+	active_hero_portrait.size = Vector2(66, 66)
+	active_hero_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	active_hero_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	active_hero_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hero_frame.add_child(active_hero_portrait)
+
+	var bl_col := VBoxContainer.new()
+	bl_col.alignment = BoxContainer.ALIGNMENT_END
+	bl_col.add_theme_constant_override("separation", 4)
+	bl_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bl_wrap.add_child(bl_col)
+
+	var skill_hb := HBoxContainer.new()
+	skill_hb.alignment = BoxContainer.ALIGNMENT_BEGIN
+	skill_hb.add_theme_constant_override("separation", 8)
+	bl_col.add_child(skill_hb)
+
+	active_skill_lbl = CraftUI.make_stroked_label("ZEN BUMP", 20, CraftUI.GOLD_TEXT, 5, true)
+	skill_hb.add_child(active_skill_lbl)
+	skill_hb.add_child(CraftUI.make_keycap("SPASI", 66.0, 30.0, 12))
 
 	hud_squad_row = HBoxContainer.new()
-	hud_squad_row.add_theme_constant_override("separation", 4)
-	b_top.add_child(hud_squad_row)
+	hud_squad_row.add_theme_constant_override("separation", 6)
+	bl_col.add_child(hud_squad_row)
 
-	lbl_queue_info = Label.new()
-	lbl_queue_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl_queue_info.add_theme_font_size_override("font_size", 13)
-	lbl_queue_info.add_theme_color_override("font_color", Color(0.96, 0.86, 0.50))
-	b_top.add_child(lbl_queue_info)
+	# 5) BOTTOM-RIGHT: Minimal Bare Camera Pan Keycaps
+	var cam_hint := HBoxContainer.new()
+	cam_hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	cam_hint.offset_left = -220
+	cam_hint.offset_right = -20
+	cam_hint.offset_top = -44
+	cam_hint.offset_bottom = -12
+	cam_hint.alignment = BoxContainer.ALIGNMENT_END
+	cam_hint.add_theme_constant_override("separation", 6)
+	cam_hint.modulate.a = 0.88
+	cam_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(cam_hint)
 
-	lbl_tip = Label.new()
-	lbl_tip.add_theme_font_size_override("font_size", 12)
-	lbl_tip.add_theme_color_override("font_color", Color(0.88, 0.84, 0.76))
-	b_vb.add_child(lbl_tip)
+	cam_hint.add_child(CraftUI.make_keycap("A", 32.0, 30.0, 12))
+	cam_hint.add_child(CraftUI.make_stroked_label("◀ KAMERA ▶", 12, Color(1.0, 0.97, 0.86), 4, false))
+	cam_hint.add_child(CraftUI.make_keycap("D", 32.0, 30.0, 12))
 
-	# RESULT OVERLAY (Celebratory Woodblock Lacquer Plaque)
+	# 6) RESULT OVERLAY (Wood-Framed Parchment Modal)
 	result_overlay = ColorRect.new()
 	result_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	result_overlay.color = Color(0.07, 0.05, 0.04, 0.80)
+	result_overlay.color = Color(0.06, 0.04, 0.03, 0.74)
 	result_overlay.visible = false
 	canvas.add_child(result_overlay)
 
 	var rpanel := PanelContainer.new()
 	rpanel.set_anchors_preset(Control.PRESET_CENTER)
-	rpanel.offset_left = -270
-	rpanel.offset_right = 270
-	rpanel.offset_top = -200
-	rpanel.offset_bottom = 200
-	rpanel.add_theme_stylebox_override("panel", hud_sb)
+	rpanel.offset_left = -310
+	rpanel.offset_right = 310
+	rpanel.offset_top = -220
+	rpanel.offset_bottom = 220
+	rpanel.add_theme_stylebox_override("panel", CraftUI.make_modal_panel_style(50.0, 42.0))
 	result_overlay.add_child(rpanel)
 
-	var rmar := MarginContainer.new()
-	rmar.add_theme_constant_override("margin_left", 26)
-	rmar.add_theme_constant_override("margin_right", 26)
-	rmar.add_theme_constant_override("margin_top", 20)
-	rmar.add_theme_constant_override("margin_bottom", 20)
-	rpanel.add_child(rmar)
-
 	var rvb := VBoxContainer.new()
+	rvb.alignment = BoxContainer.ALIGNMENT_CENTER
 	rvb.add_theme_constant_override("separation", 10)
-	rmar.add_child(rvb)
+	rpanel.add_child(rvb)
 
-	var badge_wrap := HBoxContainer.new()
-	badge_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	rvb.add_child(badge_wrap)
+	result_badge_lbl = CraftUI.make_stroked_label("MENANG!", 15, Color(0.95, 0.27, 0.18), 3, true)
+	result_badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rvb.add_child(result_badge_lbl)
 
-	var rbadge_panel := PanelContainer.new()
-	var rb_sb := StyleBoxFlat.new()
-	rb_sb.bg_color = Color(0.24, 0.17, 0.12, 0.96)
-	rb_sb.border_color = Color(0.92, 0.78, 0.44)
-	rb_sb.set_border_width_all(1)
-	rb_sb.set_corner_radius_all(6)
-	rb_sb.content_margin_left = 12
-	rb_sb.content_margin_right = 12
-	rb_sb.content_margin_top = 2
-	rb_sb.content_margin_bottom = 2
-	rbadge_panel.add_theme_stylebox_override("panel", rb_sb)
-	badge_wrap.add_child(rbadge_panel)
-
-	result_badge_lbl = Label.new()
-	result_badge_lbl.add_theme_font_size_override("font_size", 11)
-	result_badge_lbl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.44))
-	rbadge_panel.add_child(result_badge_lbl)
-
-	result_title = Label.new()
+	result_title = CraftUI.make_stroked_label("STAGE SELESAI!", 26, CraftUI.GOLD_TEXT, 5, true)
 	result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_title.add_theme_font_size_override("font_size", 26)
-	result_title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
 	rvb.add_child(result_title)
-
-	var star_tray := PanelContainer.new()
-	var st_sb := StyleBoxFlat.new()
-	st_sb.bg_color = Color(0.09, 0.06, 0.05, 0.75)
-	st_sb.border_color = Color(0.68, 0.58, 0.42, 0.45)
-	st_sb.set_border_width_all(1)
-	st_sb.set_corner_radius_all(10)
-	st_sb.content_margin_left = 18
-	st_sb.content_margin_right = 18
-	st_sb.content_margin_top = 6
-	st_sb.content_margin_bottom = 6
-	star_tray.add_theme_stylebox_override("panel", st_sb)
-	rvb.add_child(star_tray)
 
 	var star_hb := HBoxContainer.new()
 	star_hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	star_hb.add_theme_constant_override("separation", 16)
-	star_tray.add_child(star_hb)
+	rvb.add_child(star_hb)
 
 	result_star_labels.clear()
-	var tex_res_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
-	for k in 3:
+	for _k in 3:
 		var rsl := TextureRect.new()
-		rsl.texture = tex_res_empty
-		rsl.custom_minimum_size = Vector2(46, 46)
+		rsl.texture = CraftUI.tex("icon_star_empty")
+		rsl.custom_minimum_size = Vector2(48, 48)
 		rsl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		rsl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		star_hb.add_child(rsl)
@@ -789,85 +967,294 @@ func _setup_hud() -> void:
 	result_stars.visible = false
 	rvb.add_child(result_stars)
 
-	var body_card := PanelContainer.new()
-	var bc_sb := StyleBoxTexture.new()
-	bc_sb.texture = load("res://assets/generated/home2d/ui_card_washi.png")
-	bc_sb.texture_margin_left = 28
-	bc_sb.texture_margin_right = 28
-	bc_sb.texture_margin_top = 28
-	bc_sb.texture_margin_bottom = 28
-	bc_sb.content_margin_left = 16
-	bc_sb.content_margin_right = 16
-	bc_sb.content_margin_top = 12
-	bc_sb.content_margin_bottom = 12
-	body_card.add_theme_stylebox_override("panel", bc_sb)
-	rvb.add_child(body_card)
-
 	result_body = Label.new()
 	result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_body.add_theme_font_size_override("font_size", 14)
-	result_body.add_theme_color_override("font_color", Color(0.165, 0.106, 0.078))
+	result_body.add_theme_font_override("font", CraftUI.body_font())
+	result_body.add_theme_font_size_override("font_size", 15)
+	result_body.add_theme_color_override("font_color", CraftUI.INK)
 	result_body.autowrap_mode = TextServer.AUTOWRAP_WORD
-	body_card.add_child(result_body)
+	rvb.add_child(result_body)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_row.add_theme_constant_override("separation", 10)
+	btn_row.add_theme_constant_override("separation", 12)
 	rvb.add_child(btn_row)
 
-	btn_retry = _make_hud_btn("ULANGI", false)
-	btn_retry.custom_minimum_size = Vector2(115, 42)
+	btn_retry = CraftUI.make_wood_btn("ULANGI", "wood_btn_amber", Vector2(124, 46), 17, -1.0)
 	btn_retry.pressed.connect(func(): _load_stage(current_stage_id))
 	btn_row.add_child(btn_retry)
 
-	btn_next_stage = _make_hud_btn("LANJUT →", true)
-	btn_next_stage.custom_minimum_size = Vector2(185, 42)
+	btn_next_stage = CraftUI.make_wood_btn("LANJUT ▶", "wood_btn_vermilion", Vector2(168, 48), 19, 1.0)
 	btn_next_stage.pressed.connect(_go_next_stage)
 	btn_row.add_child(btn_next_stage)
 
-	var btn_back := _make_hud_btn("PETA W1", false)
-	btn_back.custom_minimum_size = Vector2(105, 42)
-	btn_back.pressed.connect(func(): get_tree().change_scene_to_file(WORLD1_SELECT_SCENE))
+	var btn_back := CraftUI.make_wood_btn("PETA", "wood_btn_bamboo", Vector2(110, 46), 17, 0.5)
+	btn_back.pressed.connect(func(): SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE))
 	btn_row.add_child(btn_back)
 
+	var res_home_wrap := CenterContainer.new()
+	rvb.add_child(res_home_wrap)
+	var btn_res_home := CraftUI.make_wood_btn("MENU UTAMA", "wood_btn_slate", Vector2(172, 42), 15, 0.0)
+	btn_res_home.pressed.connect(func(): SceneLoader.quick_transition_to(HOME_SCENE))
+	res_home_wrap.add_child(btn_res_home)
+
+func _setup_pause_menu() -> void:
+	pause_layer = CanvasLayer.new()
+	pause_layer.layer = 20
+	pause_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(pause_layer)
+
+	pause_overlay = ColorRect.new()
+	pause_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.color = Color(0.05, 0.03, 0.02, 0.74)
+	pause_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	pause_overlay.visible = false
+	pause_layer.add_child(pause_overlay)
+
+	var catcher := PauseInputCatcher.new()
+	catcher.set_anchors_preset(Control.PRESET_FULL_RECT)
+	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	catcher.on_resume_key = func(): _set_paused(false)
+	pause_overlay.add_child(catcher)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(620, 488)
+	panel.add_theme_stylebox_override("panel", CraftUI.make_modal_panel_style(50.0, 40.0))
+	center.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 12)
+	panel.add_child(vb)
+
+	var hdr := CraftUI.make_stroked_label("PERMAINAN DIJEDA", 30, CraftUI.GOLD_TEXT, 6, true)
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(hdr)
+
+	pause_stage_lbl = Label.new()
+	pause_stage_lbl.text = "W1 1-1 • STAGE"
+	pause_stage_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pause_stage_lbl.add_theme_font_override("font", CraftUI.display_font())
+	pause_stage_lbl.add_theme_font_size_override("font_size", 16)
+	pause_stage_lbl.add_theme_color_override("font_color", Color(0.68, 0.17, 0.10))
+	vb.add_child(pause_stage_lbl)
+
+	pause_stats_lbl = Label.new()
+	pause_stats_lbl.text = "Skor: 00,000  •  Buaya Tersisa: 1"
+	pause_stats_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pause_stats_lbl.add_theme_font_override("font", CraftUI.body_font())
+	pause_stats_lbl.add_theme_font_size_override("font_size", 14)
+	pause_stats_lbl.add_theme_color_override("font_color", CraftUI.INK)
+	vb.add_child(pause_stats_lbl)
+
+	var sep1 := ColorRect.new()
+	sep1.custom_minimum_size = Vector2(0, 3)
+	sep1.color = Color(0.62, 0.37, 0.14, 0.35)
+	vb.add_child(sep1)
+
+	# Audio Row
+	var r_audio := HBoxContainer.new()
+	r_audio.add_theme_constant_override("separation", 10)
+	r_audio.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(r_audio)
+
+	pause_audio_icon = CraftUI.make_tex_rect(CraftUI.tex("icon_speaker_on"), Vector2(28, 28))
+	r_audio.add_child(pause_audio_icon)
+
+	var lbl_s := Label.new()
+	lbl_s.text = "Suara"
+	lbl_s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_s.add_theme_font_override("font", CraftUI.body_font())
+	lbl_s.add_theme_font_size_override("font_size", 15)
+	lbl_s.add_theme_color_override("font_color", CraftUI.INK)
+	r_audio.add_child(lbl_s)
+
+	pause_vol_slider = CraftUI.make_volume_slider(SaveManager.audio_volume, 195.0)
+	pause_vol_slider.value_changed.connect(func(v: float):
+		SaveManager.set_audio_volume(v)
+		_sync_pause_controls()
+	)
+	r_audio.add_child(pause_vol_slider)
+
+	pause_vol_pct = Label.new()
+	pause_vol_pct.text = "100%"
+	pause_vol_pct.custom_minimum_size = Vector2(46, 0)
+	pause_vol_pct.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pause_vol_pct.add_theme_font_override("font", CraftUI.display_font())
+	pause_vol_pct.add_theme_font_size_override("font_size", 15)
+	pause_vol_pct.add_theme_color_override("font_color", CraftUI.INK)
+	r_audio.add_child(pause_vol_pct)
+
+	pause_btn_mute = CraftUI.make_wood_btn("AKTIF", "wood_btn_bamboo", Vector2(102, 38), 14, 0.0)
+	pause_btn_mute.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pause_btn_mute.pressed.connect(func():
+		SaveManager.toggle_mute()
+		_sync_pause_controls()
+	)
+	r_audio.add_child(pause_btn_mute)
+
+	# Display Row
+	var r_disp := HBoxContainer.new()
+	r_disp.add_theme_constant_override("separation", 10)
+	r_disp.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(r_disp)
+
+	r_disp.add_child(CraftUI.make_tex_rect(CraftUI.tex("icon_gear"), Vector2(28, 28)))
+
+	var lbl_d := Label.new()
+	lbl_d.text = "Tampilan Layar"
+	lbl_d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl_d.add_theme_font_override("font", CraftUI.body_font())
+	lbl_d.add_theme_font_size_override("font_size", 15)
+	lbl_d.add_theme_color_override("font_color", CraftUI.INK)
+	r_disp.add_child(lbl_d)
+
+	pause_btn_disp = CraftUI.make_wood_btn("JENDELA", "wood_btn_cedar", Vector2(184, 40), 15, 0.0)
+	pause_btn_disp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pause_btn_disp.pressed.connect(func():
+		SaveManager.toggle_fullscreen()
+		_sync_pause_controls()
+	)
+	r_disp.add_child(pause_btn_disp)
+
+	var sep2 := ColorRect.new()
+	sep2.custom_minimum_size = Vector2(0, 3)
+	sep2.color = Color(0.62, 0.37, 0.14, 0.35)
+	vb.add_child(sep2)
+
+	# Primary Resume Button
+	var resume_wrap := CenterContainer.new()
+	vb.add_child(resume_wrap)
+	var btn_resume := CraftUI.make_wood_btn("LANJUTKAN", "wood_btn_vermilion", Vector2(340, 52), 21, -0.6, "icon_play_tri", 20)
+	btn_resume.pressed.connect(func(): _set_paused(false))
+	resume_wrap.add_child(btn_resume)
+
+	# Secondary Row: Restart + World 1 Map
+	var mid_row := HBoxContainer.new()
+	mid_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mid_row.add_theme_constant_override("separation", 14)
+	vb.add_child(mid_row)
+
+	var btn_p_restart := CraftUI.make_wood_btn("ULANG STAGE", "wood_btn_amber", Vector2(174, 46), 16, -0.8, "icon_retry", 18)
+	btn_p_restart.pressed.connect(_request_restart_stage)
+	mid_row.add_child(btn_p_restart)
+
+	var btn_p_map := CraftUI.make_wood_btn("PETA STAGE", "wood_btn_bamboo", Vector2(174, 46), 16, 0.8, "icon_map", 18)
+	btn_p_map.pressed.connect(_request_exit_to_map)
+	mid_row.add_child(btn_p_map)
+
+	# Bottom Row: Main Menu
+	var bot_wrap := CenterContainer.new()
+	vb.add_child(bot_wrap)
+	var btn_p_home := CraftUI.make_wood_btn("MENU UTAMA", "wood_btn_slate", Vector2(180, 42), 15, 0.0)
+	btn_p_home.pressed.connect(_request_exit_to_home)
+	bot_wrap.add_child(btn_p_home)
+
+func _cancel_active_aim() -> void:
+	if is_aiming:
+		is_aiming = false
+		pull_vector = Vector3.ZERO
+		_hide_trajectory()
+		if is_instance_valid(active_capy):
+			active_capy.position = Vector3(launch_x, launch_y, 0.0)
+
+func _request_restart_stage() -> void:
+	if stage_ended:
+		return
+	_cancel_active_aim()
+	CraftUI.show_confirm_modal(
+		get_tree(),
+		"ULANG STAGE %s?" % current_stage_id,
+		"Skor dan tembakan pada percobaan ini akan direset dari awal.\nYakin ingin mengulang stage?",
+		"YA, ULANG",
+		func():
+			_set_paused(false)
+			_load_stage(current_stage_id),
+		"BATAL",
+		true
+	)
+
+func _request_exit_to_map() -> void:
+	CraftUI.show_confirm_modal(
+		get_tree(),
+		"KELUAR KE PETA?",
+		"Stage %s belum selesai dan progres tembakan saat ini akan hilang.\nYakin ingin kembali ke Peta World 1?" % current_stage_id,
+		"YA, KELUAR",
+		func():
+			_set_paused(false)
+			SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE),
+		"BATAL",
+		true
+	)
+
+func _request_exit_to_home() -> void:
+	CraftUI.show_confirm_modal(
+		get_tree(),
+		"KE MENU UTAMA?",
+		"Stage %s belum selesai dan progres tembakan saat ini akan hilang.\nYakin ingin kembali ke Menu Utama?" % current_stage_id,
+		"YA, KELUAR",
+		func():
+			_set_paused(false)
+			SceneLoader.quick_transition_to(HOME_SCENE),
+		"BATAL",
+		true
+	)
+
+func _toggle_pause() -> void:
+	if stage_ended:
+		return
+	_set_paused(not is_paused)
+
+func _set_paused(paused: bool) -> void:
+	if paused and stage_ended:
+		return
+	is_paused = paused
+	if paused:
+		_cancel_active_aim()
+		_sync_pause_controls()
+	if is_instance_valid(pause_overlay):
+		pause_overlay.visible = paused
+	if get_tree():
+		get_tree().paused = paused
+
+func _sync_pause_controls() -> void:
+	if is_instance_valid(pause_stage_lbl):
+		pause_stage_lbl.text = ("W1 %s • %s" % [current_stage_id, str(stage_data.get("name", current_stage_id))]).to_upper()
+	if is_instance_valid(pause_stats_lbl):
+		pause_stats_lbl.text = "Skor: %s  •  Buaya Tersisa: %d" % [CraftUI.format_score(score), enemies.size()]
+	if is_instance_valid(pause_vol_slider) and absf(pause_vol_slider.value - SaveManager.audio_volume) > 0.5:
+		pause_vol_slider.set_value_no_signal(SaveManager.audio_volume)
+	if is_instance_valid(pause_vol_pct):
+		pause_vol_pct.text = "%d%%" % int(round(SaveManager.audio_volume))
+	if is_instance_valid(pause_audio_icon):
+		pause_audio_icon.texture = CraftUI.tex("icon_speaker_off" if SaveManager.is_muted else "icon_speaker_on")
+	if is_instance_valid(pause_btn_mute):
+		pause_btn_mute.text = "BISU" if SaveManager.is_muted else "AKTIF"
+		CraftUI.style_wood_button(pause_btn_mute, "wood_btn_slate" if SaveManager.is_muted else "wood_btn_bamboo", 14, Vector2(102, 38), 0.0)
+	if is_instance_valid(pause_btn_disp):
+		pause_btn_disp.text = "LAYAR PENUH" if SaveManager.is_fullscreen() else "JENDELA"
+
+func _exit_tree() -> void:
+	if get_tree():
+		get_tree().paused = false
+
 func _make_hud_btn(txt: String, is_primary: bool) -> Button:
-	var b := Button.new()
-	b.text = txt
-	b.add_theme_font_size_override("font_size", 13)
-	b.add_theme_color_override("font_color", Color(0.97, 0.94, 0.88))
-	b.add_theme_color_override("font_hover_color", Color(1.0, 0.99, 0.94))
-	_style_hud_btn(b, is_primary)
-	return b
+	return CraftUI.make_wood_btn(txt, "wood_btn_vermilion" if is_primary else "wood_btn_cedar", Vector2(115, 44), 16, 0.0)
 
 func _style_hud_btn(b: Button, is_primary: bool) -> void:
-	b.custom_minimum_size.y = maxf(b.custom_minimum_size.y, 40.0)
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.add_theme_color_override("font_outline_color", Color(0.14, 0.08, 0.06))
-	b.add_theme_constant_override("outline_size", 2)
-	var tex_path := "res://assets/generated/home2d/ui_btn_vermilion.png" if is_primary else "res://assets/generated/home2d/ui_btn_wood.png"
-	var sb := StyleBoxTexture.new()
-	sb.texture = load(tex_path)
-	sb.texture_margin_left = 18
-	sb.texture_margin_right = 18
-	sb.texture_margin_top = 12
-	sb.texture_margin_bottom = 14
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 6
-	sb.content_margin_bottom = 8
-	var hv: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
-	hv.modulate_color = Color(1.10, 1.07, 1.03)
-	var pr: StyleBoxTexture = sb.duplicate() as StyleBoxTexture
-	pr.modulate_color = Color(0.84, 0.80, 0.78)
-	b.add_theme_stylebox_override("normal", sb)
-	b.add_theme_stylebox_override("hover", hv)
-	b.add_theme_stylebox_override("pressed", pr)
+	CraftUI.style_wood_button(b, "wood_btn_vermilion" if is_primary else "wood_btn_amber", 18, b.custom_minimum_size, b.rotation_degrees)
 
 # =========================================================================
 # JSON STAGE LOADER & SPAWNER
 # =========================================================================
 
 func _load_stage(stage_id: String) -> void:
+	if is_paused:
+		_set_paused(false)
 	current_stage_id = stage_id
 	SaveManager.selected_stage_id = stage_id
 
@@ -881,6 +1268,8 @@ func _load_stage(stage_id: String) -> void:
 	bounce_pads.clear()
 	flying_projectiles.clear()
 	vfx_nodes.clear()
+	floating_texts.clear()
+	shake_trauma = 0.0
 	active_capy = null
 	active_capy_visual = null
 	is_aiming = false
@@ -949,8 +1338,15 @@ func _load_stage(stage_id: String) -> void:
 	for e_def in e_raw:
 		_spawn_enemy_from_def(e_def)
 
-	lbl_stage_title.text = "W1 %s — %s" % [stage_id, str(stage_data.get("name", stage_id))]
-	lbl_tip.text = str(stage_data.get("tip", ""))
+	lbl_stage_title.text = ("W1 %s • %s" % [stage_id, str(stage_data.get("name", stage_id))]).to_upper()
+	var has_boss := (stage_id == "1-20")
+	if not has_boss:
+		for e in enemies:
+			if str(e["type"]) == "mini_boss":
+				has_boss = true
+				break
+	if is_instance_valid(boss_bar_root):
+		boss_bar_root.visible = has_boss
 	_load_next_capy_onto_slingshot()
 	_refresh_score_hud()
 
@@ -1446,6 +1842,19 @@ func _tint_enemy_mesh(rec: Dictionary, tint: Color) -> void:
 		if mat is ShaderMaterial:
 			(mat as ShaderMaterial).set_shader_parameter("tint_color", tint)
 
+func _spawn_floating_text(world_pos: Vector3, txt: String, col: Color, fsize: int = 20) -> void:
+	floating_texts.append({
+		"pos": world_pos + Vector3(0.0, 0.35, 0.0),
+		"text": txt,
+		"color": col,
+		"size": fsize,
+		"t": 0.0,
+		"dur": 0.95
+	})
+
+func _add_shake(amount: float) -> void:
+	shake_trauma = minf(shake_trauma + amount, 1.0)
+
 func _destroy_entity(rec: Dictionary, is_enemy: bool) -> void:
 	if bool(rec["dead"]):
 		return
@@ -1464,14 +1873,24 @@ func _destroy_entity(rec: Dictionary, is_enemy: bool) -> void:
 		mult = 2.0
 	elif combo_count >= 2:
 		mult = 1.5
-	score += int(round(float(rec["score"]) * mult))
+	var gained := int(round(float(rec["score"]) * mult))
+	score += gained
 	_refresh_score_hud()
+
+	if is_enemy or btype == "tnt" or btype == "yuzu_basket":
+		_spawn_floating_text(pos, "+%s" % CraftUI.format_score(gained), CraftUI.GOLD_TEXT, 22)
+	else:
+		_spawn_floating_text(pos, "+%s" % CraftUI.format_score(gained), CraftUI.CREAM_TEXT, 16)
+	if combo_count >= 2:
+		_spawn_floating_text(pos + Vector3(0.0, 0.72, 0.0), "KOMBO ×%d!" % combo_count, Color(1.0, 0.45, 0.24), 19)
 
 	if is_instance_valid(rb):
 		rb.queue_free()
 
 	if is_enemy:
 		_spawn_vfx_sphere(pos, 1.5, Color(0.54, 0.88, 0.44))
+		SoundManager.play_sfx("croc_defeat", 0.78 if btype == "mini_boss" else 1.0, -1.0, 0.08)
+		_add_shake(0.68 if btype == "mini_boss" else 0.24)
 		enemies.erase(rec)
 		if enemies.is_empty() and not stage_ended:
 			pending_victory = true
@@ -1482,13 +1901,24 @@ func _destroy_entity(rec: Dictionary, is_enemy: bool) -> void:
 			_trigger_tnt_explosion(pos)
 		elif btype == "ice":
 			_spawn_vfx_sphere(pos, 1.2, Color(0.72, 0.94, 1.0))
+			SoundManager.play_sfx("hit_ice", 1.0, -3.0, 0.08)
+		elif btype == "stone" or btype == "boulder":
+			_spawn_vfx_sphere(pos, 1.1, Color(0.76, 0.74, 0.70))
+			SoundManager.play_sfx("hit_stone", 1.0, -2.0, 0.08)
+		elif btype == "wood":
+			_spawn_vfx_sphere(pos, 1.0, Color(0.84, 0.62, 0.36))
+			SoundManager.play_sfx("hit_wood", 1.0, -3.0, 0.08)
 		elif btype == "yuzu_basket":
 			_spawn_vfx_sphere(pos, 1.65, Color(0.98, 0.82, 0.22))
+			SoundManager.play_sfx("star_pop", 1.08, -2.0)
 		else:
 			_spawn_vfx_sphere(pos, 1.0, Color(0.88, 0.78, 0.56))
+			SoundManager.play_sfx("hit_bamboo", 1.0, -3.5, 0.08)
 
 func _trigger_tnt_explosion(center: Vector3) -> void:
 	_spawn_vfx_sphere(center, 4.8, Color(0.95, 0.42, 0.14))
+	SoundManager.play_sfx("tnt_boom", 1.0, 0.0, 0.05)
+	_add_shake(0.78)
 	var radius: float = 5.0
 	for b in blocks.duplicate():
 		if bool(b["dead"]):
@@ -1531,6 +1961,8 @@ func _activate_skill() -> void:
 			# Zen Bump: dorongan tajam ke bawah + gelombang getar radius 2.8m (melukai balok DAN buaya!)
 			active_capy.apply_central_impulse(Vector3(0.0, -11.5, 0.0))
 			_spawn_vfx_sphere(pos, 2.5, Color(0.95, 0.88, 0.62))
+			SoundManager.play_sfx("skill_zen", 1.0, -1.0)
+			_add_shake(0.42)
 			for b in blocks.duplicate():
 				var rb: RigidBody3D = b["rb"]
 				if is_instance_valid(rb):
@@ -1551,12 +1983,14 @@ func _activate_skill() -> void:
 			var dir := vel.normalized() if vel.length() > 0.5 else Vector3(1, 0, 0)
 			active_capy.linear_velocity = dir * maxf(vel.length() * 2.2, 29.0)
 			_spawn_vfx_sphere(pos, 1.35, Color(0.98, 0.84, 0.28))
+			SoundManager.play_sfx("skill_dash", 1.0, -1.5)
 		"mini":
 			# TRIPLE SPLIT: Spawn 2 klon Trio Mini-Capi menyebar +12 deg dan -12 deg!
 			var base_vel := active_capy.linear_velocity
 			if base_vel.length() < 4.0:
 				base_vel = Vector3(14.0, 2.0, 0.0)
 			_spawn_vfx_sphere(pos, 1.3, Color(0.45, 0.84, 0.98))
+			SoundManager.play_sfx("skill_split", 1.0, -1.5)
 			for ang_deg in [-12.0, 12.0]:
 				var rad := deg_to_rad(float(ang_deg))
 				var c := cos(rad)
@@ -1600,6 +2034,10 @@ func _spawn_mini_clone(pos: Vector3, vel: Vector3) -> void:
 # =========================================================================
 
 func _unhandled_input(event: InputEvent) -> void:
+	if CraftUI.is_confirm_open(get_tree()):
+		return
+	if is_paused:
+		return
 	if stage_ended:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 			_load_stage(current_stage_id)
@@ -1611,8 +2049,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2: _set_camera_view(CameraView.ANGLED_25D)
 			KEY_3: _set_camera_view(CameraView.BEHIND_3D)
 			KEY_TAB: _set_camera_view((current_view + 1) % 3)
-			KEY_R: _load_stage(current_stage_id)
-			KEY_ESCAPE: get_tree().change_scene_to_file(WORLD1_SELECT_SCENE)
+			KEY_R: _request_restart_stage()
+			KEY_ESCAPE, KEY_P: _toggle_pause()
 			KEY_SPACE:
 				if is_flying and not skill_used:
 					_activate_skill()
@@ -1634,6 +2072,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					is_aiming = true
 					drag_start_px = event.position
 					pull_vector = Vector3.ZERO
+					SoundManager.play_sfx("sling_stretch", 1.0, -5.0, 0.05)
 			else:
 				if is_aiming:
 					_release_slingshot()
@@ -1676,6 +2115,7 @@ func _release_slingshot() -> void:
 	flight_timer = 0.0
 	settle_timer = 0.0
 	pull_vector = Vector3.ZERO
+	SoundManager.play_sfx("launch", 1.0, -2.0, 0.06)
 
 func _physics_process(delta: float) -> void:
 	if spawn_grace > 0.0:
@@ -1738,6 +2178,7 @@ func _physics_process(delta: float) -> void:
 							var pad_rec: Dictionary = col_body.get_meta("pad_rec")
 							pad_rec["pulse_t"] = 0.28
 						_spawn_vfx_sphere(p.global_position, 1.45, Color(0.98, 0.42, 0.36))
+						SoundManager.play_sfx("bounce_pad", 1.0, -1.5, 0.06)
 						break
 
 func _process(delta: float) -> void:
@@ -1759,6 +2200,16 @@ func _process(delta: float) -> void:
 	_update_bounce_pad_anim(delta)
 	_update_camera(delta)
 	_update_vfx(delta)
+	for i in range(floating_texts.size() - 1, -1, -1):
+		var ft: Dictionary = floating_texts[i]
+		ft["t"] = float(ft["t"]) + delta
+		ft["pos"] = (ft["pos"] as Vector3) + Vector3(0.0, delta * 1.55, 0.0)
+		if float(ft["t"]) >= float(ft["dur"]):
+			floating_texts.remove_at(i)
+	if shake_trauma > 0.0:
+		shake_trauma = maxf(shake_trauma - delta * 2.4, 0.0)
+	if is_instance_valid(diegetic_overlay):
+		diegetic_overlay.queue_redraw()
 
 	if sun_rays_node:
 		sun_rays_node.rotation.z = anim_time * 0.05
@@ -1824,6 +2275,29 @@ func _process(delta: float) -> void:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(capture_croco_path)
 		get_tree().quit()
+	elif capture_pause_path != "" and not capture_done and anim_time > 0.65:
+		capture_done = true
+		_capture_pause_async()
+	elif capture_confirm_reset_path != "" and not capture_done and anim_time > 0.65:
+		capture_done = true
+		_capture_confirm_reset_async()
+
+func _capture_pause_async() -> void:
+	_set_paused(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(capture_pause_path)
+	_set_paused(false)
+	get_tree().quit()
+
+func _capture_confirm_reset_async() -> void:
+	_request_restart_stage()
+	await get_tree().create_timer(0.18, true).timeout
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(capture_confirm_reset_path)
+	get_tree().paused = false
+	get_tree().quit()
 
 func _process_automated_validator(delta: float) -> void:
 	validate_timer += delta
@@ -1869,28 +2343,60 @@ func _finish_stage_victory() -> void:
 		stars = 1
 
 	SaveManager.record_stage_clear(current_stage_id, score, stars)
+	SoundManager.play_sfx("victory", 1.0, -1.0)
 
 	if result_badge_lbl:
 		result_badge_lbl.text = "MENANG!" if stars >= 1 else "SELESAI"
 	result_title.text = "STAGE %s SELESAI!" % current_stage_id
-	var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
-	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
+	var tex_empty: Texture2D = CraftUI.tex("icon_star_empty")
 	for k in result_star_labels.size():
 		var rsl: TextureRect = result_star_labels[k]
-		rsl.texture = tex_gold if k < stars else tex_empty
-	result_body.text = "Skor Akhir: %d\nBonus Sisa %d Kapibara: +%d  •  Target 3★: %d" % [score, unused_capys, bonus, s3]
+		rsl.texture = tex_empty
+		rsl.pivot_offset = Vector2(24, 24)
+		rsl.scale = Vector2.ONE
+	result_body.text = "Skor Akhir: %s\nBonus Sisa %d Kapibara: +%s  •  Target 3★: %s" % [
+		CraftUI.format_score(0), unused_capys, CraftUI.format_score(bonus), CraftUI.format_score(s3)
+	]
 	var has_next: bool = (SaveManager.get_next_stage_id(current_stage_id) != "")
 	btn_next_stage.visible = has_next
 	_style_hud_btn(btn_next_stage, true)
 	_style_hud_btn(btn_retry, not has_next)
 	result_overlay.visible = true
+	_animate_victory_celebration(score, stars, unused_capys, bonus, s3)
+
+func _animate_victory_celebration(final_score: int, stars: int, unused_capys: int, bonus: int, s3: int) -> void:
+	var count_dur := 0.48
+	var t_c := 0.0
+	while t_c < count_dur and result_overlay.visible and stage_ended:
+		await get_tree().process_frame
+		t_c += get_process_delta_time()
+		var p := clampf(t_c / count_dur, 0.0, 1.0)
+		var shown := int(round(float(final_score) * smoothstep(0.0, 1.0, p)))
+		result_body.text = "Skor Akhir: %s\nBonus Sisa %d Kapibara: +%s  •  Target 3★: %s" % [
+			CraftUI.format_score(shown), unused_capys, CraftUI.format_score(bonus), CraftUI.format_score(s3)
+		]
+
+	var tex_gold: Texture2D = CraftUI.tex("icon_star_gold")
+	for k in mini(stars, result_star_labels.size()):
+		if not result_overlay.visible:
+			return
+		var rsl: TextureRect = result_star_labels[k]
+		rsl.texture = tex_gold
+		rsl.pivot_offset = Vector2(24, 24)
+		rsl.scale = Vector2(0.15, 0.15)
+		var tw := create_tween()
+		tw.tween_property(rsl, "scale", Vector2(1.34, 1.34), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(rsl, "scale", Vector2.ONE, 0.12)
+		SoundManager.play_sfx("star_pop", 1.0 + float(k) * 0.15, -1.5)
+		await get_tree().create_timer(0.24).timeout
 
 func _finish_stage_defeat() -> void:
 	stage_ended = true
+	SoundManager.play_sfx("defeat", 1.0, -1.5)
 	if result_badge_lbl:
 		result_badge_lbl.text = "COBA LAGI"
 	result_title.text = "BELUM BERHASIL"
-	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
+	var tex_empty: Texture2D = CraftUI.tex("icon_star_empty")
 	for rsl in result_star_labels:
 		rsl.texture = tex_empty
 	result_body.text = "Masih ada %d Klan Buaya bertahan.\nCoba sudut bidikan atau aktifkan skill kapibara di udara!" % enemies.size()
@@ -1903,82 +2409,110 @@ func _go_next_stage() -> void:
 	if nxt != "":
 		_load_stage(nxt)
 	else:
-		get_tree().change_scene_to_file(WORLD1_SELECT_SCENE)
+		SceneLoader.quick_transition_to(WORLD1_SELECT_SCENE)
 
 func _refresh_score_hud() -> void:
-	var best: int = SaveManager.get_stage_best_score(current_stage_id)
 	var star_arr: Array = stage_data.get("stars", [15000, 25000, 35000])
 	var s1: int = int(star_arr[0])
 	var s2: int = int(star_arr[1])
 	var s3: int = maxi(int(star_arr[2]), 1)
+	var total_e: int = maxi((stage_data.get("enemies", []) as Array).size(), enemies.size())
 	if is_instance_valid(lbl_enemy_pill):
-		lbl_enemy_pill.text = "Buaya: %d" % enemies.size()
-	lbl_score.text = "Skor: %d   •   Rekor: %d" % [score, best]
+		lbl_enemy_pill.text = "×%d" % enemies.size()
+	lbl_score.text = CraftUI.format_score(score)
 	if is_instance_valid(score_star_bar):
 		score_star_bar.max_value = float(s3)
 		score_star_bar.value = minf(float(score), float(s3))
 	var thresh: Array[int] = [s1, s2, s3]
-	var tex_gold: Texture2D = load("res://assets/generated/home2d/ui_star_gold.png")
-	var tex_empty: Texture2D = load("res://assets/generated/home2d/ui_star_empty.png")
+	var tex_gold: Texture2D = CraftUI.tex("icon_star_gold")
+	var tex_empty: Texture2D = CraftUI.tex("icon_star_empty")
 	for k in mini(hud_star_pips.size(), 3):
 		var sp: TextureRect = hud_star_pips[k]
 		sp.texture = tex_gold if score >= thresh[k] else tex_empty
-	if is_instance_valid(combo_panel) and is_instance_valid(lbl_combo):
+
+	# Live Boss / Klan Segmented HP Bar
+	if is_instance_valid(boss_bar_root) and boss_bar_root.visible:
+		var ratio := float(enemies.size()) / maxf(float(total_e), 1.0)
+		var lit_segs := int(ceil(ratio * float(boss_segments.size())))
+		for i in boss_segments.size():
+			boss_segments[i].color = Color(0.91, 0.22, 0.16) if i < lit_segs else Color(0.24, 0.12, 0.09)
+		if is_instance_valid(lbl_boss_hp):
+			lbl_boss_hp.text = "%d/%d" % [enemies.size(), total_e]
+
+	if is_instance_valid(lbl_combo):
 		if combo_count >= 2:
 			var mult: float = 1.5
 			if combo_count >= 5:
 				mult = 3.0
 			elif combo_count >= 3:
 				mult = 2.0
-			lbl_combo.text = "KOMBO x%d! (%.1fx)" % [combo_count, mult]
-			combo_panel.visible = true
+			lbl_combo.text = "KOMBO ×%d! (%.1fx)" % [combo_count, mult]
+			lbl_combo.visible = true
 		else:
-			combo_panel.visible = false
+			lbl_combo.visible = false
 
-func _make_squad_pill(ctype: String, is_active: bool) -> PanelContainer:
-	var pill := PanelContainer.new()
-	var bg := Color(0.78, 0.22, 0.16, 0.95)
-	var tag := "CHILL"
-	if ctype == "dash":
-		bg = Color(0.84, 0.56, 0.14, 0.95)
-		tag = "DASH"
-	elif ctype == "mini":
-		bg = Color(0.24, 0.52, 0.74, 0.95)
-		tag = "MINI"
-	if not is_active:
-		bg.a = 0.65
-	var st := StyleBoxFlat.new()
-	st.bg_color = bg
-	st.border_color = Color(1.0, 0.90, 0.52) if is_active else Color(0.74, 0.66, 0.54, 0.55)
-	st.set_border_width_all(2 if is_active else 1)
-	st.set_corner_radius_all(6)
-	st.content_margin_left = 7
-	st.content_margin_right = 7
-	st.content_margin_top = 1
-	st.content_margin_bottom = 1
-	pill.add_theme_stylebox_override("panel", st)
-	var lb := Label.new()
-	lb.text = tag
-	lb.add_theme_font_size_override("font_size", 10)
-	lb.add_theme_color_override("font_color", Color(1.0, 0.98, 0.92))
-	pill.add_child(lb)
-	return pill
+func _make_queue_cutout(ctype: String, q_idx: int) -> Control:
+	var spec: Dictionary = CAPY_SPECS.get(ctype, CAPY_SPECS["chill"])
+	var tile := Control.new()
+	tile.custom_minimum_size = Vector2(36, 36)
+	tile.pivot_offset = Vector2(18, 18)
+	tile.rotation_degrees = -4.5 if (q_idx % 2 == 0) else 4.0
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var sh := ColorRect.new()
+	sh.position = Vector2(2, 4)
+	sh.size = Vector2(34, 34)
+	sh.color = CraftUI.INK
+	tile.add_child(sh)
+
+	var frame := ColorRect.new()
+	frame.position = Vector2(0, 1)
+	frame.size = Vector2(34, 34)
+	frame.color = CraftUI.INK
+	tile.add_child(frame)
+
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_left = 3
+	bg.offset_right = -3
+	bg.offset_top = 3
+	bg.offset_bottom = -3
+	bg.color = Color(0.65, 0.41, 0.22)
+	frame.add_child(bg)
+
+	var ic := CraftUI.make_tex_rect(load(str(spec["portrait"])), Vector2(28, 28))
+	ic.position = Vector2(3, 3)
+	frame.add_child(ic)
+	return tile
 
 func _refresh_queue_hud() -> void:
 	if is_instance_valid(hud_squad_row):
 		for c in hud_squad_row.get_children():
 			c.queue_free()
+		var idx := 0
 		if is_instance_valid(active_capy):
-			hud_squad_row.add_child(_make_squad_pill(active_capy_type, true))
+			hud_squad_row.add_child(_make_queue_cutout(active_capy_type, idx))
+			idx += 1
 		for q_type in capy_queue:
-			hud_squad_row.add_child(_make_squad_pill(str(q_type), false))
-	if is_instance_valid(active_capy):
-		var spec: Dictionary = CAPY_SPECS.get(active_capy_type, CAPY_SPECS["chill"])
-		lbl_queue_info.text = "%s  •  Skill (Klik/Spasi): %s  •  [A/D] Geser" % [
-			str(spec["name"]), str(spec["skill_desc"])
-		]
-	else:
-		lbl_queue_info.text = "Seluruh kapibara diluncurkan — menunggu benteng tumbang..."
+			hud_squad_row.add_child(_make_queue_cutout(str(q_type), idx))
+			idx += 1
+
+	var disp_type := active_capy_type if is_instance_valid(active_capy) else "chill"
+	var spec: Dictionary = CAPY_SPECS.get(disp_type, CAPY_SPECS["chill"])
+	if is_instance_valid(active_hero_portrait):
+		active_hero_portrait.texture = load(str(spec["portrait"]))
+	if is_instance_valid(active_hero_wood_bg) and active_hero_wood_bg.has_meta("inner_sq"):
+		var inner_sq := active_hero_wood_bg.get_meta("inner_sq") as ColorRect
+		if inner_sq:
+			if disp_type == "dash":
+				inner_sq.color = Color(0.97, 0.71, 0.22)
+			elif disp_type == "mini":
+				inner_sq.color = Color(0.23, 0.70, 0.90)
+			else:
+				inner_sq.color = Color(0.92, 0.28, 0.19)
+	if is_instance_valid(active_skill_lbl):
+		active_skill_lbl.text = str(spec["skill_short"]) if is_instance_valid(active_capy) else "MELUNCUR..."
+		active_skill_lbl.add_theme_color_override("font_color", spec["accent"])
 
 func _set_camera_view(view_idx: int) -> void:
 	current_view = view_idx
@@ -1986,8 +2520,20 @@ func _set_camera_view(view_idx: int) -> void:
 	cam_zoom_offset = 0.0
 	cam_pan_x = 0.0
 	cam_pan_target_x = 0.0
+	var view_tilts := [-1.2, 0.8, -0.8]
 	for i in btn_views.size():
-		btn_views[i].set_pressed_no_signal(i == view_idx)
+		var is_act := (i == view_idx)
+		btn_views[i].set_pressed_no_signal(is_act)
+		CraftUI.style_wood_button(
+			btn_views[i],
+			"wood_btn_amber" if is_act else "wood_btn_cedar_dark",
+			13,
+			Vector2(88, 38),
+			view_tilts[i],
+			true,
+			CraftUI.CREAM_TEXT if is_act else Color(0.91, 0.85, 0.76),
+			4
+		)
 
 func _update_capy_anim(delta: float) -> void:
 	if not is_instance_valid(active_capy) or not is_instance_valid(active_capy_visual):
@@ -2195,3 +2741,6 @@ func _update_camera(delta: float) -> void:
 		cam.fov = lerpf(cam.fov, desired_fov, clampf(delta * 6.0, 0.0, 1.0))
 		cam.position = cam.position.lerp(desired_pos, clampf(delta * 7.5, 0.0, 1.0))
 	cam.look_at(look_target, Vector3.UP)
+	if shake_trauma > 0.01 and capture_stage_path == "" and capture_croco_path == "" and capture_pause_path == "":
+		var mag := shake_trauma * shake_trauma * 0.42
+		cam.position += Vector3(randf_range(-mag, mag), randf_range(-mag, mag), 0.0)

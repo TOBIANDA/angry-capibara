@@ -9,6 +9,7 @@ if exist "bin\Debug\AngryCapibaraAssets.exe" goto :run_debug
 echo [INFO] Binary belum ditemukan. Mencoba build otomatis dengan MSBuild...
 set "MSBUILD="
 for %%M in (
+    "D:\Visual Studio\MSBuild\Current\Bin\MSBuild.exe"
     "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
     "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
     "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"

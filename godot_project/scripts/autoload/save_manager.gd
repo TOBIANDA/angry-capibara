@@ -7,11 +7,45 @@ const TOTAL_W1_STAGES := 20
 
 var selected_stage_id: String = "1-1"
 var unlock_all_preview: bool = false
+var audio_volume: float = 100.0
+var is_muted: bool = false
 var progress: Dictionary = {}
 
 func _ready() -> void:
 	_init_defaults()
 	load_save()
+	apply_audio_settings()
+
+func apply_audio_settings() -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	if bus >= 0:
+		AudioServer.set_bus_mute(bus, is_muted)
+		if audio_volume <= 1.0:
+			AudioServer.set_bus_volume_db(bus, -80.0)
+		else:
+			AudioServer.set_bus_volume_db(bus, linear_to_db(audio_volume / 100.0))
+
+func set_audio_volume(val: float) -> void:
+	audio_volume = clampf(val, 0.0, 100.0)
+	apply_audio_settings()
+
+func toggle_mute() -> bool:
+	is_muted = not is_muted
+	apply_audio_settings()
+	return is_muted
+
+func is_fullscreen() -> bool:
+	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+
+func toggle_fullscreen() -> bool:
+	if is_fullscreen():
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	return is_fullscreen()
+
+func world_has_levels(world_id: int) -> bool:
+	return FileAccess.file_exists("res://data/levels/w%d/%d-1.json" % [world_id, world_id])
 
 func _init_defaults() -> void:
 	for s in range(1, TOTAL_W1_STAGES + 1):
